@@ -8,7 +8,12 @@ import { Label } from '../../ui/label';
 import { Textarea } from '../../ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../../ui/select';
 import { UpdateJobStatusModal } from '../../jobs/UpdateJobStatusModal';
-import { ArrowLeft, X, Save } from 'lucide-react';
+import { DepartmentSelect } from '../../common/DepartmentSelect';
+import { IndustrySelect } from '../../common/IndustrySelect';
+import {
+  ArrowLeft, X, Save, Trash2,
+  Plus, Lock
+} from 'lucide-react';
 import type { ViewType } from '../types';
 
 interface EditJobViewProps {
@@ -16,6 +21,7 @@ interface EditJobViewProps {
   setEditingJob: (job: any) => void;
   setCurrentView: (view: ViewType) => void;
   handleSaveJob: () => Promise<void>;
+  handleDeleteJob: () => Promise<void>;
   showJobStatusUpdate: boolean;
   jobStatusUpdateTarget: any;
   setShowJobStatusUpdate: (show: boolean) => void;
@@ -28,30 +34,86 @@ export const EditJobView = ({
   setEditingJob,
   setCurrentView,
   handleSaveJob,
+  handleDeleteJob,
   showJobStatusUpdate,
   jobStatusUpdateTarget,
   setShowJobStatusUpdate,
   setJobStatusUpdateTarget,
   handleJobStatusUpdate
-}: EditJobViewProps) => (
+}: EditJobViewProps) => {
+  const promptsLocked = Boolean(editingJob?.prompts_locked || editingJob?.applications_count > 0 || editingJob?.applicants > 0);
+  const MAX_SALARY_SPREAD = 50000;
+
+  const prompts = (editingJob?.prompts || editingJob?.videoPrompts || []) as { id?: number; order: number; question_text?: string; questionText?: string; max_duration_seconds?: number; maxDurationSeconds?: number }[];
+
+  const updatePrompts = (next: any[]) => {
+    setEditingJob({ ...editingJob, prompts: next });
+  };
+
+  const handlePromptChange = (index: number, value: string) => {
+    const next = [...prompts];
+    next[index] = { ...next[index], question_text: value, questionText: value };
+    updatePrompts(next);
+  };
+
+  const handleAddPrompt = () => {
+    if (prompts.length >= 5) return;
+    const next = [...prompts, { order: prompts.length + 1, question_text: '', questionText: '', max_duration_seconds: 180, maxDurationSeconds: 180 }];
+    updatePrompts(next);
+  };
+
+  const handleRemovePrompt = (index: number) => {
+    const next = prompts.filter((_, i) => i !== index).map((p, i) => ({ ...p, order: i + 1 }));
+    updatePrompts(next);
+  };
+
+  const handleSalaryMinChange = (value: string) => {
+    const minNum = value ? Number.parseFloat(value) : null;
+    const maxNum = editingJob.salary_max ?? null;
+    if (minNum !== null && maxNum !== null && maxNum - minNum > MAX_SALARY_SPREAD) {
+      setEditingJob({ ...editingJob, salary_min: minNum, salary_max: minNum + MAX_SALARY_SPREAD });
+    } else {
+      setEditingJob({ ...editingJob, salary_min: minNum });
+    }
+  };
+
+  const handleSalaryMaxChange = (value: string) => {
+    const maxNum = value ? Number.parseFloat(value) : null;
+    const minNum = editingJob.salary_min ?? null;
+    if (maxNum !== null && minNum !== null && maxNum - minNum > MAX_SALARY_SPREAD) {
+      setEditingJob({ ...editingJob, salary_max: maxNum, salary_min: maxNum - MAX_SALARY_SPREAD });
+    } else {
+      setEditingJob({ ...editingJob, salary_max: maxNum });
+    }
+  };
+
+  return (
   <div className="min-h-screen bg-gradient-to-br from-gray-50 via-orange-50 to-gray-100 p-6">
     <div className="max-w-4xl mx-auto">
-      <div className="flex items-center justify-between mb-8">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-8">
         <Button
           variant="outline"
           onClick={() => setCurrentView('job-detail')}
-          className="text-gray-900 hover:text-[#ff6b35] hover:border-[#ff6b35] border-2"
+          className="text-gray-900 hover:text-[#ff6b35] hover:border-[#ff6b35] border-2 self-start"
         >
           <ArrowLeft className="w-5 h-5 mr-2" />
           <span className="font-medium">Back to Job Details</span>
         </Button>
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
           <Button
             variant="outline"
             onClick={() => setCurrentView('job-detail')}
           >
             <X className="w-4 h-4 mr-2" />
             Cancel
+          </Button>
+          <Button
+            variant="outline"
+            onClick={handleDeleteJob}
+            className="text-red-600 hover:text-red-700 hover:border-red-300 border-red-200"
+          >
+            <Trash2 className="w-4 h-4 mr-2" />
+            Delete
           </Button>
           <Button
             onClick={handleSaveJob}
@@ -75,37 +137,37 @@ export const EditJobView = ({
                 <Label htmlFor="edit-title">Job Title</Label>
                 <Input
                   id="edit-title"
-                  value={editingJob.title}
+                  value={editingJob.title || ''}
                   onChange={(e) => setEditingJob({ ...editingJob, title: e.target.value })}
                 />
               </div>
               <div>
                 <Label htmlFor="edit-department">Department</Label>
-                <Input
-                  id="edit-department"
-                  value={editingJob.department}
-                  onChange={(e) => setEditingJob({ ...editingJob, department: e.target.value })}
+                <DepartmentSelect
+                  value={editingJob.department || ''}
+                  onValueChange={(value) => setEditingJob({ ...editingJob, department: value })}
+                  triggerClassName="h-10"
                 />
               </div>
               <div>
                 <Label htmlFor="edit-location">Location</Label>
                 <Input
                   id="edit-location"
-                  value={editingJob.location}
+                  value={editingJob.location || ''}
                   onChange={(e) => setEditingJob({ ...editingJob, location: e.target.value })}
                 />
               </div>
               <div>
                 <Label htmlFor="edit-industry">Industry</Label>
-                <Input
-                  id="edit-industry"
-                  value={editingJob.industry}
-                  onChange={(e) => setEditingJob({ ...editingJob, industry: e.target.value })}
+                <IndustrySelect
+                  value={editingJob.industry || ''}
+                  onValueChange={(value) => setEditingJob({ ...editingJob, industry: value })}
+                  triggerClassName="h-10"
                 />
               </div>
               <div>
                 <Label htmlFor="edit-employment-type">Employment Type</Label>
-                <Select value={editingJob.employment_type} onValueChange={(value) => setEditingJob({ ...editingJob, employment_type: value })}>
+                <Select value={editingJob.employment_type || ''} onValueChange={(value) => setEditingJob({ ...editingJob, employment_type: value })}>
                   <SelectTrigger className="h-10">
                     <SelectValue />
                   </SelectTrigger>
@@ -119,8 +181,20 @@ export const EditJobView = ({
                 </Select>
               </div>
               <div>
+                <Label htmlFor="edit-vacancy-type">Vacancy Type</Label>
+                <Select value={editingJob.vacancy_type || 'current'} onValueChange={(value) => setEditingJob({ ...editingJob, vacancy_type: value })}>
+                  <SelectTrigger className="h-10">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent className="bg-white border border-gray-200 shadow-lg">
+                    <SelectItem value="current">Current Vacancy</SelectItem>
+                    <SelectItem value="future">Future Position</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
                 <Label htmlFor="edit-work-arrangement">Work Arrangement</Label>
-                <Select value={editingJob.work_arrangement} onValueChange={(value) => setEditingJob({ ...editingJob, work_arrangement: value })}>
+                <Select value={editingJob.work_arrangement || ''} onValueChange={(value) => setEditingJob({ ...editingJob, work_arrangement: value })}>
                   <SelectTrigger className="h-10">
                     <SelectValue />
                   </SelectTrigger>
@@ -144,7 +218,7 @@ export const EditJobView = ({
                   id="edit-salary-min"
                   type="number"
                   value={editingJob.salary_min || ''}
-                  onChange={(e) => setEditingJob({ ...editingJob, salary_min: e.target.value ? Number.parseFloat(e.target.value) : null })}
+                  onChange={(e) => handleSalaryMinChange(e.target.value)}
                 />
               </div>
               <div>
@@ -153,12 +227,12 @@ export const EditJobView = ({
                   id="edit-salary-max"
                   type="number"
                   value={editingJob.salary_max || ''}
-                  onChange={(e) => setEditingJob({ ...editingJob, salary_max: e.target.value ? Number.parseFloat(e.target.value) : null })}
+                  onChange={(e) => handleSalaryMaxChange(e.target.value)}
                 />
               </div>
               <div>
                 <Label htmlFor="edit-currency">Currency</Label>
-                <Select value={editingJob.currency} onValueChange={(value) => setEditingJob({ ...editingJob, currency: value })}>
+                <Select value={editingJob.currency || ''} onValueChange={(value) => setEditingJob({ ...editingJob, currency: value })}>
                   <SelectTrigger className="h-10">
                     <SelectValue />
                   </SelectTrigger>
@@ -171,6 +245,9 @@ export const EditJobView = ({
                 </Select>
               </div>
             </div>
+            <p className="text-xs text-gray-500 mt-2">
+              The salary range cannot exceed {MAX_SALARY_SPREAD.toLocaleString()}.
+            </p>
           </div>
 
           {/* Requirements */}
@@ -179,7 +256,7 @@ export const EditJobView = ({
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div>
                 <Label htmlFor="edit-experience-level">Experience Level</Label>
-                <Select value={editingJob.experience_level} onValueChange={(value) => setEditingJob({ ...editingJob, experience_level: value })}>
+                <Select value={editingJob.experience_level || ''} onValueChange={(value) => setEditingJob({ ...editingJob, experience_level: value })}>
                   <SelectTrigger className="h-10">
                     <SelectValue />
                   </SelectTrigger>
@@ -194,7 +271,7 @@ export const EditJobView = ({
               </div>
               <div>
                 <Label htmlFor="edit-education-level">Education Level</Label>
-                <Select value={editingJob.education_level} onValueChange={(value) => setEditingJob({ ...editingJob, education_level: value })}>
+                <Select value={editingJob.education_level || ''} onValueChange={(value) => setEditingJob({ ...editingJob, education_level: value })}>
                   <SelectTrigger className="h-10">
                     <SelectValue />
                   </SelectTrigger>
@@ -228,7 +305,7 @@ export const EditJobView = ({
                 <Label htmlFor="edit-description">Full Description</Label>
                 <Textarea
                   id="edit-description"
-                  value={editingJob.description}
+                  value={editingJob.description || ''}
                   onChange={(e) => setEditingJob({ ...editingJob, description: e.target.value })}
                   rows={6}
                 />
@@ -272,6 +349,80 @@ export const EditJobView = ({
             </div>
           </div>
 
+          {/* Video Prompts */}
+          <div>
+            <h3 className="text-lg font-medium text-gray-900 mb-4">Video Prompts</h3>
+            <Card className="p-6">
+              {promptsLocked && (
+                <div className="mb-4 p-4 bg-amber-50 border border-amber-200 rounded-lg flex items-start gap-3">
+                  <Lock className="w-5 h-5 text-amber-600 mt-0.5" />
+                  <div>
+                    <p className="font-medium text-amber-900">Prompts are locked</p>
+                    <p className="text-sm text-amber-700">
+                      This job has already received applications, so the prompts cannot be edited.
+                    </p>
+                  </div>
+                </div>
+              )}
+
+              <div className="space-y-4">
+                {prompts.map((prompt, index) => (
+                  <div key={prompt.id ?? index} className="flex items-start gap-3">
+                    <div className="flex-1">
+                      <Label htmlFor={`edit-prompt-${index}`} className="text-sm font-medium text-gray-700">
+                        Prompt {index + 1}
+                      </Label>
+                      <Textarea
+                        id={`edit-prompt-${index}`}
+                        value={prompt.question_text || prompt.questionText || ''}
+                        onChange={(e) => handlePromptChange(index, e.target.value)}
+                        disabled={promptsLocked}
+                        rows={2}
+                        className="mt-1"
+                      />
+                    </div>
+                    {!promptsLocked && (
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        className="mt-6 text-red-600 hover:bg-red-50"
+                        onClick={() => handleRemovePrompt(index)}
+                        disabled={prompts.length === 0}
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </Button>
+                    )}
+                  </div>
+                ))}
+              </div>
+
+              {!promptsLocked && (
+                <div className="mt-4 flex items-center gap-3">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={handleAddPrompt}
+                    disabled={prompts.length >= 5}
+                  >
+                    <Plus className="w-4 h-4 mr-2" />
+                    Add prompt
+                  </Button>
+                  <span className="text-sm text-gray-500">
+                    {prompts.length} of 5 prompts
+                  </span>
+                </div>
+              )}
+
+              {prompts.length === 0 && !promptsLocked && (
+                <p className="text-sm text-gray-500 mt-4">
+                  No video prompts configured. Candidates will not be required to record video responses.
+                </p>
+              )}
+            </Card>
+          </div>
+
           {/* Status and Settings */}
           <div>
             <h3 className="text-lg font-medium text-gray-900 mb-4">Status & Settings</h3>
@@ -279,7 +430,7 @@ export const EditJobView = ({
               <div>
                 <Label htmlFor="edit-status">Status</Label>
                 <Select
-                  value={editingJob.status}
+                  value={editingJob.status || ''}
                   onValueChange={(value) => setEditingJob({ ...editingJob, status: value })}
                 >
                   <SelectTrigger className="h-10">
@@ -387,6 +538,7 @@ export const EditJobView = ({
       />
     )}
   </div>
-);
+  );
+};
 
 export default EditJobView;

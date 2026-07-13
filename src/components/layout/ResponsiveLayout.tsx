@@ -149,7 +149,7 @@ export function ResponsiveLayout({ children, user, onLogout, onNavigate }: Reado
 
       {/* Mobile Bottom Navigation (Optional) */}
       <div className="md:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200">
-        <div className="grid grid-cols-5 gap-1">
+        <div className="grid grid-cols-2 sm:grid-cols-5 gap-1">
           {navigationItems.slice(0, 5).map((item) => (
             <button
               key={item.name}

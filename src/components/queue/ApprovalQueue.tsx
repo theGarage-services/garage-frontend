@@ -1,4 +1,4 @@
-import { JSXElementConstructor, Key, ReactElement, ReactNode, ReactPortal, useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { Card } from '../ui/card';
 import { Button } from '../ui/button';
 import { Badge } from '../ui/badge';
@@ -19,23 +19,7 @@ import {
   Search
 } from 'lucide-react';
 import { Input } from '../ui/input';
-// TODO: Create approval service when backend endpoints are available
-// import { queueService, type QueueApproval } from '../../api/queueService';
-
-// Mock approval type until backend is ready
-interface QueueApproval {
-  id: string;
-  type: 'job-posting' | 'offer' | 'budget';
-  status: 'pending' | 'approved' | 'rejected';
-  submittedBy: {
-    name: string;
-    email: string;
-    avatar: string | null;
-  };
-  submittedAt: string;
-  data: Record<string, any>;
-  urgency: 'low' | 'medium' | 'high';
-}
+import { approvalService, type QueueApproval } from '../../api/approvals';
 
 interface ApprovalQueueProps {
   user: any;
@@ -57,28 +41,46 @@ export function ApprovalQueue({
   const [approvals, setApprovals] = useState<QueueApproval[]>(pendingApprovals);
   const [isLoading, setIsLoading] = useState(true);
 
-  // TODO: Connect to backend approval endpoints when available
-  // For now, use mock data only
   useEffect(() => {
-    if (pendingApprovals.length > 0) {
-      setApprovals(pendingApprovals);
-    } else {
-      // Mock data - no backend call until endpoints are created
-      setApprovals([]);
+    let cancelled = false;
+
+    async function fetchApprovals() {
+      setIsLoading(true);
+      try {
+        const data = await approvalService.getPendingApprovals();
+        if (!cancelled) {
+          setApprovals(data);
+        }
+      } catch (error) {
+        console.error('Error fetching approvals:', error);
+        if (!cancelled) {
+          setApprovals([]);
+        }
+      } finally {
+        if (!cancelled) {
+          setIsLoading(false);
+        }
+      }
     }
-    setIsLoading(false);
-  }, [pendingApprovals]);
+
+    fetchApprovals();
+    return () => { cancelled = true; };
+  }, []);
 
   // Generic handler for approval actions (approve/reject)
   const handleApprovalAction = async (item: QueueApproval, action: 'approve' | 'reject') => {
-    // TODO: Connect to backend when endpoint is available
-    // Different endpoints will be called: POST /approvals/{id}/approve or /approvals/{id}/reject
-    console.log(`[MOCK] ${action} approval:`, item.id, item.type);
-
-    // Remove from pending list
-    setApprovals(prev => prev.filter(a => a.id !== item.id));
-    setSelectedItem(null);
-    setApprovalComment('');
+    try {
+      if (action === 'approve') {
+        await approvalService.approve(item.id, { comment: approvalComment });
+      } else {
+        await approvalService.reject(item.id, { comment: approvalComment });
+      }
+      setApprovals(prev => prev.filter(a => a.id !== item.id));
+      setSelectedItem(null);
+      setApprovalComment('');
+    } catch (error) {
+      console.error(`Error ${action}ing approval:`, error);
+    }
   };
 
   const handleApprove = async (item: QueueApproval) => {
@@ -179,9 +181,9 @@ export function ApprovalQueue({
         {/* Page Header */}
         <div className="bg-gradient-to-r from-[#ff6b35] to-[#ff8c42] text-white">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-            <div className="flex items-center justify-between">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
               <div className="flex items-center gap-4">
-                <div className="w-16 h-16 bg-white/20 backdrop-blur-sm rounded-xl flex items-center justify-center">
+                <div className="w-16 h-16 bg-white/20 backdrop-blur-sm rounded-xl flex items-center justify-center shrink-0">
                   <CheckCircle2 className="w-8 h-8 text-white" />
                 </div>
                 <div>
@@ -189,7 +191,7 @@ export function ApprovalQueue({
                   <p className="text-orange-100">Review and approve pending requests</p>
                 </div>
               </div>
-              <Badge className="bg-white text-[#ff6b35] text-lg px-4 py-2">
+              <Badge className="bg-white text-[#ff6b35] text-lg px-4 py-2 self-start sm:self-auto">
                 {filteredApprovals.length} Pending
               </Badge>
             </div>
@@ -200,15 +202,15 @@ export function ApprovalQueue({
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
           {/* Filters and Search */}
           <Card className="p-6 mb-6">
-            <div className="flex items-center justify-between gap-4">
-              <div className="flex items-center gap-4 flex-1">
-                <div className="relative flex-1 max-w-md">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+              <div className="flex flex-col sm:flex-row sm:items-center gap-4 flex-1">
+                <div className="relative flex-1 max-w-[95vw] sm:max-w-md w-full">
                   <Search className="w-4 h-4 text-gray-400 absolute left-3 top-1/2 transform -translate-y-1/2" />
                   <Input
                     placeholder="Search approvals..."
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
-                    className="pl-10"
+                    className="pl-10 w-full"
                   />
                 </div>
 
@@ -235,13 +237,13 @@ export function ApprovalQueue({
               {filteredApprovals.map((item) => (
                 <Card key={item.id} className="p-6 hover:shadow-lg transition-shadow">
                   {/* Header */}
-                  <div className="flex items-start justify-between mb-4">
-                    <div className="flex items-center gap-3">
-                      <div className={`w-12 h-12 bg-gradient-to-br ${getTypeColor(item.type)} rounded-xl flex items-center justify-center text-white`}>
+                  <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3 mb-4">
+                    <div className="flex items-start sm:items-center gap-3">
+                      <div className={`w-12 h-12 bg-gradient-to-br ${getTypeColor(item.type)} rounded-xl flex items-center justify-center text-white shrink-0`}>
                         {getTypeIcon(item.type)}
                       </div>
-                      <div>
-                        <div className="flex items-center gap-2 mb-1">
+                      <div className="min-w-0">
+                        <div className="flex flex-wrap items-center gap-2 mb-1">
                           <h3 className="font-medium text-gray-900 capitalize">
                             {item.type.replace('-', ' ')}
                           </h3>
@@ -305,7 +307,7 @@ export function ApprovalQueue({
                   </div>
 
                   {/* Actions */}
-                  <div className="flex items-center gap-2 pt-4 border-t">
+                  <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 pt-4 border-t">
                     <Button
                       variant="outline"
                       size="sm"
@@ -330,7 +332,7 @@ export function ApprovalQueue({
                       size="sm"
                       variant="outline"
                       onClick={() => setSelectedItem(item)}
-                      className="border-red-200 text-red-600 hover:bg-red-50"
+                      className="border-red-200 text-red-600 hover:bg-red-50 self-center"
                     >
                       <XCircle className="w-4 h-4" />
                     </Button>
@@ -355,15 +357,15 @@ export function ApprovalQueue({
       {/* Review Modal */}
       {selectedItem && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <Card className="max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+          <Card className="max-w-[95vw] sm:max-w-[95vw] sm:max-w-2xl w-full max-h-[90vh] overflow-y-auto">
             <div className="p-6">
               {/* Modal Header */}
-              <div className="flex items-start justify-between mb-6">
-                <div className="flex items-center gap-3">
-                  <div className={`w-12 h-12 bg-gradient-to-br ${getTypeColor(selectedItem.type)} rounded-xl flex items-center justify-center text-white`}>
+              <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4 mb-6">
+                <div className="flex items-start sm:items-center gap-3 min-w-0">
+                  <div className={`w-12 h-12 bg-gradient-to-br ${getTypeColor(selectedItem.type)} rounded-xl flex items-center justify-center text-white shrink-0`}>
                     {getTypeIcon(selectedItem.type)}
                   </div>
-                  <div>
+                  <div className="min-w-0">
                     <h3 className="text-xl font-medium text-gray-900 capitalize">
                       {selectedItem.type.replace('-', ' ')} Approval
                     </h3>
@@ -372,7 +374,7 @@ export function ApprovalQueue({
                 </div>
                 <button
                   onClick={() => setSelectedItem(null)}
-                  className="text-gray-400 hover:text-gray-600"
+                  className="text-gray-400 hover:text-gray-600 self-start"
                 >
                   <XCircle className="w-6 h-6" />
                 </button>
@@ -404,7 +406,7 @@ export function ApprovalQueue({
                       <p className="text-sm text-gray-600 mb-1">Position</p>
                       <p className="font-medium text-gray-900">{selectedItem.data.title}</p>
                     </div>
-                    <div className="grid grid-cols-2 gap-4">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                       <div>
                         <p className="text-sm text-gray-600 mb-1">Department</p>
                         <p className="text-gray-900">{selectedItem.data.department}</p>
@@ -429,8 +431,8 @@ export function ApprovalQueue({
                     <div>
                       <p className="text-sm text-gray-600 mb-1">Requirements</p>
                       <ul className="list-disc list-inside space-y-1">
-                        {selectedItem.data.requirements.map((req: string | number | boolean | ReactElement<any, string | JSXElementConstructor<any>> | Iterable<ReactNode> | ReactPortal | null | undefined, idx: Key | null | undefined) => (
-                          <li key={idx} className="text-gray-900">{req}</li>
+                        {selectedItem.data.requirements.map((req: string) => (
+                          <li key={req} className="text-gray-900">{req}</li>
                         ))}
                       </ul>
                     </div>
@@ -439,7 +441,7 @@ export function ApprovalQueue({
 
                 {selectedItem.type === 'offer' && (
                   <div className="space-y-3">
-                    <div className="grid grid-cols-2 gap-4">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                       <div>
                         <p className="text-sm text-gray-600 mb-1">Candidate</p>
                         <p className="font-medium text-gray-900">{selectedItem.data.candidateName}</p>
@@ -481,8 +483,8 @@ export function ApprovalQueue({
                     <div>
                       <p className="text-sm text-gray-600 mb-1">Breakdown</p>
                       <ul className="list-disc list-inside space-y-1">
-                        {selectedItem.data.breakdown.map((item: string | number | boolean | ReactElement<any, string | JSXElementConstructor<any>> | Iterable<ReactNode> | ReactPortal | null | undefined, idx: Key | null | undefined) => (
-                          <li key={idx} className="text-gray-900">{item}</li>
+                        {selectedItem.data.breakdown.map((item: string) => (
+                          <li key={item} className="text-gray-900">{item}</li>
                         ))}
                       </ul>
                     </div>
@@ -504,7 +506,7 @@ export function ApprovalQueue({
               </div>
 
               {/* Action Buttons */}
-              <div className="flex items-center gap-3">
+              <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
                 <Button
                   onClick={() => handleReject(selectedItem)}
                   variant="outline"

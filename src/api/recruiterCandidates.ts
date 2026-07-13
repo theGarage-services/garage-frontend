@@ -3,6 +3,7 @@
  * Handles fetching and managing candidates across all recruiter's jobs
  */
 import apiClient from './client';
+import type { PromptResponse as VideoResponse } from './jobPosts';
 
 // Job applied interface
 export interface JobApplied {
@@ -31,10 +32,19 @@ export interface Candidate {
   phone: string | null;
   jobsApplied: JobApplied[];
   skills?: string[];
-  resumeUrl?: string;
+  resumeUrl?: string | null;
+  scoreBreakdown?: Record<string, any>;
+  // Client-side enrichment: when a candidate is expanded into one row per
+  // job application, these identify the row and the specific job it represents.
+  keyId?: string;
+  currentJobId?: string;
+  isSaved?: boolean;
 }
 
 export interface CandidateDetail extends Omit<Candidate, 'jobsApplied'> {
+  id: string;
+  candidate_profile_id?: number | null;
+  current_job_id?: string | null;
   jobsApplied: JobApplied[];
   current_company?: string;
   summary?: string;
@@ -42,6 +52,7 @@ export interface CandidateDetail extends Omit<Candidate, 'jobsApplied'> {
   salary?: string;
   profileImage?: string;
   currentCompany?: string;
+  video_responses?: VideoResponse[];
   socialLinks?: {
     linkedin?: string | null;
     github?: string | null;
@@ -71,11 +82,42 @@ export interface CandidateDetail extends Omit<Candidate, 'jobsApplied'> {
     interviewRate: number;
     successfulPlacements: number;
   };
+  analytics?: {
+    applications: {
+      total: number;
+      by_status: Record<string, number>;
+      average_match_score: number;
+    };
+    considerations: {
+      total: number;
+      accepted: number;
+      declined: number;
+      pending: number;
+      response_rate: number;
+    };
+    interviews: {
+      total: number;
+      completed: number;
+    };
+    recruiter_notes: number;
+    profile: {
+      strength: number;
+      personality_test_completed: boolean;
+      top_personality_traits: Array<{ trait: string; score: number }>;
+    };
+    predicted_queues: Array<{
+      industry: string;
+      level: string;
+      industry_probability: number;
+    }>;
+  };
+  isSaved?: boolean;
 }
 
 // Status counts interface
 export interface StatusCounts {
   all: number;
+  consider: number;
   applied: number;
   interviewing: number;
   offers: number;
@@ -106,6 +148,7 @@ export interface FetchCandidatesParams {
   jobId?: string;
   status?: string;
   source?: string;
+  saved?: 'true' | 'false';
   sortBy?: string;
 }
 
@@ -184,6 +227,7 @@ export const recruiterCandidatesApi = {
     if (params.jobId) queryParams.append('job_id', params.jobId);
     if (params.status) queryParams.append('status', params.status);
     if (params.source) queryParams.append('source', params.source);
+    if (params.saved) queryParams.append('saved', params.saved);
     if (params.sortBy) queryParams.append('sort_by', params.sortBy);
 
     const response = await apiClient.request(`/jobposts/all-candidates/?${queryParams}`, {
@@ -265,6 +309,229 @@ export const recruiterCandidatesApi = {
     const filename = `${candidateName.replace(/\s+/g, '_')}_resume.pdf`;
 
     triggerDownload(blob, filename);
+  },
+
+  async saveCandidate(
+    candidateId: string,
+    jobId?: string | number
+  ): Promise<{ success: boolean; message: string; isSaved: boolean }> {
+    const query = jobId == null ? '' : `?job_id=${encodeURIComponent(String(jobId))}`;
+    const response = await apiClient.request(
+      `/jobposts/candidates/${candidateId}/save/${query}`,
+      { method: 'POST' }
+    );
+
+    const data = await response.json();
+
+    if (!data.success) {
+      throw new Error(data.error || 'Failed to save candidate');
+    }
+
+    return data;
+  },
+
+  async unsaveCandidate(
+    candidateId: string,
+    jobId?: string | number
+  ): Promise<{ success: boolean; message: string; isSaved: boolean }> {
+    const query = jobId == null ? '' : `?job_id=${encodeURIComponent(String(jobId))}`;
+    const response = await apiClient.request(
+      `/jobposts/candidates/${candidateId}/save/${query}`,
+      { method: 'DELETE' }
+    );
+
+    const data = await response.json();
+
+    if (!data.success) {
+      throw new Error(data.error || 'Failed to unsave candidate');
+    }
+
+    return data;
+  },
+
+  async getCandidateTimeline(
+    candidateId: string,
+    jobId?: string | number
+  ): Promise<{
+    success: boolean;
+    count: number;
+    job_title?: string;
+    events: Array<{
+      id: string;
+      type: string;
+      status: string;
+      title: string;
+      description: string;
+      timestamp: string;
+      actor: string;
+      actor_name: string;
+      match_score?: number | null;
+      interview_id?: number | null;
+    }>;
+  }> {
+    const query = jobId == null ? '' : `?job_id=${encodeURIComponent(String(jobId))}`;
+    const response = await apiClient.request(
+      `/jobposts/candidates/${candidateId}/timeline/${query}`,
+      { method: 'GET' }
+    );
+
+    const data = await response.json();
+
+    if (!data.success) {
+      throw new Error(data.error || 'Failed to fetch candidate timeline');
+    }
+
+    return data;
+  },
+
+  async getCandidateNotes(
+    candidateId: string,
+    jobId?: string | number
+  ): Promise<{
+    success: boolean;
+    data: Array<{
+      id: number;
+      note_type: string;
+      content: string;
+      recruiter_name: string;
+      created_at: string;
+      updated_at: string;
+    }>;
+    count: number;
+  }> {
+    const query = jobId == null ? '' : `?job_id=${encodeURIComponent(String(jobId))}`;
+    const response = await apiClient.request(
+      `/jobposts/candidates/${candidateId}/notes/${query}`,
+      { method: 'GET' }
+    );
+
+    const data = await response.json();
+
+    if (!data.success) {
+      throw new Error(data.error || 'Failed to fetch candidate notes');
+    }
+
+    return data;
+  },
+
+  async createCandidateNote(
+    candidateId: string,
+    payload: {
+      job_id?: number | string;
+      note_type: string;
+      content: string;
+    }
+  ): Promise<{
+    success: boolean;
+    data: {
+      id: number;
+      note_type: string;
+      content: string;
+      recruiter_name: string;
+      created_at: string;
+      updated_at: string;
+    };
+  }> {
+    const response = await apiClient.request(
+      `/jobposts/candidates/${candidateId}/notes/`,
+      {
+        method: 'POST',
+        body: JSON.stringify(payload),
+      }
+    );
+
+    const data = await response.json();
+
+    if (!data.success) {
+      throw new Error(data.error || 'Failed to create note');
+    }
+
+    return data;
+  },
+
+  async updateCandidateNote(
+    candidateId: string,
+    noteId: number,
+    payload: {
+      note_type: string;
+      content: string;
+    }
+  ): Promise<{
+    success: boolean;
+    data: {
+      id: number;
+      note_type: string;
+      content: string;
+      recruiter_name: string;
+      created_at: string;
+      updated_at: string;
+    };
+  }> {
+    const response = await apiClient.request(
+      `/jobposts/candidates/${candidateId}/notes/${noteId}/`,
+      {
+        method: 'PUT',
+        body: JSON.stringify(payload),
+      }
+    );
+
+    const data = await response.json();
+
+    if (!data.success) {
+      throw new Error(data.error || 'Failed to update note');
+    }
+
+    return data;
+  },
+
+  async updateCandidateStatus(
+    candidateId: string,
+    payload: {
+      job_id: number | string;
+      status: string;
+    }
+  ): Promise<{
+    success: boolean;
+    message: string;
+    data: {
+      application_id: number;
+      old_status: string;
+      new_status: string;
+    };
+  }> {
+    const response = await apiClient.request(
+      `/jobposts/candidates/${candidateId}/status/`,
+      {
+        method: 'PUT',
+        body: JSON.stringify(payload),
+      }
+    );
+
+    const data = await response.json();
+
+    if (!data.success) {
+      throw new Error(data.error || 'Failed to update candidate status');
+    }
+
+    return data;
+  },
+
+  async deleteCandidateNote(
+    candidateId: string,
+    noteId: number
+  ): Promise<{ success: boolean; message?: string }> {
+    const response = await apiClient.request(
+      `/jobposts/candidates/${candidateId}/notes/${noteId}/`,
+      { method: 'DELETE' }
+    );
+
+    const data = await response.json();
+
+    if (!data.success) {
+      throw new Error(data.error || 'Failed to delete note');
+    }
+
+    return data;
   },
 
   /**

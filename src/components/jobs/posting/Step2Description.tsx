@@ -1,15 +1,18 @@
 import { Label } from '../../ui/label';
 import { Textarea } from '../../ui/textarea';
-import { FileText } from 'lucide-react';
+import { Button } from '../../ui/button';
+import { FileText, Save } from 'lucide-react';
 import type { JobData } from '../../../api/jobPosts';
 
 interface Step2DescriptionProps {
   jobData: JobData;
   setJobData: React.Dispatch<React.SetStateAction<JobData>>;
   errors: Record<string, string>;
+  onSaveDraft: () => void;
+  isSubmitting: boolean;
 }
 
-export function Step2Description({ jobData, setJobData, errors }: Readonly<Step2DescriptionProps>) {
+export function Step2Description({ jobData, setJobData, errors, onSaveDraft, isSubmitting }: Readonly<Step2DescriptionProps>) {
   return (
     <div className="space-y-6">
       <div className="flex items-center gap-3 mb-6">
@@ -108,6 +111,13 @@ export function Step2Description({ jobData, setJobData, errors }: Readonly<Step2
             className="mt-2 min-h-[120px]"
           />
         </div>
+      </div>
+
+      <div className="flex justify-end pt-6 border-t border-gray-200 mt-6">
+        <Button variant="outline" onClick={onSaveDraft} disabled={isSubmitting}>
+          <Save className="w-4 h-4 mr-2" />
+          Save Draft
+        </Button>
       </div>
     </div>
   );

@@ -1,10 +1,11 @@
-import { Home, User, Bell, Briefcase, Users, Calendar, BarChart3, MessageSquare, Building2} from 'lucide-react';
+import { Home, User, Bell, Briefcase, Users, Calendar, BarChart3, MessageSquare, Building2, FileText, List, Menu, X } from 'lucide-react';
 import { ProfileDropdown } from '../profile/ProfileDropdown';
 import { RecruiterProfileDropdown } from '../recruiter/RecruiterProfileDropdown';
 import { EnterpriseProfileDropdown } from '../profile/EnterpriseProfileDropdown';
 import { Badge } from '../ui/badge';
 import { useState, useEffect } from 'react';
-import { getConversationStats, getUnreadNotificationCount } from '@/api/chat';
+import { getConversationStats } from '@/api/chat';
+import { getUnreadNotificationCount } from '@/api/notifications';
 import apiClient from '@/api/client';
 
 interface AppHeaderProps {
@@ -81,11 +82,25 @@ function JobSeekerNavigation({ currentView, onNavigate }: Readonly<NavigationSec
         onClick={() => onNavigate('profile')}
       />
       <NavButton
+        view="queues"
+        label="Queues"
+        icon={List}
+        currentView={currentView}
+        onClick={() => onNavigate('queues')}
+      />
+      <NavButton
         view="jobs/tracker"
         label="Tracker"
         icon={BarChart3}
         currentView={currentView}
         onClick={() => onNavigate('jobs/tracker')}
+      />
+      <NavButton
+        view="jobs/notes"
+        label="My Notes"
+        icon={FileText}
+        currentView={currentView}
+        onClick={() => onNavigate('jobs/notes')}
       />
     </>
   );
@@ -177,15 +192,23 @@ export function AppHeader({
     }
   };
 
+  const handleMobileNavigate = (view: string) => {
+    setMobileMenuOpen(false);
+    handleNavigate(view);
+  };
+
   // Real unread counts from APIs
   const [unreadNotifications, setUnreadNotifications] = useState(0);
   const [unreadMessages, setUnreadMessages] = useState(0);
   const [activeJobsCount, setActiveJobsCount] = useState(0);
   const [pendingCandidatesCount, setPendingCandidatesCount] = useState(0);
   const [upcomingInterviewsCount, setUpcomingInterviewsCount] = useState(0);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
-  // Fetch unread counts on mount
+  // Fetch unread counts on mount (only when authenticated)
   useEffect(() => {
+    if (!user) return;
+
     const fetchUnreadCounts = async () => {
       try {
         // Fetch notification count
@@ -254,7 +277,7 @@ export function AppHeader({
     }, 30000);
 
     return () => clearInterval(interval);
-  }, [userRole]);
+  }, [userRole, user]);
 
   // Get navigation component based on role
   const getNavigationComponent = () => {
@@ -322,27 +345,40 @@ export function AppHeader({
   return (
     <header className="bg-white/95 backdrop-blur-md border-b border-gray-200 fixed top-0 left-0 right-0 z-[100] shadow-sm">
       <div className="container mx-auto px-6 py-3">
-        <div className="flex items-center justify-between">
-          {/* Logo - Left Side */}
-          <button 
-            onClick={() => handleNavigate('dashboard')}
-            className="flex items-center gap-2 hover:opacity-80 transition-opacity"
-          >
-            <span className="text-lg font-medium">
-              <span className="text-gray-900">the</span>
-              <span className="text-[#ff6b35]">Garage</span>
-            </span>
-          </button>
+        <div className="flex items-center justify-between gap-4">
+          <div className="flex items-center gap-3">
+            {/* Mobile Menu Toggle */}
+            {!hideNavigation && (
+              <button
+                onClick={() => setMobileMenuOpen(open => !open)}
+                className="lg:hidden p-2 -ml-2 text-gray-600 hover:text-[#ff6b35] hover:bg-gray-100 rounded-md"
+                aria-label="Toggle navigation"
+              >
+                {mobileMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
+              </button>
+            )}
+
+            {/* Logo - Left Side */}
+            <button 
+              onClick={() => handleNavigate('dashboard')}
+              className="flex items-center gap-2 hover:opacity-80 transition-opacity"
+            >
+              <span className="text-lg font-medium">
+                <span className="text-gray-900">the</span>
+                <span className="text-[#ff6b35]">Garage</span>
+              </span>
+            </button>
+          </div>
 
           {/* Center Navigation */}
           {!hideNavigation && (
-            <nav className="flex items-center gap-6">
+            <nav className="hidden lg:flex items-center gap-6">
               {getNavigationComponent()}
             </nav>
           )}
 
           {/* Right Side - Post Job (Recruiters only, NOT admins), Messages, Notifications, Profile */}
-          <div className="flex items-center gap-4">
+          <div className="flex flex-wrap items-center justify-end gap-4">
             {/* Post Job Button - ONLY for Regular Recruiter (strict enforcement) */}
             {canCreateJobs && (
               <button
@@ -388,6 +424,29 @@ export function AppHeader({
             {getProfileDropdown()}
           </div>
         </div>
+
+        {/* Mobile Navigation Dropdown */}
+        {!hideNavigation && mobileMenuOpen && (
+          <div className="lg:hidden border-t border-gray-200 bg-white px-6 py-4 shadow-md">
+            <nav className="flex flex-col gap-3">
+              {userRole === 'job-seeker' && (
+                <JobSeekerNavigation currentView={currentView} onNavigate={handleMobileNavigate} />
+              )}
+              {userRole === 'recruiter' && (
+                <RecruiterNavigation
+                  currentView={currentView}
+                  onNavigate={handleMobileNavigate}
+                  activeJobsCount={activeJobsCount}
+                  pendingCandidatesCount={pendingCandidatesCount}
+                  upcomingInterviewsCount={upcomingInterviewsCount}
+                />
+              )}
+              {userRole === 'admin' && (
+                <AdminNavigation currentView={currentView} onNavigate={handleMobileNavigate} />
+              )}
+            </nav>
+          </div>
+        )}
       </div>
     </header>
   );

@@ -1,4 +1,4 @@
-import { Save } from 'lucide-react';
+import { Save, CheckCircle } from 'lucide-react';
 import { useState } from 'react';
 import { Card, CardContent } from '../../ui/card';
 import { Button } from '../../ui/button';
@@ -6,13 +6,19 @@ import { Textarea } from '../../ui/textarea';
 
 interface NotesSectionProps {
   initialNotes?: string;
+  onSave: (notes: string) => Promise<void>;
+  isSaving?: boolean;
 }
 
-export function NotesSection({ initialNotes = '' }: Readonly<NotesSectionProps>) {
+export function NotesSection({ initialNotes = '', onSave, isSaving = false }: Readonly<NotesSectionProps>) {
   const [notes, setNotes] = useState(initialNotes);
+  const [saved, setSaved] = useState(false);
 
-  const handleSaveNotes = () => {
-    console.log('Saving notes:', notes);
+  const handleSaveNotes = async () => {
+    setSaved(false);
+    await onSave(notes);
+    setSaved(true);
+    setTimeout(() => setSaved(false), 2000);
   };
 
   return (
@@ -27,10 +33,20 @@ export function NotesSection({ initialNotes = '' }: Readonly<NotesSectionProps>)
         />
         <Button
           onClick={handleSaveNotes}
-          className="mt-4 w-full bg-gray-900 hover:bg-gray-800 text-white"
+          disabled={isSaving}
+          className="mt-4 w-full bg-gray-900 hover:bg-gray-800 text-white disabled:opacity-50"
         >
-          <Save className="w-4 h-4 mr-2" />
-          Save Notes
+          {saved ? (
+            <>
+              <CheckCircle className="w-4 h-4 mr-2" />
+              Saved
+            </>
+          ) : (
+            <>
+              <Save className="w-4 h-4 mr-2" />
+              {isSaving ? 'Saving...' : 'Save Notes'}
+            </>
+          )}
         </Button>
       </CardContent>
     </Card>

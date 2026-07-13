@@ -187,7 +187,7 @@ export function QueuePreferencesModal({
 
         {/* Apply to All Queues Toggle */}
         <div className="bg-gradient-to-r from-orange-50 to-amber-50 rounded-lg p-4 border border-orange-200">
-          <div className="flex items-center justify-between">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
             <div className="flex-1">
               <Label htmlFor="apply-all" className="text-sm font-semibold text-slate-900 cursor-pointer">
                 Apply these preferences to all queues
@@ -274,8 +274,9 @@ const PreferenceSection: React.FC<PreferenceSectionProps> = ({
 
   return (
     <div className="space-y-3">
-      <div 
-        className="flex items-center justify-between cursor-pointer"
+      <button
+        type="button"
+        className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 w-full text-left cursor-pointer bg-transparent border-none p-0"
         onClick={() => setIsExpanded(!isExpanded)}
       >
         <div className="flex items-center gap-2">
@@ -287,10 +288,10 @@ const PreferenceSection: React.FC<PreferenceSectionProps> = ({
             <p className="text-xs text-slate-500">{description}</p>
           </div>
         </div>
-        <ChevronDown 
+        <ChevronDown
           className={`w-4 h-4 text-slate-400 transition-transform flex-shrink-0 ${isExpanded ? 'rotate-180' : ''}`}
         />
-      </div>
+      </button>
 
       {isExpanded && (
         <div className="space-y-2">

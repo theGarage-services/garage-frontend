@@ -10,7 +10,7 @@ interface TokenInvalidScreenProps {
 export function TokenInvalidScreen({ error, onBack }: Readonly<TokenInvalidScreenProps>) {
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 via-orange-50 to-gray-100 flex items-center justify-center p-4">
-      <div className="w-full max-w-md">
+      <div className="w-full max-w-[95vw] sm:max-w-md">
         <Card className="p-8 shadow-xl border-0 bg-white/80 backdrop-blur-sm text-center">
           <div className="mb-6">
             <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
@@ -41,7 +41,7 @@ interface SuccessScreenProps {
 export function SuccessScreen({ onBack }: Readonly<SuccessScreenProps>) {
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 via-orange-50 to-gray-100 flex items-center justify-center p-4">
-      <div className="w-full max-w-md">
+      <div className="w-full max-w-[95vw] sm:max-w-md">
         <Card className="p-8 shadow-xl border-0 bg-white/80 backdrop-blur-sm text-center">
           <div className="mb-6">
             <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">

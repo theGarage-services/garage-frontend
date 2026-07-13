@@ -18,6 +18,7 @@ import {
   X
 } from 'lucide-react';
 import { Alert, AlertDescription } from '../ui/alert';
+import { DepartmentSelect } from '../common/DepartmentSelect';
 
 interface UserCreationWizardProps {
   onComplete: (userData: any) => void;
@@ -188,7 +189,7 @@ export function UserCreationWizard({ onComplete, onCancel, organizationId, avail
       <Card className="p-8">
         {/* Header */}
         <div className="mb-8">
-          <div className="flex items-center justify-between mb-4">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-4">
             <div className="flex items-center gap-3">
               <div className="w-12 h-12 bg-gradient-to-r from-[#ff6b35] to-[#ff8c42] rounded-xl flex items-center justify-center">
                 <UserPlus className="w-6 h-6 text-white" />
@@ -200,7 +201,7 @@ export function UserCreationWizard({ onComplete, onCancel, organizationId, avail
             </div>
             <button
               onClick={onCancel}
-              className="text-gray-400 hover:text-gray-600 transition-colors"
+              className="text-gray-400 hover:text-gray-600 transition-colors self-start sm:self-auto"
             >
               <X className="w-6 h-6" />
             </button>
@@ -240,8 +241,8 @@ export function UserCreationWizard({ onComplete, onCancel, organizationId, avail
                           <span className="text-xs font-medium text-gray-700">Permissions</span>
                         </div>
                         <ul className="space-y-1">
-                          {role.permissions.slice(0, 3).map((perm, index) => (
-                            <li key={index} className="text-xs text-gray-600 pl-6">• {perm}</li>
+                          {role.permissions.slice(0, 3).map((perm) => (
+                            <li key={perm} className="text-xs text-gray-600 pl-6">• {perm}</li>
                           ))}
                           {role.permissions.length > 3 && (
                             <li className="text-xs text-gray-500 pl-6">
@@ -312,7 +313,7 @@ export function UserCreationWizard({ onComplete, onCancel, organizationId, avail
         {/* Personal Information */}
         <div className="mb-8">
           <h3 className="text-lg font-medium text-gray-900 mb-4">Personal Information</h3>
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <Label htmlFor="firstName">First Name *</Label>
               <Input
@@ -379,7 +380,7 @@ export function UserCreationWizard({ onComplete, onCancel, organizationId, avail
         {/* Position Details */}
         <div className="mb-8">
           <h3 className="text-lg font-medium text-gray-900 mb-4">Position Details</h3>
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <Label htmlFor="title">Job Title *</Label>
               <div className="relative">
@@ -399,11 +400,10 @@ export function UserCreationWizard({ onComplete, onCancel, organizationId, avail
 
             <div>
               <Label htmlFor="department">Department</Label>
-              <Input
-                id="department"
+              <DepartmentSelect
                 value={formData.department}
-                onChange={(e) => setFormData(prev => ({ ...prev, department: e.target.value }))}
-                placeholder="Engineering Recruiting"
+                onValueChange={(value) => setFormData(prev => ({ ...prev, department: value }))}
+                triggerClassName="h-10"
               />
             </div>
 
@@ -447,8 +447,8 @@ export function UserCreationWizard({ onComplete, onCancel, organizationId, avail
             <AlertDescription className="text-blue-700">
               <strong>{roles.find(r => r.id === formData.role)?.name}</strong> will have the following permissions:
               <ul className="mt-2 space-y-1">
-                {roles.find(r => r.id === formData.role)?.permissions.map((perm, index) => (
-                  <li key={index} className="text-sm">• {perm}</li>
+                {roles.find(r => r.id === formData.role)?.permissions.map((perm) => (
+                  <li key={perm} className="text-sm">• {perm}</li>
                 ))}
               </ul>
             </AlertDescription>
@@ -457,27 +457,29 @@ export function UserCreationWizard({ onComplete, onCancel, organizationId, avail
 
         {/* Send Invite Option */}
         <div className="mb-6">
-          <label className="flex items-center gap-3 p-4 border rounded-lg cursor-pointer hover:bg-gray-50 transition-colors">
+          <div className="flex items-start gap-3 p-4 border rounded-lg hover:bg-gray-50 transition-colors">
             <input
+              id="sendInvite"
               type="checkbox"
               checked={formData.sendInvite}
               onChange={(e) => setFormData(prev => ({ ...prev, sendInvite: e.target.checked }))}
-              className="w-4 h-4 text-[#ff6b35] rounded focus:ring-[#ff6b35]"
+              className="w-4 h-4 text-[#ff6b35] rounded focus:ring-[#ff6b35] mt-1"
             />
-            <div>
-              <p className="font-medium text-gray-900">Send invitation email</p>
-              <p className="text-sm text-gray-600">
+            <label htmlFor="sendInvite">
+              <span className="font-medium text-gray-900 block">Send invitation email</span>
+              <span className="text-sm text-gray-600 block">
                 User will receive an email with login instructions and account setup link
-              </p>
-            </div>
-          </label>
+              </span>
+            </label>
+          </div>
         </div>
 
         {/* Action Buttons */}
-        <div className="flex items-center justify-between pt-6 border-t">
+        <div className="flex flex-col-reverse sm:flex-row sm:items-center sm:justify-between gap-4 pt-6 border-t">
           <Button
             type="button"
             variant="outline"
+            className="w-full sm:w-auto"
             onClick={onCancel}
           >
             Cancel

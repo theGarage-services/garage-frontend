@@ -96,7 +96,7 @@ export function InstitutionAnalyticsDashboard({
       {/* Header */}
       <div className="bg-white border-b border-gray-200 shadow-sm">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center justify-between h-16">
+          <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4 py-4">
             <div className="flex items-center gap-4">
               <Button variant="ghost" onClick={onBack} className="p-2">
                 <ArrowLeft className="w-5 h-5" />
@@ -105,14 +105,14 @@ export function InstitutionAnalyticsDashboard({
                 <div className="w-10 h-10 bg-gradient-to-r from-[#ff6b35] to-[#ff8c42] rounded-lg flex items-center justify-center">
                   <BarChart3 className="w-6 h-6 text-white" />
                 </div>
-                <div>
+                <div className="min-w-0">
                   <h1 className="text-xl font-medium text-gray-900">Institution Analytics</h1>
                   <p className="text-sm text-gray-500">{institution?.name || 'Institution Analytics'}</p>
                 </div>
               </div>
             </div>
             
-            <div className="flex items-center gap-3">
+            <div className="flex flex-wrap items-center gap-3 self-start lg:self-auto">
               <Select value={timeRange} onValueChange={setTimeRange}>
                 <SelectTrigger className="w-32">
                   <SelectValue />
@@ -208,7 +208,7 @@ export function InstitutionAnalyticsDashboard({
         </div>
 
         <Tabs defaultValue="performance" className="space-y-6">
-          <TabsList className="grid w-full grid-cols-4">
+          <TabsList className="grid w-full grid-cols-2 sm:grid-cols-4">
             <TabsTrigger value="performance">Performance</TabsTrigger>
             <TabsTrigger value="departments">Departments</TabsTrigger>
             <TabsTrigger value="members">Team Members</TabsTrigger>
@@ -225,12 +225,13 @@ export function InstitutionAnalyticsDashboard({
                     <p className="text-gray-500 text-center py-4">No performer data available</p>
                   ) : (
                     displayData.topPerformers.map((performer, index) => (
-                      <div 
+                      <button
                         key={performer.id}
-                        className="flex items-center justify-between p-4 bg-gray-50 rounded-lg hover:bg-gray-100 cursor-pointer transition-colors"
+                        type="button"
+                        className="w-full flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 p-4 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors text-left border-0"
                         onClick={() => onMemberClick(performer)}
                       >
-                        <div className="flex items-center gap-3">
+                        <div className="flex items-center gap-3 min-w-0">
                           <div className="relative">
                             <div className="w-10 h-10 bg-gradient-to-r from-blue-500 to-purple-600 rounded-full flex items-center justify-center text-white font-medium">
                               {performer.avatar}
@@ -253,7 +254,7 @@ export function InstitutionAnalyticsDashboard({
                             </div>
                           </div>
                         </div>
-                      </div>
+                      </button>
                     ))
                   )}
                 </div>
@@ -272,7 +273,7 @@ export function InstitutionAnalyticsDashboard({
                   </div>
 
                   <div className="pt-4 border-t border-gray-200">
-                    <div className="grid grid-cols-2 gap-4 text-center">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-center">
                       <div>
                         <p className="text-2xl font-medium text-gray-900">{displayData.overview.totalJobPostings}</p>
                         <p className="text-sm text-gray-600">Total Job Postings</p>
@@ -313,7 +314,7 @@ export function InstitutionAnalyticsDashboard({
 
           <TabsContent value="members" className="space-y-6">
             <Card className="p-6">
-              <div className="flex items-center justify-between mb-4">
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-4">
                 <h3 className="text-lg font-medium text-gray-900">Team Member Summary</h3>
               </div>
               
@@ -322,26 +323,25 @@ export function InstitutionAnalyticsDashboard({
                   <p className="text-gray-500 text-center py-4">No member data available</p>
                 ) : (
                   displayData.topPerformers.map((member) => (
-                    <div 
+                    <div
                       key={member.id}
-                      className="p-4 border border-gray-200 rounded-lg hover:shadow-md cursor-pointer transition-all"
-                      onClick={() => onMemberClick(member)}
+                      className="p-4 border border-gray-200 rounded-lg"
                     >
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-3">
+                      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                        <div className="flex items-center gap-3 min-w-0">
                           <div className="w-12 h-12 bg-gradient-to-r from-blue-500 to-purple-600 rounded-full flex items-center justify-center text-white font-medium">
                             {member.avatar}
                           </div>
-                          <div>
+                          <div className="min-w-0">
                             <h4 className="font-medium text-gray-900">{member.name}</h4>
                           </div>
                         </div>
-                        <div className="flex items-center gap-6 text-sm">
+                        <div className="flex items-center gap-6 text-sm self-start sm:self-auto">
                           <div className="text-center">
                             <p className="font-medium text-blue-600">{member.interviews}</p>
                             <p className="text-gray-500">Interviews</p>
                           </div>
-                          <Button variant="outline" size="sm">
+                          <Button variant="outline" size="sm" onClick={() => onMemberClick(member)}>
                             <Eye className="w-4 h-4 mr-2" />
                             View Details
                           </Button>

@@ -35,8 +35,11 @@ interface UseSignUpReturn {
   resetError: (field: string) => void;
 }
 
-const getInitialStep = (isOAuthUser: boolean, isEmailVerified: boolean): SignupStep => {
-  return isOAuthUser || isEmailVerified ? 'profile' : 'account';
+const getInitialStep = (isOAuthUser: boolean, isEmailVerified: boolean, userRole: UserRole): SignupStep => {
+  if (!isOAuthUser && !isEmailVerified) return 'account';
+  // OAuth users already have an account; start them at the first remaining
+  // profile-completion step for their role.
+  return userRole === 'job-seeker' ? 'resume' : 'profile';
 };
 
 const getInitialFormData = (isOAuthUser: boolean, isEmailVerified: boolean, oauthUserData: any): SignupFormData => ({
@@ -91,14 +94,14 @@ const getInitialFormData = (isOAuthUser: boolean, isEmailVerified: boolean, oaut
 });
 
 export function useSignUp({ userRole, isOAuthUser, isEmailVerified, oauthUserData }: UseSignUpProps): UseSignUpReturn {
-  const [step, setStep] = useState<SignupStep>(getInitialStep(isOAuthUser, isEmailVerified));
+  const [step, setStep] = useState<SignupStep>(getInitialStep(isOAuthUser, isEmailVerified, userRole));
   const [formData, setFormData] = useState<SignupFormData>(getInitialFormData(isOAuthUser, isEmailVerified, oauthUserData));
   const [errors, setErrors] = useState<FormErrors>({});
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [signUpError, setSignUpError] = useState('');
-  const [accountCreated, setAccountCreated] = useState(false);
+  const [accountCreated, setAccountCreated] = useState(isOAuthUser || isEmailVerified);
 
   const passwordCheck = validatePassword(formData.password);
 

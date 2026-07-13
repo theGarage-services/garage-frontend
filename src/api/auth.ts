@@ -1,4 +1,5 @@
 import apiClient from './client';
+import type { MFAMethod } from './mfa';
 
 export interface User {
   id: number;
@@ -12,9 +13,12 @@ export interface User {
 }
 
 export interface LoginResponse {
-  access: string;
-  refresh: string;
-  user: User;
+  user?: User;
+  mfa_required?: boolean;
+  mfa_token?: string;
+  preferred_method?: MFAMethod;
+  available_methods?: MFAMethod[];
+  message?: string;
 }
 
 export class AuthService {
@@ -37,12 +41,7 @@ export class AuthService {
 
   // Logout user
   async logout(): Promise<void> {
-    try {
-      await apiClient.logout();
-    } catch (error) {
-      // Even if API call fails, clear local tokens
-      apiClient.clearTokens();
-    }
+    await apiClient.logout();
   }
 
   // Get current user profile
@@ -51,14 +50,14 @@ export class AuthService {
       const user = await apiClient.getProfile();
       return user;
     } catch (error) {
-      // If not authenticated, return null
+      console.error('Error getting current user:', error);
       return null;
     }
   }
 
-  // Check if user is authenticated
+  // Check if user is authenticated (UX convenience flag only)
   isAuthenticated(): boolean {
-    return !!sessionStorage.getItem('access_token');
+    return apiClient.isAuthenticated();
   }
 
   // Request password reset
@@ -73,7 +72,7 @@ export class AuthService {
 
   // Update OAuth user profile with role-specific data
   // Supports both JSON and FormData (for file uploads like resume)
-  async updateOAuthProfile(profileData: any, role: string, resumeFile?: File): Promise<any> {
+  async updateOAuthProfile(profileData: any, role: string, resumeFile?: File | null): Promise<any> {
     // Check if we need to send FormData (for file upload) or JSON
     const hasFile = resumeFile instanceof File;
 

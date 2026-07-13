@@ -43,7 +43,7 @@ export function InterviewCard({ interview, onJoinCall }: Readonly<InterviewCardP
   return (
     <Card className={`border shadow-sm ${statusColors[interview.status]}`}>
       <CardContent className="p-6">
-        <div className="flex items-start justify-between mb-4">
+        <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-2 mb-4">
           <div>
             <h3 className="text-lg font-semibold text-gray-900 mb-1">{interview.title}</h3>
             <div className="flex items-center gap-2">
@@ -60,19 +60,19 @@ export function InterviewCard({ interview, onJoinCall }: Readonly<InterviewCardP
         </div>
 
         <div className="space-y-3 text-sm text-gray-600 mb-4">
-          <div className="flex justify-between">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between">
             <span className="font-medium">Format:</span>
             <span>{interview.interview_type_display}</span>
           </div>
-          <div className="flex justify-between">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between">
             <span className="font-medium">Scheduled by:</span>
             <span className="text-right">{interview.recruiter_name}</span>
           </div>
-          <div className="flex justify-between">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between">
             <span className="font-medium">Date:</span>
             <span>{new Date(interview.scheduled_date).toLocaleDateString()}</span>
           </div>
-          <div className="flex justify-between">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between">
             <span className="font-medium">Time:</span>
             <div className="flex items-center gap-1">
               <Clock className="w-3 h-3" />

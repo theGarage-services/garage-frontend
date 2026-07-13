@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { Button } from '../ui/button';
 import { Card } from '../ui/card';
 import { Badge } from '../ui/badge';
@@ -6,6 +6,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '../ui/tabs';
 import { Bell, UserCheck, MessageSquare, Calendar, Briefcase, Star, CheckCircle, Clock, X, Eye, Target, ChevronDown, Filter, UserPlus, UserMinus, TrendingUp, Send } from 'lucide-react';
 import { AppHeader } from '../layout/AppHeader';
 import { ImageWithFallback } from '../figma/ImageWithFallback';
+import { useNotifications } from './hooks/useNotifications';
 
 interface RecruiterNotificationItem {
   id: string;
@@ -35,7 +36,7 @@ interface RecruiterNotificationItem {
 }
 
 interface RecruiterNotificationsProps {
-  onNavigate: (view: 'homepage' | 'job-management' | 'candidate-management' | 'notifications' | 'settings' | 'support' | 'report-issue' | 'recruiter-chat' | 'job-candidates') => void;
+  onNavigate: (view: 'homepage' | 'job-management' | 'candidate-management' | 'notifications' | 'settings' | 'support' | 'report-issue' | 'recruiter-chat' | 'recruiter-messages' | 'job-candidates') => void;
   user?: any;
   onLogout?: () => void;
 }
@@ -183,19 +184,45 @@ const mockRecruiterNotifications: RecruiterNotificationItem[] = [
   }
 ];
 
-// Separate general and role-specific notifications
-const generalNotifications = mockRecruiterNotifications.filter(n => 
-  ['new-candidate-match', 'queue-activity', 'chat-request'].includes(n.type)
-);
-
-const roleSpecificNotifications = mockRecruiterNotifications.filter(n => 
-  ['candidate-application', 'candidate-message', 'consideration-accepted', 'consideration-declined', 'interview-scheduled', 'interview-rescheduled', 'candidate-withdrew'].includes(n.type)
-);
-
 export function RecruiterNotifications({ onNavigate, user, onLogout }: Readonly<RecruiterNotificationsProps>) {
+  const { recruiterNotifications, generalNotifications: realGeneral, handleMarkAsRead: markRead } = useNotifications();
   const [selectedTab, setSelectedTab] = useState('role-specific');
   const [showFilterDropdown, setShowFilterDropdown] = useState(false);
   const [selectedFilter, setSelectedFilter] = useState('all');
+
+  // Merge real backend notifications with mock data for types not yet wired
+  const allNotifications = useMemo(() => {
+    const toItem = (n: typeof recruiterNotifications[0]): RecruiterNotificationItem => {
+      const type = (n.type === 'consideration-accepted' || n.type === 'consideration-declined'
+        ? n.type
+        : 'candidate-application') as RecruiterNotificationItem['type'];
+      return {
+        id: n.id,
+        type,
+        title: n.title,
+        message: n.message,
+        timestamp: n.timestamp,
+        isRead: n.isRead,
+        priority: n.priority,
+        metadata: {
+          jobTitle: n.metadata?.jobId ? `Job ${n.metadata.jobId}` : undefined,
+        },
+      };
+    };
+
+    const real = [...recruiterNotifications, ...realGeneral].map(toItem);
+    const realIds = new Set(real.map((r) => r.id));
+    const mockFiltered = mockRecruiterNotifications.filter((m) => !realIds.has(m.id));
+    return [...real, ...mockFiltered];
+  }, [recruiterNotifications, realGeneral]);
+
+  const generalNotifications = allNotifications.filter((n) =>
+    ['new-candidate-match', 'queue-activity', 'chat-request'].includes(n.type)
+  );
+
+  const roleSpecificNotifications = allNotifications.filter((n) =>
+    ['candidate-application', 'candidate-message', 'consideration-accepted', 'consideration-declined', 'interview-scheduled', 'interview-rescheduled', 'candidate-withdrew'].includes(n.type)
+  );
 
   const unreadRoleSpecificCount = roleSpecificNotifications.filter(n => !n.isRead).length;
   const unreadGeneralCount = generalNotifications.filter(n => !n.isRead).length;
@@ -241,8 +268,7 @@ export function RecruiterNotifications({ onNavigate, user, onLogout }: Readonly<
   };
 
   const handleMarkAsRead = (id: string) => {
-    // In a real app, this would update the notification status
-    console.log('Mark as read:', id);
+    markRead(id);
   };
 
 
@@ -255,8 +281,8 @@ export function RecruiterNotifications({ onNavigate, user, onLogout }: Readonly<
 
   const handleStartChat = (metadata: any) => {
     if (metadata?.candidateName) {
-      // Navigate to chat system
-      onNavigate('recruiter-chat');
+      // Navigate to recruiter chat system
+      onNavigate('recruiter-messages');
     }
   };
 
@@ -331,7 +357,7 @@ export function RecruiterNotifications({ onNavigate, user, onLogout }: Readonly<
 
         {/* Notifications Tabs */}
         <Tabs value={selectedTab} onValueChange={setSelectedTab} className="w-full">
-          <div className="flex items-center justify-between mb-6">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
             <TabsList className="grid w-fit grid-cols-2 bg-white shadow-sm">
               <TabsTrigger 
                 value="role-specific" 

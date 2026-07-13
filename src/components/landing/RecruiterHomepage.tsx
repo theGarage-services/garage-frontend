@@ -127,8 +127,8 @@ export function RecruiterHomepage({ onNavigate, onLogout, user }: Readonly<Recru
               'from-green-500 to-green-600'
             ];
             return (
-              <Card key={index} className="p-6 hover:shadow-xl hover:scale-105 transition-all duration-300 bg-gradient-to-br from-white to-gray-50 border-0 shadow-md">
-                <div className="flex items-center justify-between mb-4">
+              <Card key={stat.title} className="p-6 hover:shadow-xl hover:scale-105 transition-all duration-300 bg-gradient-to-br from-white to-gray-50 border-0 shadow-md">
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4">
                   <div className={`w-12 h-12 bg-gradient-to-r ${gradients[index]} rounded-xl flex items-center justify-center shadow-lg`}>
                     <IconComponent className="w-6 h-6 text-white" />
                   </div>
@@ -152,7 +152,7 @@ export function RecruiterHomepage({ onNavigate, onLogout, user }: Readonly<Recru
                   onClick={() => onNavigate('institution-profile')}>
               <div className="absolute top-0 right-0 w-20 h-20 bg-white/10 rounded-full -mr-10 -mt-10"></div>
               <div className="relative z-10">
-                <div className="flex items-center justify-between mb-4">
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4">
                   <div className="w-14 h-14 bg-white/20 backdrop-blur-sm rounded-xl flex items-center justify-center group-hover:scale-110 transition-transform duration-300">
                     <Users className="w-7 h-7" />
                   </div>
@@ -167,7 +167,7 @@ export function RecruiterHomepage({ onNavigate, onLogout, user }: Readonly<Recru
                   onClick={() => onNavigate('institution-management')}>
               <div className="absolute top-0 right-0 w-20 h-20 bg-white/10 rounded-full -mr-10 -mt-10"></div>
               <div className="relative z-10">
-                <div className="flex items-center justify-between mb-4">
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4">
                   <div className="w-14 h-14 bg-white/20 backdrop-blur-sm rounded-xl flex items-center justify-center group-hover:scale-110 transition-transform duration-300">
                     <Building2 className="w-7 h-7" />
                   </div>
@@ -182,7 +182,7 @@ export function RecruiterHomepage({ onNavigate, onLogout, user }: Readonly<Recru
                   onClick={() => onNavigate('analytics')}>
               <div className="absolute top-0 right-0 w-20 h-20 bg-white/10 rounded-full -mr-10 -mt-10"></div>
               <div className="relative z-10">
-                <div className="flex items-center justify-between mb-4">
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4">
                   <div className="w-14 h-14 bg-white/20 backdrop-blur-sm rounded-xl flex items-center justify-center group-hover:scale-110 transition-transform duration-300">
                     <BarChart3 className="w-7 h-7" />
                   </div>
@@ -197,7 +197,7 @@ export function RecruiterHomepage({ onNavigate, onLogout, user }: Readonly<Recru
                   onClick={() => onNavigate('access-management')}>
               <div className="absolute top-0 right-0 w-20 h-20 bg-white/10 rounded-full -mr-10 -mt-10"></div>
               <div className="relative z-10">
-                <div className="flex items-center justify-between mb-4">
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4">
                   <div className="w-14 h-14 bg-white/20 backdrop-blur-sm rounded-xl flex items-center justify-center group-hover:scale-110 transition-transform duration-300">
                     <Shield className="w-7 h-7" />
                   </div>
@@ -213,7 +213,7 @@ export function RecruiterHomepage({ onNavigate, onLogout, user }: Readonly<Recru
           <div className="grid lg:grid-cols-2 gap-8">
             {/* Team Activity Feed */}
             <Card className="p-6">
-              <div className="flex items-center justify-between mb-6">
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
                 <div>
                   <h3 className="text-lg text-gray-900 mb-1">Recent Team Activity</h3>
                   <p className="text-sm text-gray-600">Latest actions by your recruiting team</p>
@@ -265,7 +265,7 @@ export function RecruiterHomepage({ onNavigate, onLogout, user }: Readonly<Recru
 
             {/* System Health & Quick Stats */}
             <Card className="p-6">
-              <div className="flex items-center justify-between mb-6">
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
                 <div>
                   <h3 className="text-lg text-gray-900 mb-1">System Overview</h3>
                   <p className="text-sm text-gray-600">Organization performance metrics</p>
@@ -308,7 +308,7 @@ export function RecruiterHomepage({ onNavigate, onLogout, user }: Readonly<Recru
                 </div>
 
                 {/* System Performance Stats */}
-                <div className="grid grid-cols-2 gap-4 pt-4 border-t border-gray-200">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-4 border-t border-gray-200">
                   <div className="text-center p-3 bg-gradient-to-br from-blue-50 to-blue-100 rounded-lg">
                     <div className="text-2xl font-semibold text-blue-900">47</div>
                     <div className="text-xs text-blue-700 mt-1">Active Jobs</div>

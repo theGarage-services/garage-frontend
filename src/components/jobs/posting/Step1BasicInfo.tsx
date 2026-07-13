@@ -11,24 +11,15 @@ import {
   SelectValue
 } from '../../ui/select';
 import { Alert, AlertDescription } from '../../ui/alert';
+import { DepartmentSelect } from '../../common/DepartmentSelect';
+import { IndustrySelect } from '../../common/IndustrySelect';
 import {
   Briefcase,
-  Brain,
   Sparkles,
-  Upload,
-  CheckCircle,
-  Trash2,
   Lightbulb,
   X,
   Check,
-  Loader2,
-  Code,
-  Target,
-  Palette,
-  Database,
-  Megaphone,
-  ShoppingCart,
-  Settings
+  Save
 } from 'lucide-react';
 
 interface ParsedContent {
@@ -63,22 +54,52 @@ interface Step1BasicInfoProps {
   onApplyParsedData: () => void;
   onDiscardParsedData: () => void;
   onTriggerFileInput: () => void;
+  onSaveDraft: () => void;
+  isSubmitting: boolean;
+}
+
+const MAX_SALARY_SPREAD = 50000;
+
+function parseSalaryString(value: string): number | null {
+  const num = Number.parseFloat(value.replaceAll(',', '').trim());
+  return Number.isNaN(num) ? null : num;
 }
 
 export function Step1BasicInfo({
   jobData,
   setJobData,
   errors,
-  fileInputRef,
-  uploadedFile,
-  isParsingPDF,
   parsedContent,
   showParsedData,
-  onFileUpload,
   onApplyParsedData,
   onDiscardParsedData,
-  onTriggerFileInput
+  onSaveDraft,
+  isSubmitting,
 }: Readonly<Step1BasicInfoProps>) {
+  const handleSalaryMinChange = (value: string) => {
+    setJobData((prev) => {
+      const next = { ...prev, salaryMin: value };
+      const minNum = parseSalaryString(value);
+      const maxNum = parseSalaryString(prev.salaryMax);
+      if (minNum !== null && maxNum !== null && maxNum - minNum > MAX_SALARY_SPREAD) {
+        next.salaryMax = String(minNum + MAX_SALARY_SPREAD);
+      }
+      return next;
+    });
+  };
+
+  const handleSalaryMaxChange = (value: string) => {
+    setJobData((prev) => {
+      const next = { ...prev, salaryMax: value };
+      const minNum = parseSalaryString(prev.salaryMin);
+      const maxNum = parseSalaryString(value);
+      if (minNum !== null && maxNum !== null && maxNum - minNum > MAX_SALARY_SPREAD) {
+        next.salaryMin = String(maxNum - MAX_SALARY_SPREAD);
+      }
+      return next;
+    });
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex items-center gap-3 mb-6">
@@ -92,7 +113,7 @@ export function Step1BasicInfo({
       </div>
 
       {/* PDF Upload Section */}
-      <Card className="p-6 border-2 border-dashed border-[#ff6b35]/30 bg-orange-50/50 mb-6">
+      {/* <Card className="p-6 border-2 border-dashed border-[#ff6b35]/30 bg-orange-50/50 mb-6">
         <div className="text-center">
           <div className="w-16 h-16 bg-gradient-to-r from-[#ff6b35] to-[#ff8c42] rounded-xl flex items-center justify-center mx-auto mb-4">
             <Brain className="w-8 h-8 text-white" />
@@ -135,12 +156,12 @@ export function Step1BasicInfo({
             </div>
           )}
         </div>
-      </Card>
+      </Card> */}
 
       {/* Parsed Data Preview */}
       {showParsedData && parsedContent && (
         <Card className="p-6 border-[#ff6b35] bg-orange-50 mb-6">
-          <div className="flex items-center justify-between mb-4">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-4">
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 bg-gradient-to-r from-[#ff6b35] to-[#ff8c42] rounded-lg flex items-center justify-center">
                 <Sparkles className="w-5 h-5 text-white" />
@@ -222,101 +243,25 @@ export function Step1BasicInfo({
 
         <div>
           <Label htmlFor="department" className="text-base">
-            Department *
+            Job Posting Department *
           </Label>
-          <Select
+          <DepartmentSelect
             value={jobData.department}
             onValueChange={(value: string) => setJobData((prev) => ({ ...prev, department: value }))}
-          >
-            <SelectTrigger className={`mt-2 h-12 ${errors.department ? 'border-red-300' : ''}`}>
-              <SelectValue placeholder="Select department" />
-            </SelectTrigger>
-            <SelectContent className="bg-white border border-gray-200 shadow-md rounded-md">
-              <SelectItem value="engineering">
-                <div className="flex items-center gap-2">
-                  <Code className="w-4 h-4" />
-                  Engineering
-                </div>
-              </SelectItem>
-              <SelectItem value="product">
-                <div className="flex items-center gap-2">
-                  <Target className="w-4 h-4" />
-                  Product
-                </div>
-              </SelectItem>
-              <SelectItem value="design">
-                <div className="flex items-center gap-2">
-                  <Palette className="w-4 h-4" />
-                  Design
-                </div>
-              </SelectItem>
-              <SelectItem value="data">
-                <div className="flex items-center gap-2">
-                  <Database className="w-4 h-4" />
-                  Data & Analytics
-                </div>
-              </SelectItem>
-              <SelectItem value="marketing">
-                <div className="flex items-center gap-2">
-                  <Megaphone className="w-4 h-4" />
-                  Marketing
-                </div>
-              </SelectItem>
-              <SelectItem value="sales">
-                <div className="flex items-center gap-2">
-                  <ShoppingCart className="w-4 h-4" />
-                  Sales
-                </div>
-              </SelectItem>
-              <SelectItem value="operations">
-                <div className="flex items-center gap-2">
-                  <Settings className="w-4 h-4" />
-                  Operations
-                </div>
-              </SelectItem>
-            </SelectContent>
-          </Select>
+            triggerClassName={`mt-2 h-12 ${errors.department ? 'border-red-300' : ''}`}
+          />
           {errors.department && <p className="text-red-600 text-sm mt-1">{errors.department}</p>}
         </div>
 
         <div>
           <Label htmlFor="industry" className="text-base">
-            Industry *
+            Candidate Industry *
           </Label>
-          <Select
+          <IndustrySelect
             value={jobData.industry}
             onValueChange={(value: string) => setJobData((prev) => ({ ...prev, industry: value }))}
-          >
-            <SelectTrigger className={`mt-2 h-12 ${errors.industry ? 'border-red-300' : ''}`}>
-              <SelectValue placeholder="Select industry" />
-            </SelectTrigger>
-            <SelectContent className="bg-white border border-gray-200 shadow-md rounded-md">
-              <SelectItem value="accountant">Accountant</SelectItem>
-              <SelectItem value="advocate">Advocate</SelectItem>
-              <SelectItem value="agriculture">Agriculture</SelectItem>
-              <SelectItem value="apparel">Apparel</SelectItem>
-              <SelectItem value="arts">Arts</SelectItem>
-              <SelectItem value="automobile">Automobile</SelectItem>
-              <SelectItem value="aviation">Aviation</SelectItem>
-              <SelectItem value="banking">Banking</SelectItem>
-              <SelectItem value="bpo">Business Process Outsourcing</SelectItem>
-              <SelectItem value="business-development">Business Development</SelectItem>
-              <SelectItem value="chef">Chef</SelectItem>
-              <SelectItem value="construction">Construction</SelectItem>
-              <SelectItem value="consultant">Consultant</SelectItem>
-              <SelectItem value="designer">Designer</SelectItem>
-              <SelectItem value="digital-marketing">Digital Marketing</SelectItem>
-              <SelectItem value="education">Education</SelectItem>
-              <SelectItem value="engineering">Engineering</SelectItem>
-              <SelectItem value="finance">Finance</SelectItem>
-              <SelectItem value="fitness">Fitness</SelectItem>
-              <SelectItem value="healthcare">Healthcare</SelectItem>
-              <SelectItem value="hr">Human Resources</SelectItem>
-              <SelectItem value="information-technology">Information Technology</SelectItem>
-              <SelectItem value="public-relations">Public Relations</SelectItem>
-              <SelectItem value="sales">Sales</SelectItem>
-            </SelectContent>
-          </Select>
+            triggerClassName={`mt-2 h-12 ${errors.industry ? 'border-red-300' : ''}`}
+          />
           {errors.industry && <p className="text-red-600 text-sm mt-1">{errors.industry}</p>}
         </div>
 
@@ -374,13 +319,31 @@ export function Step1BasicInfo({
           </Select>
         </div>
 
+        <div>
+          <Label htmlFor="vacancyType" className="text-base">
+            Vacancy Type
+          </Label>
+          <Select
+            value={jobData.vacancyType}
+            onValueChange={(value: string) => setJobData((prev) => ({ ...prev, vacancyType: value as 'current' | 'future' }))}
+          >
+            <SelectTrigger className="mt-2 h-12">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent className="bg-white border border-gray-200 shadow-md rounded-md">
+              <SelectItem value="current">Current Vacancy</SelectItem>
+              <SelectItem value="future">Future Position</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+
         <div className="md:col-span-2">
           <Label className="text-base">Salary Range *</Label>
-          <div className="grid grid-cols-3 gap-3 mt-2">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mt-2">
             <div>
               <Input
                 value={jobData.salaryMin}
-                onChange={(e) => setJobData((prev) => ({ ...prev, salaryMin: e.target.value }))}
+                onChange={(e) => handleSalaryMinChange(e.target.value)}
                 placeholder="80,000"
                 className={`h-12 ${errors.salaryMin ? 'border-red-300' : ''}`}
               />
@@ -389,7 +352,7 @@ export function Step1BasicInfo({
             <div>
               <Input
                 value={jobData.salaryMax}
-                onChange={(e) => setJobData((prev) => ({ ...prev, salaryMax: e.target.value }))}
+                onChange={(e) => handleSalaryMaxChange(e.target.value)}
                 placeholder="120,000"
                 className={`h-12 ${errors.salaryMax ? 'border-red-300' : ''}`}
               />
@@ -412,8 +375,14 @@ export function Step1BasicInfo({
               <p className="text-xs text-gray-500 mt-1">Currency</p>
             </div>
           </div>
+          <p className="text-xs text-gray-500 mt-1">
+            The salary range cannot exceed {MAX_SALARY_SPREAD.toLocaleString()}.
+          </p>
           {(errors.salaryMin || errors.salaryMax) && (
             <p className="text-red-600 text-sm mt-1">Both minimum and maximum salary are required</p>
+          )}
+          {errors.salaryRange && (
+            <p className="text-red-600 text-sm mt-1">{errors.salaryRange}</p>
           )}
         </div>
 
@@ -459,6 +428,13 @@ export function Step1BasicInfo({
             </SelectContent>
           </Select>
         </div>
+      </div>
+
+      <div className="flex justify-end pt-6 border-t border-gray-200 mt-6">
+        <Button variant="outline" onClick={onSaveDraft} disabled={isSubmitting}>
+          <Save className="w-4 h-4 mr-2" />
+          Save Draft
+        </Button>
       </div>
     </div>
   );

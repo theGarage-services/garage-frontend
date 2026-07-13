@@ -49,7 +49,7 @@ export function Pricing() {
             <h1 className="text-5xl md:text-6xl font-bold mb-6 bg-gradient-to-r from-[#FF6000] via-[#FF7A1F] to-[#469AF9] bg-clip-text text-transparent leading-tight">
               Start Free.<br />Upgrade When Ready.
             </h1>
-            <p className="text-xl text-[#545250] max-w-2xl mx-auto">
+            <p className="text-xl text-[#545250] max-w-[95vw] sm:max-w-2xl mx-auto">
               Get started at no cost and unlock your potential. Premium tiers with advanced AI features are launching soon.
             </p>
           </motion.div>

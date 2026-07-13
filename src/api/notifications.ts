@@ -22,14 +22,10 @@ class NotificationService {
       });
 
       if (!response.ok) {
-        if (response.status === 404) {
-          return null;
-        }
         throw new Error('Failed to fetch notification preferences');
       }
 
-      const data = await response.json();
-      return data as NotificationPreferences;
+      return await response.json() as NotificationPreferences;
     } catch (error) {
       console.error('Error fetching notification preferences:', error);
       return null;
@@ -83,6 +79,67 @@ class NotificationService {
       smsImportantUpdates: prefs.sms_important_updates,
       smsInterviewReminders: prefs.sms_interview_reminders,
     };
+  }
+}
+
+export interface ChatNotification {
+  id: number;
+  notification_type: string;
+  notification_type_display?: string;
+  conversation?: number;
+  message?: number;
+  coffee_chat_request?: number;
+  consideration_request?: number;
+  job_id?: number;
+  title: string;
+  message_preview: string;
+  is_read: boolean;
+  created_at: string;
+  read_at?: string;
+}
+
+/**
+ * Fetch all chat notifications for the current user.
+ */
+export async function getChatNotifications(): Promise<ChatNotification[]> {
+  const response = await apiClient.request('/chat/notifications/');
+  if (!response.ok) {
+    throw new Error('Failed to fetch notifications');
+  }
+  return response.json();
+}
+
+/**
+ * Mark a single notification as read.
+ */
+export async function markNotificationAsRead(id: number): Promise<ChatNotification> {
+  const response = await apiClient.request(`/chat/notifications/${id}/mark_read/`, { method: 'POST' });
+  if (!response.ok) {
+    throw new Error('Failed to mark notification as read');
+  }
+  return response.json();
+}
+
+/**
+ * Get count of unread notifications.
+ */
+export async function getUnreadNotificationCount(): Promise<{ unread_count: number }> {
+  const response = await apiClient.request('/chat/notifications/unread_count/');
+  if (!response.ok) {
+    throw new Error('Failed to fetch unread count');
+  }
+  return response.json();
+}
+
+/**
+ * Delete a notification by ID.
+ */
+export async function deleteNotification(id: number): Promise<void> {
+  const response = await apiClient.request(`/chat/notifications/${id}/`, {
+    method: 'DELETE',
+  });
+  if (!response.ok) {
+    throw new Error('Failed to delete notification');
   }
 }
 

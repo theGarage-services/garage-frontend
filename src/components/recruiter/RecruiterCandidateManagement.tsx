@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { 
   Search, 
   Download, 
@@ -17,7 +17,8 @@ import {
   Phone,
   MapPin,
   Clock,
-  ArrowUpDown} from 'lucide-react';
+  ArrowUpDown,
+  Bookmark} from 'lucide-react';
 import { Button } from '../ui/button';
 import { Input } from '../ui/input';
 import { Badge } from '../ui/badge';
@@ -34,38 +35,130 @@ import {
   Candidate,
   recruiterCandidatesApi
 } from '../../api/recruiterCandidates';
+import { rankCandidatesForJob } from '../../api/jobMlServices';
+import { flagCandidateProfileAsFraud } from '../../api/fraud';
+import { FlagFraudDialog } from '../common/FlagFraudDialog';
+import { formatMatchScore } from './utils';
+import { ScoreBreakdown } from './types';
+
+// Re-rank candidates with ML service when a specific job is selected
+const reRankCandidatesForJob = async (
+  selectedJob: string,
+  candidates: Candidate[]
+): Promise<Candidate[]> => {
+  try {
+    const rankResult = await rankCandidatesForJob(
+      Number(selectedJob),
+      candidates.map(c => ({ id: Number(c.id) })),
+      { top_n: 1000 }
+    );
+    if (!rankResult.success || !rankResult.data) {
+      return candidates;
+    }
+    const scoreMap = new Map<string, number>();
+    const breakdownMap = new Map<string, ScoreBreakdown>();
+    for (const rc of rankResult.data.ranked_candidates) {
+      const cid = String(rc.id ?? rc.candidate_id ?? '');
+      const score = rc.match_score;
+      if (cid && score !== undefined) {
+        scoreMap.set(cid, Number(score));
+      }
+      if (cid && rc.score_breakdown) {
+        breakdownMap.set(cid, rc.score_breakdown);
+      }
+    }
+    return candidates.map(c => {
+      const freshScore = scoreMap.get(c.id);
+      if (freshScore === undefined) {
+        return c;
+      }
+      return {
+        ...c,
+        matchScore: freshScore,
+        scoreBreakdown: breakdownMap.get(c.id) || c.scoreBreakdown,
+        jobsApplied: c.jobsApplied.map(j =>
+          j.jobId === selectedJob ? { ...j, matchScore: freshScore } : j
+        )
+      };
+    });
+  } catch (rankErr) {
+    console.error('Error re-ranking candidates:', rankErr);
+    return candidates;
+  }
+};
+
+// Expand each candidate into one row per job application so the management
+// list reflects every candidate-job pair and its own application stage.
+const flattenCandidatesByJob = (candidates: Candidate[]): Candidate[] => {
+  const flat: Candidate[] = [];
+  for (const c of candidates) {
+    if (c.jobsApplied && c.jobsApplied.length > 0) {
+      for (const job of c.jobsApplied) {
+        flat.push({
+          ...c,
+          keyId: `${c.id}-${job.jobId}`,
+          currentJobId: job.jobId,
+          status: job.status,
+          appliedDate: job.appliedDate,
+          matchScore: job.matchScore ?? c.matchScore,
+          jobsApplied: [job],
+        });
+      }
+    } else {
+      flat.push({ ...c, keyId: c.id });
+    }
+  }
+  return flat;
+};
+
+// Small inline match-breakdown display
+const MatchBreakdownBadge = ({ breakdown }: { breakdown?: ScoreBreakdown }) => {
+  if (!breakdown || Object.keys(breakdown).length === 0) return null;
+  const items: Array<{ key: keyof ScoreBreakdown; label: string; color: string }> = [
+    { key: 'semantic', label: 'Semantic', color: 'bg-blue-500' },
+    { key: 'skill_jaccard', label: 'Skill', color: 'bg-purple-500' },
+    { key: 'education_score', label: 'Edu', color: 'bg-green-500' },
+    { key: 'experience_score', label: 'Exp', color: 'bg-orange-500' },
+    { key: 'industry_alignment', label: 'Industry', color: 'bg-cyan-500' },
+    { key: 'level_alignment', label: 'Level', color: 'bg-pink-500' },
+  ];
+  return (
+    <div className="flex flex-wrap gap-1 mt-1">
+      {items.map(({ key, label, color }) => {
+        const val = breakdown[key];
+        if (typeof val !== 'number') return null;
+        const pct = Math.round(val * 100);
+        return (
+          <div key={key} className="flex items-center gap-1 text-xs bg-white border rounded px-1.5 py-0.5" title={`${label}: ${pct}%`}>
+            <div className={`w-2 h-2 rounded-full ${color}`} />
+            <span className="text-gray-600">{label}</span>
+            <span className="font-medium text-gray-900">{pct}%</span>
+          </div>
+        );
+      })}
+    </div>
+  );
+};
 
 // Status badge helper - extracted to reduce component complexity
 const getStatusBadge = (status: string) => {
   const statusStyles: Record<string, string> = {
-    'application-submitted': 'bg-blue-100 text-blue-800',
-    'under-review': 'bg-blue-100 text-blue-800',
-    'consideration-sent': 'bg-purple-100 text-purple-800',
-    'consideration-accepted': 'bg-indigo-100 text-indigo-800',
-    'phone-screening': 'bg-cyan-100 text-cyan-800',
-    'technical-interview': 'bg-teal-100 text-teal-800',
-    'final-interview': 'bg-emerald-100 text-emerald-800',
-    'reference-check': 'bg-lime-100 text-lime-800',
-    'offer-extended': 'bg-orange-100 text-orange-800',
-    'offer-accepted': 'bg-green-100 text-green-800',
-    'offer-rejected': 'bg-red-100 text-red-800',
+    'consider': 'bg-yellow-100 text-yellow-800',
+    'applied': 'bg-blue-100 text-blue-800',
+    'interviews': 'bg-purple-100 text-purple-800',
+    'offers': 'bg-emerald-100 text-emerald-800',
+    'hired': 'bg-green-100 text-green-800',
     'rejected': 'bg-red-100 text-red-800',
     'withdrawn': 'bg-gray-100 text-gray-800'
   };
 
   const statusLabels: Record<string, string> = {
-    'application-submitted': 'Applied',
-    'under-review': 'Applied',
-    'consideration-sent': 'Invited',
-    'consideration-accepted': 'Accepted Invitation',
-    'phone-screening': 'Phone Screen',
-    'technical-interview': 'Technical Interview',
-    'final-interview': 'Final Interview',
-    'reference-check': 'Reference Check',
-    'offer-extended': 'Offer Pending',
-    'offer-accepted': 'Offer Accepted',
-    'offer-rejected': 'Offer Rejected',
-    'rejected': 'Not Considered',
+    'consider': 'Consider',
+    'applied': 'Applied',
+    'interviews': 'Interviews',
+    'offers': 'Offers',
+    'hired': 'Hired',
+    'rejected': 'Rejected',
     'withdrawn': 'Withdrawn'
   };
 
@@ -99,6 +192,8 @@ interface CandidatesDisplayProps {
   onSendMessage: (candidate: Candidate) => void;
   onScheduleInterview: (candidate: Candidate) => void;
   onDownloadResume: (id: string, name: string) => void;
+  onToggleSave: (candidate: Candidate) => void;
+  onFlagFraud: (candidate: Candidate, reason: string) => void | Promise<void>;
 }
 
 const CandidatesDisplay: React.FC<CandidatesDisplayProps> = ({
@@ -110,7 +205,9 @@ const CandidatesDisplay: React.FC<CandidatesDisplayProps> = ({
   onViewProfile,
   onSendMessage,
   onScheduleInterview,
-  onDownloadResume
+  onDownloadResume,
+  onToggleSave,
+  onFlagFraud
 }) => {
   if (loading) {
     return (
@@ -145,14 +242,16 @@ const CandidatesDisplay: React.FC<CandidatesDisplayProps> = ({
       <div className="space-y-3">
         {filteredCandidates.map((candidate) => (
           <CandidateListCard
-            key={candidate.id}
+            key={candidate.keyId || candidate.id}
             candidate={candidate}
-            isSelected={selectedCandidateIds.includes(candidate.id)}
-            onToggleSelect={() => onToggleSelect(candidate.id)}
+            isSelected={selectedCandidateIds.includes(candidate.keyId || candidate.id)}
+            onToggleSelect={() => onToggleSelect(candidate.keyId || candidate.id)}
             onViewProfile={() => onViewProfile(candidate)}
             onSendMessage={() => onSendMessage(candidate)}
             onScheduleInterview={() => onScheduleInterview(candidate)}
             onDownloadResume={() => onDownloadResume(candidate.id, candidate.name)}
+            onToggleSave={() => onToggleSave(candidate)}
+            onFlagFraud={(reason) => onFlagFraud(candidate, reason)}
           />
         ))}
       </div>
@@ -164,13 +263,15 @@ const CandidatesDisplay: React.FC<CandidatesDisplayProps> = ({
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
         {filteredCandidates.map((candidate) => (
           <CandidateGridCard
-            key={candidate.id}
+            key={candidate.keyId || candidate.id}
             candidate={candidate}
-            isSelected={selectedCandidateIds.includes(candidate.id)}
-            onToggleSelect={() => onToggleSelect(candidate.id)}
+            isSelected={selectedCandidateIds.includes(candidate.keyId || candidate.id)}
+            onToggleSelect={() => onToggleSelect(candidate.keyId || candidate.id)}
             onViewProfile={() => onViewProfile(candidate)}
             onSendMessage={() => onSendMessage(candidate)}
             onScheduleInterview={() => onScheduleInterview(candidate)}
+            onToggleSave={() => onToggleSave(candidate)}
+            onFlagFraud={(reason) => onFlagFraud(candidate, reason)}
           />
         ))}
       </div>
@@ -186,6 +287,8 @@ const CandidatesDisplay: React.FC<CandidatesDisplayProps> = ({
       onViewProfile={onViewProfile}
       onSendMessage={onSendMessage}
       onScheduleInterview={onScheduleInterview}
+      onToggleSave={onToggleSave}
+      onFlagFraud={(candidate, reason) => onFlagFraud(candidate, reason)}
     />
   );
 };
@@ -199,6 +302,8 @@ interface CandidateCardProps {
   onSendMessage: () => void;
   onScheduleInterview: () => void;
   onDownloadResume: () => void;
+  onToggleSave: () => void;
+  onFlagFraud: (reason: string) => void | Promise<void>;
 }
 
 // Grid card component (simpler version without download)
@@ -209,6 +314,8 @@ interface GridCardProps {
   onViewProfile: () => void;
   onSendMessage: () => void;
   onScheduleInterview: () => void;
+  onToggleSave: () => void;
+  onFlagFraud: (reason: string) => void | Promise<void>;
 }
 
 const CandidateListCard: React.FC<CandidateCardProps> = ({
@@ -218,25 +325,29 @@ const CandidateListCard: React.FC<CandidateCardProps> = ({
   onViewProfile,
   onSendMessage,
   onScheduleInterview,
-  onDownloadResume
+  onDownloadResume,
+  onToggleSave,
+  onFlagFraud
 }) => (
   <Card className="p-4 hover:shadow-md transition-shadow">
-    <div className="flex items-start gap-4">
-      <div className="pt-1">
-        <Checkbox checked={isSelected} onCheckedChange={onToggleSelect} />
+    <div className="flex flex-col sm:flex-row items-start gap-4">
+      <div className="flex items-start gap-4">
+        <div className="pt-1">
+          <Checkbox checked={isSelected} onCheckedChange={onToggleSelect} />
+        </div>
+        <Avatar className="h-12 w-12">
+          <AvatarImage src={candidate.avatar || undefined} />
+          <AvatarFallback className="bg-[#ff6b35] text-white">
+            {candidate.name.split(' ').map(n => n[0]).join('')}
+          </AvatarFallback>
+        </Avatar>
       </div>
-      <Avatar className="h-12 w-12">
-        <AvatarImage src={candidate.avatar || undefined} />
-        <AvatarFallback className="bg-[#ff6b35] text-white">
-          {candidate.name.split(' ').map(n => n[0]).join('')}
-        </AvatarFallback>
-      </Avatar>
       <div className="flex-1 min-w-0">
-        <div className="flex items-start justify-between gap-4">
+        <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
           <div>
             <h4 className="font-semibold text-lg">{candidate.name}</h4>
             <p className="text-gray-600">{candidate.title}</p>
-            <div className="flex items-center gap-4 mt-1 text-sm text-gray-500">
+            <div className="flex flex-wrap items-center gap-4 mt-1 text-sm text-gray-500">
               <span className="flex items-center gap-1">
                 <MapPin className="h-3 w-3" />
                 {candidate.location}
@@ -257,16 +368,17 @@ const CandidateListCard: React.FC<CandidateCardProps> = ({
               )}
             </div>
           </div>
-          <div className="flex flex-col items-end gap-2">
-            <div className="flex items-center gap-2">
+          <div className="flex flex-col sm:items-end gap-2">
+            <div className="flex flex-wrap items-center gap-2">
               {getStatusBadge(candidate.status)}
               {getSourceBadge(candidate.source)}
             </div>
-            <div className="flex items-center gap-2 text-sm text-gray-500">
+            <div className="flex flex-wrap items-center gap-2 text-sm text-gray-500">
               <Star className="h-4 w-4 text-yellow-500" />
-              <span className="font-medium">{candidate.matchScore}%</span>
+              <span className="font-medium">{formatMatchScore(candidate.matchScore)}%</span>
               <span>match</span>
             </div>
+            <MatchBreakdownBadge breakdown={candidate.scoreBreakdown} />
           </div>
         </div>
         <div className="mt-3">
@@ -288,11 +400,11 @@ const CandidateListCard: React.FC<CandidateCardProps> = ({
             </div>
           )}
         </div>
-        <div className="flex items-center justify-between mt-4 pt-3 border-t">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mt-4 pt-3 border-t">
           <div className="text-sm text-gray-500">
             Applied {new Date(candidate.appliedDate).toLocaleDateString()}
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             <Button variant="outline" size="sm" onClick={onViewProfile}>
               <Eye className="h-4 w-4 mr-1" />
               View Profile
@@ -309,6 +421,28 @@ const CandidateListCard: React.FC<CandidateCardProps> = ({
               <FileDown className="h-4 w-4 mr-1" />
               Resume
             </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={onToggleSave}
+              className={
+                candidate.isSaved
+                  ? 'bg-green-100 text-green-600 border-green-600 hover:bg-green-200'
+                  : 'border-green-600 text-green-600 hover:bg-green-50'
+              }
+            >
+              <Bookmark className={`h-4 w-4 mr-1 ${candidate.isSaved ? 'fill-current' : ''}`} />
+              {candidate.isSaved ? 'Saved' : 'Save'}
+            </Button>
+            <FlagFraudDialog
+              title="Flag candidate as fraudulent"
+              description="This will report this candidate profile for fraud. If flagged 3 times, the account will be suspended."
+              onConfirm={onFlagFraud}
+              buttonSize="sm"
+              buttonVariant="outline"
+              buttonText="Flag"
+              className="border-red-300 text-red-600 hover:bg-red-50"
+            />
           </div>
         </div>
       </div>
@@ -322,7 +456,9 @@ const CandidateGridCard: React.FC<GridCardProps> = ({
   onToggleSelect,
   onViewProfile,
   onSendMessage,
-  onScheduleInterview
+  onScheduleInterview,
+  onToggleSave,
+  onFlagFraud
 }) => (
   <Card className="p-4 hover:shadow-md transition-shadow">
     <div className="flex items-start gap-3 mb-3">
@@ -345,14 +481,15 @@ const CandidateGridCard: React.FC<GridCardProps> = ({
       </div>
       <div className="flex items-center gap-1 text-sm text-gray-500">
         <Star className="h-3 w-3 text-yellow-500" />
-        <span>{candidate.matchScore}% match</span>
+        <span>{formatMatchScore(candidate.matchScore)}% match</span>
       </div>
-      <div className="flex items-center gap-2">
+      <MatchBreakdownBadge breakdown={candidate.scoreBreakdown} />
+      <div className="flex flex-wrap items-center gap-2">
         {getStatusBadge(candidate.status)}
         {getSourceBadge(candidate.source)}
       </div>
     </div>
-    <div className="flex items-center gap-2">
+    <div className="flex flex-wrap items-center gap-2">
       <Button variant="outline" size="sm" className="flex-1" onClick={onViewProfile}>
         <Eye className="h-4 w-4 mr-1" />
         View
@@ -363,6 +500,27 @@ const CandidateGridCard: React.FC<GridCardProps> = ({
       <Button variant="outline" size="sm" onClick={onScheduleInterview}>
         <Calendar className="h-4 w-4" />
       </Button>
+      <Button
+        variant="outline"
+        size="sm"
+        onClick={onToggleSave}
+        className={
+          candidate.isSaved
+            ? 'bg-green-100 text-green-600 border-green-600 hover:bg-green-200'
+            : 'border-green-600 text-green-600 hover:bg-green-50'
+        }
+      >
+        <Bookmark className={`h-4 w-4 ${candidate.isSaved ? 'fill-current' : ''}`} />
+      </Button>
+      <FlagFraudDialog
+        title="Flag candidate as fraudulent"
+        description="This will report this candidate profile for fraud. If flagged 3 times, the account will be suspended."
+        onConfirm={onFlagFraud}
+        buttonSize="sm"
+        buttonVariant="outline"
+        buttonText="Flag"
+        className="border-red-300 text-red-600 hover:bg-red-50"
+      />
     </div>
   </Card>
 );
@@ -375,6 +533,8 @@ interface TableViewProps {
   onViewProfile: (candidate: Candidate) => void;
   onSendMessage: (candidate: Candidate) => void;
   onScheduleInterview: (candidate: Candidate) => void;
+  onToggleSave: (candidate: Candidate) => void;
+  onFlagFraud: (candidate: Candidate, reason: string) => void | Promise<void>;
 }
 
 const CandidateTableView: React.FC<TableViewProps> = ({
@@ -383,7 +543,9 @@ const CandidateTableView: React.FC<TableViewProps> = ({
   onToggleSelect,
   onViewProfile,
   onSendMessage,
-  onScheduleInterview
+  onScheduleInterview,
+  onToggleSave,
+  onFlagFraud
 }) => (
   <div className="border rounded-lg overflow-hidden">
     <div className="overflow-x-auto">
@@ -395,11 +557,11 @@ const CandidateTableView: React.FC<TableViewProps> = ({
                 checked={selectedCandidateIds.length === candidates.length && candidates.length > 0}
                 onCheckedChange={() => {
                   if (selectedCandidateIds.length === candidates.length) {
-                    candidates.forEach(c => onToggleSelect(c.id));
+                    candidates.forEach(c => onToggleSelect(c.keyId || c.id));
                   } else {
                     candidates.forEach(c => {
-                      if (!selectedCandidateIds.includes(c.id)) {
-                        onToggleSelect(c.id);
+                      if (!selectedCandidateIds.includes(c.keyId || c.id)) {
+                        onToggleSelect(c.keyId || c.id);
                       }
                     });
                   }
@@ -410,16 +572,17 @@ const CandidateTableView: React.FC<TableViewProps> = ({
             <th className="px-4 py-3 text-left font-medium">Status</th>
             <th className="px-4 py-3 text-left font-medium">Match</th>
             <th className="px-4 py-3 text-left font-medium">Applied</th>
+            <th className="px-4 py-3 text-left font-medium">Save</th>
             <th className="px-4 py-3 text-left font-medium">Actions</th>
           </tr>
         </thead>
         <tbody className="divide-y">
           {candidates.map((candidate) => (
-            <tr key={candidate.id} className="hover:bg-gray-50">
+            <tr key={candidate.keyId || candidate.id} className="hover:bg-gray-50">
               <td className="px-4 py-3">
                 <Checkbox
-                  checked={selectedCandidateIds.includes(candidate.id)}
-                  onCheckedChange={() => onToggleSelect(candidate.id)}
+                  checked={selectedCandidateIds.includes(candidate.keyId || candidate.id)}
+                  onCheckedChange={() => onToggleSelect(candidate.keyId || candidate.id)}
                 />
               </td>
               <td className="px-4 py-3">
@@ -440,11 +603,22 @@ const CandidateTableView: React.FC<TableViewProps> = ({
               <td className="px-4 py-3">
                 <div className="flex items-center gap-1">
                   <Star className="h-4 w-4 text-yellow-500" />
-                  <span>{candidate.matchScore}%</span>
+                  <span>{formatMatchScore(candidate.matchScore)}%</span>
                 </div>
+                <MatchBreakdownBadge breakdown={candidate.scoreBreakdown} />
               </td>
               <td className="px-4 py-3 text-sm text-gray-500">
                 {new Date(candidate.appliedDate).toLocaleDateString()}
+              </td>
+              <td className="px-4 py-3">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => onToggleSave(candidate)}
+                  title={candidate.isSaved ? 'Unsave candidate' : 'Save candidate'}
+                >
+                  <Bookmark className={`h-4 w-4 ${candidate.isSaved ? 'fill-current text-green-600' : 'text-gray-500'}`} />
+                </Button>
               </td>
               <td className="px-4 py-3">
                 <div className="flex items-center gap-1">
@@ -472,6 +646,15 @@ const CandidateTableView: React.FC<TableViewProps> = ({
                   >
                     <Calendar className="h-4 w-4" />
                   </Button>
+                  <FlagFraudDialog
+                    title="Flag candidate as fraudulent"
+                    description="This will report this candidate profile for fraud. If flagged 3 times, the account will be suspended."
+                    onConfirm={async (reason) => onFlagFraud(candidate, reason)}
+                    buttonSize="sm"
+                    buttonVariant="ghost"
+                    buttonText=""
+                    className="text-red-600 hover:bg-red-50"
+                  />
                 </div>
               </td>
             </tr>
@@ -503,6 +686,7 @@ export const RecruiterCandidateManagement: React.FC<RecruiterCandidateManagement
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedJob, setSelectedJob] = useState<string>('all');
   const [selectedSource, setSelectedSource] = useState<string>('all');
+  const [savedFilter, setSavedFilter] = useState<'all' | 'saved' | 'unsaved'>('all');
   const [sortBy, setSortBy] = useState<string>('date-desc');
   
   // Modal state - removed showStatusUpdate and showCandidateProfile since we navigate to separate pages
@@ -514,15 +698,6 @@ export const RecruiterCandidateManagement: React.FC<RecruiterCandidateManagement
 
   // API data state
   const [allCandidates, setAllCandidates] = useState<Candidate[]>([]);
-  const [statusCounts, setStatusCounts] = useState({
-    all: 0,
-    applied: 0,
-    interviewing: 0,
-    offers: 0,
-    hired: 0,
-    not_considered: 0,
-    withdrawn: 0
-  });
   const [metrics, setMetrics] = useState({
     total_candidates: 0,
     active_in_pipeline: 0,
@@ -540,11 +715,17 @@ export const RecruiterCandidateManagement: React.FC<RecruiterCandidateManagement
           search: searchQuery || undefined,
           jobId: selectedJob === 'all' ? undefined : selectedJob,
           source: selectedSource === 'all' ? undefined : selectedSource,
-          status: activeTab === 'all' ? undefined : activeTab,
+          saved: savedFilter === 'all' ? undefined : savedFilter === 'saved' ? 'true' : 'false',
           sortBy: sortBy
         });
-        setAllCandidates(data.candidates);
-        setStatusCounts(data.status_counts);
+        let candidates = data.candidates;
+
+        // Re-score with ML service when a specific job is selected for consistency
+        if (selectedJob !== 'all' && candidates.length > 0) {
+          candidates = await reRankCandidatesForJob(selectedJob, candidates);
+        }
+
+        setAllCandidates(flattenCandidatesByJob(candidates));
         setMetrics(data.metrics);
       } catch (error) {
         console.error('Error fetching candidates:', error);
@@ -555,7 +736,7 @@ export const RecruiterCandidateManagement: React.FC<RecruiterCandidateManagement
     };
 
     fetchCandidates();
-  }, [searchQuery, selectedJob, selectedSource, activeTab, sortBy]);
+  }, [searchQuery, selectedJob, selectedSource, savedFilter, sortBy]);
 
   // Fetch jobs for filter dropdown
   useEffect(() => {
@@ -576,15 +757,50 @@ export const RecruiterCandidateManagement: React.FC<RecruiterCandidateManagement
   // Jobs for filter dropdown from API
   const uniqueJobs = jobs;
 
-  // API handles filtering and sorting - just use allCandidates directly
-  const filteredCandidates = allCandidates;
+  // Filter to the selected job before stage tab filtering
+  const jobFilteredCandidates = useMemo(() => {
+    if (selectedJob === 'all') return allCandidates;
+    return allCandidates.filter(c => c.currentJobId === selectedJob);
+  }, [allCandidates, selectedJob]);
 
-  // Metrics from API
+  // Stage tab counts are computed from the candidate-job rows
+  const statusCounts = useMemo(() => {
+    const counts = {
+      all: jobFilteredCandidates.length,
+      consider: 0,
+      applied: 0,
+      interviewing: 0,
+      offers: 0,
+      hired: 0,
+      not_considered: 0,
+      withdrawn: 0
+    };
+    for (const c of jobFilteredCandidates) {
+      if (c.status === 'consider') counts.consider += 1;
+      else if (c.status === 'applied') counts.applied += 1;
+      else if (c.status === 'interviews') counts.interviewing += 1;
+      else if (c.status === 'offers') counts.offers += 1;
+      else if (c.status === 'hired') counts.hired += 1;
+      else if (c.status === 'rejected') counts.not_considered += 1;
+      else if (c.status === 'withdrawn') counts.withdrawn += 1;
+    }
+    return counts;
+  }, [jobFilteredCandidates]);
+
+  // Client-side filtering by status tab (no API reload on tab switch)
+  const filteredCandidates = useMemo(() => {
+    if (activeTab === 'all') return jobFilteredCandidates;
+    return jobFilteredCandidates.filter(c => c.status === activeTab);
+  }, [jobFilteredCandidates, activeTab]);
+
+  // Summary metrics from API represent the full recruiter candidate pool
   const totalCandidates = metrics.total_candidates;
   const activeInPipeline = metrics.active_in_pipeline;
+  const totalHired = metrics.total_hired;
   const avgMatchScore = metrics.avg_match_score;
 
-  // Tab counts from API
+  // Tab counts from candidate-job rows
+  const considerCount = statusCounts.consider;
   const appliedCount = statusCounts.applied;
   const interviewingCount = statusCounts.interviewing;
   const offersCount = statusCounts.offers;
@@ -595,7 +811,9 @@ export const RecruiterCandidateManagement: React.FC<RecruiterCandidateManagement
   // Handler functions
   const handleViewProfile = (candidate: Candidate) => {
     setGlobalSelectedCandidate?.(candidate);
-    onNavigate(`/recruiter/candidates/${candidate.id}`);
+    const jobId = candidate.currentJobId || (candidate.jobsApplied?.length === 1 ? candidate.jobsApplied[0].jobId : undefined);
+    const jobQuery = jobId ? `?job_id=${jobId}` : '';
+    onNavigate(`/recruiter/candidates/${candidate.id}${jobQuery}`);
   };
 
   const handleSendMessage = (candidate: Candidate) => {
@@ -620,6 +838,39 @@ export const RecruiterCandidateManagement: React.FC<RecruiterCandidateManagement
     } catch (error: any) {
       console.error('Error downloading resume:', error);
       toast.error(error.message || 'Failed to download resume');
+    }
+  };
+
+  const handleToggleSaveCandidate = async (candidate: Candidate) => {
+    if (!candidate.id) return;
+    const nextSaved = !candidate.isSaved;
+    setAllCandidates(prev =>
+      prev.map(c => (c.id === candidate.id ? { ...c, isSaved: nextSaved } : c))
+    );
+    try {
+      if (nextSaved) {
+        await recruiterCandidatesApi.saveCandidate(candidate.id, candidate.currentJobId);
+      } else {
+        await recruiterCandidatesApi.unsaveCandidate(candidate.id, candidate.currentJobId);
+      }
+      toast.success(nextSaved ? 'Candidate saved' : 'Candidate unsaved');
+    } catch (error: any) {
+      console.error('Error toggling candidate saved status:', error);
+      setAllCandidates(prev =>
+        prev.map(c => (c.id === candidate.id ? { ...c, isSaved: !nextSaved } : c))
+      );
+      toast.error(error?.message || 'Failed to update saved status');
+    }
+  };
+
+  const handleFlagFraud = async (candidate: Candidate, reason: string) => {
+    try {
+      await flagCandidateProfileAsFraud(candidate.id, reason);
+      setAllCandidates(prev => prev.filter(c => c.id !== candidate.id));
+      toast.success('Candidate flagged successfully');
+    } catch (error: any) {
+      console.error('Error flagging candidate:', error);
+      toast.error(error.message || 'Failed to flag candidate');
     }
   };
 
@@ -681,7 +932,7 @@ export const RecruiterCandidateManagement: React.FC<RecruiterCandidateManagement
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-gray-600">Total Hired</p>
-                <p className="text-2xl font-bold mt-1">{hiredCount}</p>
+                <p className="text-2xl font-bold mt-1">{totalHired}</p>
               </div>
               <UserCheck className="h-8 w-8 text-green-500" />
             </div>
@@ -691,7 +942,7 @@ export const RecruiterCandidateManagement: React.FC<RecruiterCandidateManagement
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-gray-600">Avg Match Score</p>
-                <p className="text-2xl font-bold mt-1">{avgMatchScore}</p>
+                <p className="text-2xl font-bold mt-1">{formatMatchScore(avgMatchScore)}</p>
               </div>
               <Star className="h-8 w-8 text-yellow-500" />
             </div>
@@ -713,7 +964,7 @@ export const RecruiterCandidateManagement: React.FC<RecruiterCandidateManagement
             </div>
 
             {/* Filter dropdowns */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
               <Select value={selectedJob} onValueChange={setSelectedJob}>
                 <SelectTrigger>
                   <SelectValue placeholder="All Jobs" />
@@ -741,6 +992,17 @@ export const RecruiterCandidateManagement: React.FC<RecruiterCandidateManagement
                 </SelectContent>
               </Select>
 
+              <Select value={savedFilter} onValueChange={(value) => setSavedFilter(value as 'all' | 'saved' | 'unsaved')}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Saved Status" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Candidates</SelectItem>
+                  <SelectItem value="saved">Saved Only</SelectItem>
+                  <SelectItem value="unsaved">Not Saved</SelectItem>
+                </SelectContent>
+              </Select>
+
               <Select value={sortBy} onValueChange={setSortBy}>
                 <SelectTrigger>
                   <ArrowUpDown className="h-4 w-4 mr-2" />
@@ -753,6 +1015,7 @@ export const RecruiterCandidateManagement: React.FC<RecruiterCandidateManagement
                   <SelectItem value="score-asc">Lowest Score</SelectItem>
                   <SelectItem value="name-asc">Name (A-Z)</SelectItem>
                   <SelectItem value="name-desc">Name (Z-A)</SelectItem>
+                  <SelectItem value="saved-first">Saved First</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -762,7 +1025,7 @@ export const RecruiterCandidateManagement: React.FC<RecruiterCandidateManagement
         {/* Action Bar */}
         <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
           <span className="text-sm text-gray-600">
-            {filteredCandidates.length} of {totalCandidates} candidates
+            {filteredCandidates.length} applications across {totalCandidates} candidates
           </span>
 
           <div className="flex items-center gap-3">
@@ -800,15 +1063,18 @@ export const RecruiterCandidateManagement: React.FC<RecruiterCandidateManagement
 
         {/* Status Tabs */}
         <Tabs value={activeTab} onValueChange={setActiveTab}>
-          <TabsList className="w-full justify-start overflow-x-auto">
+          <TabsList className="flex flex-wrap h-auto min-h-9 w-full justify-start sm:flex-nowrap sm:overflow-x-auto">
             <TabsTrigger value="all">
-              All ({totalCandidates})
+              All ({statusCounts.all})
+            </TabsTrigger>
+            <TabsTrigger value="consider">
+              Consider ({considerCount})
             </TabsTrigger>
             <TabsTrigger value="applied">
               Applied ({appliedCount})
             </TabsTrigger>
-            <TabsTrigger value="interviewing">
-              Interviewing ({interviewingCount})
+            <TabsTrigger value="interviews">
+              Interviews ({interviewingCount})
             </TabsTrigger>
             <TabsTrigger value="offers">
               Offers ({offersCount})
@@ -816,8 +1082,8 @@ export const RecruiterCandidateManagement: React.FC<RecruiterCandidateManagement
             <TabsTrigger value="hired">
               Hired ({hiredCount})
             </TabsTrigger>
-            <TabsTrigger value="not-considered">
-              Not Considered ({notConsideredCount})
+            <TabsTrigger value="rejected">
+              Rejected ({notConsideredCount})
             </TabsTrigger>
             <TabsTrigger value="withdrawn">
               Withdrawn ({withdrawnCount})
@@ -836,6 +1102,8 @@ export const RecruiterCandidateManagement: React.FC<RecruiterCandidateManagement
           onSendMessage={handleSendMessage}
           onScheduleInterview={handleScheduleInterview}
           onDownloadResume={handleDownloadResume}
+          onToggleSave={handleToggleSaveCandidate}
+          onFlagFraud={handleFlagFraud}
         />
       </div>
 

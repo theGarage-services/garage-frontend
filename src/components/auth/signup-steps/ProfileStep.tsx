@@ -2,6 +2,8 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { IndustrySelect } from '@/components/common/IndustrySelect';
+import { DepartmentSelect } from '@/components/common/DepartmentSelect';
 import { AlertCircle } from 'lucide-react';
 import { ProfileStepProps } from '@/types/auth/signup';
 
@@ -87,12 +89,10 @@ export function ProfileStep({
       {userRole === 'recruiter' && (
         <div className="space-y-2">
           <Label htmlFor="department">Department</Label>
-          <Input
-            id="department"
-            placeholder="e.g. Human Resources, Talent Acquisition"
+          <DepartmentSelect
             value={formData.department}
-            onChange={(e) => onChange('department', e.target.value)}
-            className="h-12 border-2 border-gray-200"
+            onValueChange={(value) => onChange('department', value)}
+            triggerClassName="h-12 border-2 border-gray-200"
           />
         </div>
       )}
@@ -100,37 +100,11 @@ export function ProfileStep({
       {/* Industry - Available for both job seekers and recruiters */}
       <div className="space-y-2">
         <Label>Industry</Label>
-        <Select value={formData.industry} onValueChange={(value) => onChange('industry', value)}>
-          <SelectTrigger className="h-12 border-2 border-gray-200">
-            <SelectValue placeholder="Select industry" />
-          </SelectTrigger>
-          <SelectContent className="bg-white border border-gray-200 shadow-lg z-50 max-h-60 overflow-auto">
-            <SelectItem value="accountant">Accountant</SelectItem>
-            <SelectItem value="advocate">Advocate</SelectItem>
-            <SelectItem value="agriculture">Agriculture</SelectItem>
-            <SelectItem value="apparel">Apparel</SelectItem>
-            <SelectItem value="arts">Arts</SelectItem>
-            <SelectItem value="automobile">Automobile</SelectItem>
-            <SelectItem value="aviation">Aviation</SelectItem>
-            <SelectItem value="banking">Banking</SelectItem>
-            <SelectItem value="bpo">Business Process Outsourcing</SelectItem>
-            <SelectItem value="business-development">Business Development</SelectItem>
-            <SelectItem value="chef">Chef</SelectItem>
-            <SelectItem value="construction">Construction</SelectItem>
-            <SelectItem value="consultant">Consultant</SelectItem>
-            <SelectItem value="designer">Designer</SelectItem>
-            <SelectItem value="digital-marketing">Digital Marketing</SelectItem>
-            <SelectItem value="education">Education</SelectItem>
-            <SelectItem value="engineering">Engineering</SelectItem>
-            <SelectItem value="finance">Finance</SelectItem>
-            <SelectItem value="fitness">Fitness</SelectItem>
-            <SelectItem value="healthcare">Healthcare</SelectItem>
-            <SelectItem value="hr">Human Resources</SelectItem>
-            <SelectItem value="information-technology">Information Technology</SelectItem>
-            <SelectItem value="public-relations">Public Relations</SelectItem>
-            <SelectItem value="sales">Sales</SelectItem>
-          </SelectContent>
-        </Select>
+        <IndustrySelect
+          value={formData.industry}
+          onValueChange={(value) => onChange('industry', value)}
+          triggerClassName="h-12 border-2 border-gray-200"
+        />
       </div>
 
       {/* Location */}

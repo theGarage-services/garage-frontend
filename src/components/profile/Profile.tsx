@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Button } from '../ui/button';
 import { Card } from '../ui/card';
 import { Badge } from '../ui/badge';
@@ -10,14 +10,19 @@ import {
   MapPin, Briefcase, Calendar, Edit3, Share2, Mail, 
   Plus, GraduationCap, Code, FileText, Eye, TrendingUp, 
   Users, ExternalLink, Clock, Activity, 
-  Trash2, Save, Search, Award, Globe} from 'lucide-react';
+  Trash2, Save, Search, Award, Globe, FileUp, FileDown, FileCheck, X} from 'lucide-react';
 import { AppHeader } from '../layout/AppHeader';
 import { ImageWithFallback } from '../figma/ImageWithFallback';
-import { CareerPathStory } from '../landing/CareerPathStory';
+import { CareerPathStory } from './ProfileView/CareerPathStory';
 import { candidateProfileService } from '@/api/candidateProfile';
+import { educationDocumentService } from '@/api/educationDocuments';
+import { experienceDocumentService } from '@/api/experienceDocuments';
 import { AiOutlineLinkedin, AiFillGithub } from 'react-icons/ai';
 import img654553Fedbede7976B97Eaf5Professional5ReminiEnhanced from "figma:asset/5d47026abe4e77aa0174b98e6e5497be2b9b5962.png";
 import { ProfileImageUpload } from './ProfileImageUpload';
+import { PersonalityTab } from './ProfileView/PersonalityTab';
+import { PersonalitySummary } from './ProfileView/PersonalitySummary';
+import { safeOpenWindow } from '@/utils/safe-url';
 
 interface ProfileProps {
   onNavigate: (view: string) => void;
@@ -38,6 +43,7 @@ interface QuickStat {
 const mapWorkHistoryToExperiences = (workHistory: any[]): Experience[] => {
   return workHistory.map((job, index) => ({
     id: job.id || `exp-${index}`,
+    experienceIndex: index,
     company: job.company || '',
     position: job.role || job.title || job.position || '',
     location: job.location || '',
@@ -52,6 +58,7 @@ const mapWorkHistoryToExperiences = (workHistory: any[]): Experience[] => {
 const mapEducationToFrontend = (education: any[]): Education[] => {
   return education.map((edu, index) => ({
     id: edu.id || `edu-${index}`,
+    educationIndex: index,
     school: edu.institution || edu.school || '',
     degree: edu.degree || '',
     field: edu.field || edu.field_of_study || '',
@@ -98,6 +105,7 @@ const mapProjectsToFrontend = (projects: any[]): Project[] => {
 
 interface Experience {
   id: string;
+  experienceIndex: number;
   company: string;
   position: string;
   location?: string;
@@ -108,16 +116,34 @@ interface Experience {
   logo?: string;
 }
 
+interface ExperienceDocument {
+  id: number;
+  work_history_index: number;
+  document_type: 'employment_letter';
+  file_url: string;
+  uploaded_at: string;
+}
+
 interface Education {
   id: string;
+  educationIndex: number;
   school: string;
   degree: string;
   field: string;
+  location: string;
   startDate: string;
   endDate?: string;
   current: boolean;
   gpa?: string;
   activities?: string;
+}
+
+interface EducationDocument {
+  id: number;
+  education_index: number;
+  document_type: 'transcript' | 'degree_certificate';
+  file_url: string;
+  uploaded_at: string;
 }
 
 interface Skill {
@@ -174,7 +200,9 @@ export function Profile({ onNavigate, user, onLogout }: Readonly<ProfileProps>) 
     website: '',
     // Optional JSON fields - now stored in backend
     projects: [] as any[],
-    certifications: [] as any[]
+    certifications: [] as any[],
+    // Backend-computed profile strength (0-100)
+    profileStrength: 0
   });
 
   const [tempProfileData, setTempProfileData] = useState(profileData);
@@ -214,7 +242,8 @@ export function Profile({ onNavigate, user, onLogout }: Readonly<ProfileProps>) 
           portfolio: candidateData.portfolio || '',
           website: '',
           projects: candidateData.projects || [],
-          certifications: candidateData.certifications || []
+          certifications: candidateData.certifications || [],
+          profileStrength: candidateData.profile_strength ?? 0
         });
         
         // Set profile image from backend - prepend API base URL if relative path
@@ -234,6 +263,22 @@ export function Profile({ onNavigate, user, onLogout }: Readonly<ProfileProps>) 
         if (candidateData.skills) setSkills(mapSkillsToFrontend(candidateData.skills));
         if (candidateData.certifications?.length) setCertifications(mapCertificationsToFrontend(candidateData.certifications));
         if (candidateData.projects?.length) setProjects(mapProjectsToFrontend(candidateData.projects));
+
+        // Fetch education documents for this candidate
+        try {
+          const docs = await educationDocumentService.getDocuments();
+          setEducationDocuments(docs);
+        } catch (docError) {
+          console.error('Failed to fetch education documents:', docError);
+        }
+
+        // Fetch experience documents for this candidate
+        try {
+          const expDocs = await experienceDocumentService.getDocuments();
+          setExperienceDocuments(expDocs);
+        } catch (expDocError) {
+          console.error('Failed to fetch experience documents:', expDocError);
+        }
       } catch (error) {
         console.error('Failed to fetch profile:', error);
       } finally {
@@ -244,12 +289,28 @@ export function Profile({ onNavigate, user, onLogout }: Readonly<ProfileProps>) 
     void fetchProfile();
   }, [user]);
 
+  const refreshProfileData = useCallback(async () => {
+    try {
+      const response = await candidateProfileService.getProfile();
+      if (response?.success && response.candidate_profile_data) {
+        const candidateData = response.candidate_profile_data;
+        setProfileData((prev) => ({
+          ...prev,
+          profileStrength: candidateData.profile_strength ?? 0,
+        }));
+      }
+    } catch (error) {
+      console.error('Failed to refresh profile strength:', error);
+    }
+  }, []);
+
   // Experience from backend work_history
   const [experiences, setExperiences] = useState<Experience[]>([]);
 
   const [tempExperience, setTempExperience] = useState<Experience | null>(null);
   const [newExperience, setNewExperience] = useState<Experience>({
     id: '',
+    experienceIndex: -1,
     company: '',
     position: '',
     location: '',
@@ -262,13 +323,21 @@ export function Profile({ onNavigate, user, onLogout }: Readonly<ProfileProps>) 
 
   // Education from backend education JSON
   const [education, setEducation] = useState<Education[]>([]);
+  const [educationDocuments, setEducationDocuments] = useState<EducationDocument[]>([]);
+  const [uploadingEducationIndex, setUploadingEducationIndex] = useState<number | null>(null);
+
+  // Experience documents from backend
+  const [experienceDocuments, setExperienceDocuments] = useState<ExperienceDocument[]>([]);
+  const [uploadingExperienceIndex, setUploadingExperienceIndex] = useState<number | null>(null);
 
   const [tempEducation, setTempEducation] = useState<Education | null>(null);
   const [newEducation, setNewEducation] = useState<Education>({
     id: '',
+    educationIndex: -1,
     school: '',
     degree: '',
     field: '',
+    location: '',
     startDate: '',
     endDate: '',
     current: false,
@@ -355,17 +424,9 @@ export function Profile({ onNavigate, user, onLogout }: Readonly<ProfileProps>) 
   }, []);
 
   const getProfileCompletion = () => {
-    let completed = 0;
-    let total = 6;
-    
-    if (profileData.bio) completed++;
-    if (experiences.length > 0) completed++;
-    if (education.length > 0) completed++;
-    if (skills.length >= 3) completed++; // Lower threshold since backend stores plain text
-    if (profileData.phone) completed++;
-    if (profileData.location) completed++;
-    
-    return Math.round((completed / total) * 100);
+    // Profile strength is computed and stored in the backend. Always use that
+    // authoritative value rather than recalculating it in the frontend.
+    return Math.round(profileData.profileStrength ?? 0);
   };
 
   const formatDate = (date: string) => {
@@ -442,6 +503,7 @@ export function Profile({ onNavigate, user, onLogout }: Readonly<ProfileProps>) 
     setIsAddingNew('experience');
     setNewExperience({
       id: '',
+      experienceIndex: -1,
       company: '',
       position: '',
       location: '',
@@ -455,7 +517,8 @@ export function Profile({ onNavigate, user, onLogout }: Readonly<ProfileProps>) 
 
   const handleSaveNewExperience = async () => {
     if (newExperience.company && newExperience.position && newExperience.startDate) {
-      const updatedExperiences = [...experiences, { ...newExperience, id: Date.now().toString() }];
+      const newExperienceWithIndex = { ...newExperience, id: Date.now().toString(), experienceIndex: experiences.length };
+      const updatedExperiences = [...experiences, newExperienceWithIndex];
       setExperiences(updatedExperiences);
       setIsAddingNew(null);
       
@@ -523,7 +586,9 @@ export function Profile({ onNavigate, user, onLogout }: Readonly<ProfileProps>) 
   };
 
   const handleDeleteExperience = async (id: string) => {
-    const updatedExperiences = experiences.filter(exp => exp.id !== id);
+    const updatedExperiences = experiences
+      .filter(exp => exp.id !== id)
+      .map((exp, index) => ({ ...exp, experienceIndex: index }));
     setExperiences(updatedExperiences);
     
     // Persist to backend
@@ -550,9 +615,11 @@ export function Profile({ onNavigate, user, onLogout }: Readonly<ProfileProps>) 
     setIsAddingNew('education');
     setNewEducation({
       id: '',
+      educationIndex: -1,
       school: '',
       degree: '',
       field: '',
+      location: '',
       startDate: '',
       endDate: '',
       current: false,
@@ -563,7 +630,8 @@ export function Profile({ onNavigate, user, onLogout }: Readonly<ProfileProps>) 
 
   const handleSaveNewEducation = async () => {
     if (newEducation.school && newEducation.degree && newEducation.field && newEducation.startDate) {
-      const updatedEducation = [...education, { ...newEducation, id: Date.now().toString() }];
+      const newEducationWithIndex = { ...newEducation, id: Date.now().toString(), educationIndex: education.length };
+      const updatedEducation = [...education, newEducationWithIndex];
       setEducation(updatedEducation);
       setIsAddingNew(null);
       
@@ -575,6 +643,7 @@ export function Profile({ onNavigate, user, onLogout }: Readonly<ProfileProps>) 
             school: edu.school,
             degree: edu.degree,
             field: edu.field,
+            location: edu.location,
             start_year: edu.startDate,
             end_year: edu.endDate,
             current: edu.current,
@@ -613,6 +682,7 @@ export function Profile({ onNavigate, user, onLogout }: Readonly<ProfileProps>) 
             school: edu.school,
             degree: edu.degree,
             field: edu.field,
+            location: edu.location,
             start_year: edu.startDate,
             end_year: edu.endDate,
             current: edu.current,
@@ -631,7 +701,9 @@ export function Profile({ onNavigate, user, onLogout }: Readonly<ProfileProps>) 
   };
 
   const handleDeleteEducation = async (id: string) => {
-    const updatedEducation = education.filter(edu => edu.id !== id);
+    const updatedEducation = education
+      .filter(edu => edu.id !== id)
+      .map((edu, index) => ({ ...edu, educationIndex: index }));
     setEducation(updatedEducation);
     
     // Persist to backend
@@ -642,6 +714,7 @@ export function Profile({ onNavigate, user, onLogout }: Readonly<ProfileProps>) 
           degree: edu.degree,
           school: edu.school,
           field: edu.field,
+          location: edu.location,
           start_year: edu.startDate,
           end_year: edu.endDate,
           current: edu.current,
@@ -651,6 +724,238 @@ export function Profile({ onNavigate, user, onLogout }: Readonly<ProfileProps>) 
     } catch (error) {
       console.error('Failed to delete education:', error);
     }
+  };
+
+  // Education document handlers
+  const getDocumentsForEducation = (index: number) => {
+    return educationDocuments.filter(doc => doc.education_index === index);
+  };
+
+  const handleUploadDocument = async (educationIndex: number, documentType: 'transcript' | 'degree_certificate', file: File) => {
+    setUploadingEducationIndex(educationIndex);
+    try {
+      const uploaded = await educationDocumentService.uploadDocument({
+        education_index: educationIndex,
+        document_type: documentType,
+        file,
+      });
+      setEducationDocuments(prev => [...prev.filter(d => !(d.education_index === educationIndex && d.document_type === documentType)), uploaded]);
+    } catch (error) {
+      console.error('Failed to upload document:', error);
+    } finally {
+      setUploadingEducationIndex(null);
+    }
+  };
+
+  const handleDeleteDocument = async (documentId: number) => {
+    if (!globalThis.confirm('Are you sure you want to delete this document?')) return;
+    try {
+      await educationDocumentService.deleteDocument(documentId);
+      setEducationDocuments(prev => prev.filter(d => d.id !== documentId));
+    } catch (error) {
+      console.error('Failed to delete document:', error);
+    }
+  };
+
+  const handlePreviewDocument = (fileUrl: string) => {
+    safeOpenWindow(fileUrl, '_blank', 'noopener,noreferrer');
+  };
+
+  const handleDownloadDocument = (fileUrl: string, documentType: string) => {
+    const link = document.createElement('a');
+    link.href = fileUrl;
+    link.download = `${documentType}.pdf`;
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+  };
+
+  const renderEducationDocuments = (edu: Education, isEditing: boolean) => {
+    if (edu.educationIndex < 0) return null;
+
+    const docs = getDocumentsForEducation(edu.educationIndex);
+    const transcript = docs.find(d => d.document_type === 'transcript');
+    const degreeCertificate = docs.find(d => d.document_type === 'degree_certificate');
+    const isUploading = uploadingEducationIndex === edu.educationIndex;
+    const isOngoing = edu.current;
+
+    const renderDocumentRow = (
+      documentType: 'transcript' | 'degree_certificate',
+      label: string,
+      doc?: EducationDocument
+    ) => (
+      <div className="flex items-center gap-2 mt-2">
+        {doc ? (
+          <>
+            <FileCheck className="w-4 h-4 text-green-600" />
+            <span className="text-sm text-gray-700">{label}</span>
+            <button
+              onClick={() => handlePreviewDocument(doc.file_url)}
+              className="p-1 hover:bg-gray-100 rounded text-gray-500"
+              title="Preview"
+            >
+              <Eye className="w-4 h-4" />
+            </button>
+            <button
+              onClick={() => handleDownloadDocument(doc.file_url, label.replace(/\s+/g, '_').toLowerCase())}
+              className="p-1 hover:bg-gray-100 rounded text-gray-500"
+              title="Download"
+            >
+              <FileDown className="w-4 h-4" />
+            </button>
+            {isEditing && (
+              <button
+                onClick={() => handleDeleteDocument(doc.id)}
+                className="p-1 hover:bg-red-50 rounded text-gray-400 hover:text-red-500"
+                title="Delete"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            )}
+          </>
+        ) : (
+          isEditing && (
+            <>
+              <FileUp className="w-4 h-4 text-gray-400" />
+              <span className="text-sm text-gray-500">{label}</span>
+              <label className="cursor-pointer text-sm text-[#ff6b35] hover:text-[#e55a2b] font-medium">
+                {isUploading ? 'Uploading...' : 'Upload'}
+                <input
+                  type="file"
+                  accept=".pdf"
+                  className="hidden"
+                  disabled={isUploading}
+                  onChange={(e) => {
+                    const file = e.target.files?.[0];
+                    if (file) handleUploadDocument(edu.educationIndex, documentType, file);
+                    e.target.value = '';
+                  }}
+                />
+              </label>
+            </>
+          )
+        )}
+      </div>
+    );
+
+    const hasAnyDocument = transcript || degreeCertificate;
+    if (!isEditing && !hasAnyDocument) return null;
+
+    return (
+      <div className="mt-3 pt-3 border-t border-gray-100">
+        <p className="text-xs font-medium text-gray-500 mb-1">Documents</p>
+        {renderDocumentRow('transcript', 'Transcript', transcript)}
+        {!isOngoing && renderDocumentRow('degree_certificate', 'Degree Certificate', degreeCertificate)}
+      </div>
+    );
+  };
+
+  // Experience document handlers
+  const getDocumentsForExperience = (index: number) => {
+    return experienceDocuments.filter(doc => doc.work_history_index === index);
+  };
+
+  const handleUploadExperienceDocument = async (workHistoryIndex: number, documentType: 'employment_letter', file: File) => {
+    setUploadingExperienceIndex(workHistoryIndex);
+    try {
+      const uploaded = await experienceDocumentService.uploadDocument({
+        work_history_index: workHistoryIndex,
+        document_type: documentType,
+        file,
+      });
+      setExperienceDocuments(prev => [...prev.filter(d => !(d.work_history_index === workHistoryIndex && d.document_type === documentType)), uploaded]);
+    } catch (error) {
+      console.error('Failed to upload experience document:', error);
+    } finally {
+      setUploadingExperienceIndex(null);
+    }
+  };
+
+  const handleDeleteExperienceDocument = async (documentId: number) => {
+    if (!globalThis.confirm('Are you sure you want to delete this document?')) return;
+    try {
+      await experienceDocumentService.deleteDocument(documentId);
+      setExperienceDocuments(prev => prev.filter(d => d.id !== documentId));
+    } catch (error) {
+      console.error('Failed to delete experience document:', error);
+    }
+  };
+
+  const renderExperienceDocuments = (exp: Experience, isEditing: boolean) => {
+    if (exp.experienceIndex < 0) return null;
+
+    const docs = getDocumentsForExperience(exp.experienceIndex);
+    const employmentLetter = docs.find(d => d.document_type === 'employment_letter');
+    const isUploading = uploadingExperienceIndex === exp.experienceIndex;
+
+    const renderDocumentRow = (
+      documentType: 'employment_letter',
+      label: string,
+      doc?: ExperienceDocument
+    ) => (
+      <div className="flex items-center gap-2 mt-2">
+        {doc ? (
+          <>
+            <FileCheck className="w-4 h-4 text-green-600" />
+            <span className="text-sm text-gray-700">{label}</span>
+            <button
+              onClick={() => handlePreviewDocument(doc.file_url)}
+              className="p-1 hover:bg-gray-100 rounded text-gray-500"
+              title="Preview"
+            >
+              <Eye className="w-4 h-4" />
+            </button>
+            <button
+              onClick={() => handleDownloadDocument(doc.file_url, label.replace(/\s+/g, '_').toLowerCase())}
+              className="p-1 hover:bg-gray-100 rounded text-gray-500"
+              title="Download"
+            >
+              <FileDown className="w-4 h-4" />
+            </button>
+            {isEditing && (
+              <button
+                onClick={() => handleDeleteExperienceDocument(doc.id)}
+                className="p-1 hover:bg-red-50 rounded text-gray-400 hover:text-red-500"
+                title="Delete"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            )}
+          </>
+        ) : (
+          isEditing && (
+            <>
+              <FileUp className="w-4 h-4 text-gray-400" />
+              <span className="text-sm text-gray-500">{label}</span>
+              <label className="cursor-pointer text-sm text-[#ff6b35] hover:text-[#e55a2b] font-medium">
+                {isUploading ? 'Uploading...' : 'Upload'}
+                <input
+                  type="file"
+                  accept=".pdf"
+                  className="hidden"
+                  disabled={isUploading}
+                  onChange={(e) => {
+                    const file = e.target.files?.[0];
+                    if (file) handleUploadExperienceDocument(exp.experienceIndex, documentType, file);
+                    e.target.value = '';
+                  }}
+                />
+              </label>
+            </>
+          )
+        )}
+      </div>
+    );
+
+    const hasAnyDocument = employmentLetter;
+    if (!isEditing && !hasAnyDocument) return null;
+
+    return (
+      <div className="mt-3 pt-3 border-t border-gray-100">
+        <p className="text-xs font-medium text-gray-500 mb-1">Documents</p>
+        {renderDocumentRow('employment_letter', 'Employment Letter', employmentLetter)}
+      </div>
+    );
   };
 
   // Skill handlers
@@ -963,9 +1268,9 @@ export function Profile({ onNavigate, user, onLogout }: Readonly<ProfileProps>) 
       <div className="container mx-auto px-6 py-8 max-w-7xl">
         {/* Profile Header */}
         <Card className="p-8 bg-white/80 backdrop-blur-sm border-2 border-orange-100 shadow-xl mb-8">
-          <div className="flex items-start gap-8">
+          <div className="flex flex-col lg:flex-row lg:items-start gap-8">
             {/* Profile Image */}
-            <div className="relative">
+            <div className="relative flex-shrink-0 mx-auto lg:mx-0">
               <div className="w-40 h-40 rounded-2xl overflow-hidden bg-gradient-to-br from-orange-400 to-orange-600 shadow-lg ring-4 ring-white">
                 {profileImage ? (
                   <img
@@ -994,11 +1299,11 @@ export function Profile({ onNavigate, user, onLogout }: Readonly<ProfileProps>) 
             </div>
             
             <div className="flex-1">
-              <div className="flex items-start justify-between mb-4">
-                <div className="flex-1">
+              <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4 mb-4">
+                <div className="flex-1 min-w-0">
                   {editingSection === 'header' ? (
                     <div className="space-y-3 mb-4">
-                      <div className="flex gap-3">
+                      <div className="flex flex-col sm:flex-row gap-3">
                         <Input 
                           value={tempProfileData.firstName}
                           onChange={(e) => setTempProfileData({ ...tempProfileData, firstName: e.target.value })}
@@ -1039,8 +1344,8 @@ export function Profile({ onNavigate, user, onLogout }: Readonly<ProfileProps>) 
                     </div>
                   ) : (
                     <>
-                      <div className="flex items-center gap-3 mb-2">
-                        <h1 className="text-3xl text-gray-900">{profileData.firstName} {profileData.lastName}</h1>
+                      <div className="flex flex-wrap items-center gap-3 mb-2">
+                        <h1 className="text-2xl sm:text-3xl text-gray-900">{profileData.firstName} {profileData.lastName}</h1>
                         <button 
                           onClick={handleEditHeader}
                           className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
@@ -1051,7 +1356,7 @@ export function Profile({ onNavigate, user, onLogout }: Readonly<ProfileProps>) 
                       <p className="text-lg text-gray-600 mb-2">
                         {profileData.title} @ <span className="text-[#ff6b35]">{profileData.company}</span>
                       </p>
-                      <div className="flex items-center gap-4 text-sm text-gray-500 mb-3">
+                      <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-gray-500 mb-3">
                         <span className="flex items-center gap-1">
                           <MapPin className="w-4 h-4" />
                           {profileData.location}
@@ -1132,7 +1437,7 @@ export function Profile({ onNavigate, user, onLogout }: Readonly<ProfileProps>) 
         </Card>
 
         {/* Profile Insights */}
-        <div className="grid grid-cols-4 gap-4 mb-8">
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4 mb-8">
           <Card className="p-4 border-orange-100 bg-white/80">
             <div className="flex items-center justify-between mb-2">
               <Eye className="w-5 h-5 text-blue-500" />
@@ -1155,7 +1460,7 @@ export function Profile({ onNavigate, user, onLogout }: Readonly<ProfileProps>) 
               <span className="text-xs text-gray-500">This week</span>
             </div>
             <div className="text-2xl mb-1">{profileInsights.recruiterEngagement}</div>
-            <div className="text-sm text-gray-600">Recruiter Views</div>
+            <div className="text-sm text-gray-600">Recruiter Engagement</div>
           </Card>
           <Card className="p-4 border-orange-100 bg-white/80">
             <div className="flex items-center justify-between mb-2">
@@ -1185,6 +1490,9 @@ export function Profile({ onNavigate, user, onLogout }: Readonly<ProfileProps>) 
             <TabsTrigger value="projects" className="data-[state=active]:bg-[#ff6b35] data-[state=active]:text-white">
               Projects
             </TabsTrigger>
+            <TabsTrigger value="personality" className="data-[state=active]:bg-[#ff6b35] data-[state=active]:text-white">
+              Personality
+            </TabsTrigger>
             <TabsTrigger value="career" className="data-[state=active]:bg-[#ff6b35] data-[state=active]:text-white">
               Career Story
             </TabsTrigger>
@@ -1193,7 +1501,7 @@ export function Profile({ onNavigate, user, onLogout }: Readonly<ProfileProps>) 
           {/* Overview Tab - Read-Only Consolidated View */}
           <TabsContent value="overview" className="space-y-6">
             {/* Quick Stats */}
-            <div className="grid grid-cols-4 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
               {quickStats.map((stat) => {
                 const IconComponent = stat.icon;
                 return (
@@ -1210,6 +1518,9 @@ export function Profile({ onNavigate, user, onLogout }: Readonly<ProfileProps>) 
                 );
               })}
             </div>
+
+            {/* Personality Snapshot */}
+            <PersonalitySummary onViewDetails={() => setActiveTab('personality')} />
 
             {/* Work Experience Overview */}
             <Card className="p-6 bg-white/80 border-orange-100">
@@ -1240,6 +1551,7 @@ export function Profile({ onNavigate, user, onLogout }: Readonly<ProfileProps>) 
                         )}
                       </div>
                       <p className="text-sm text-gray-700 mt-2 leading-relaxed">{exp.description}</p>
+                      {renderExperienceDocuments(exp, false)}
                     </div>
                   </div>
                 ))}
@@ -1258,6 +1570,12 @@ export function Profile({ onNavigate, user, onLogout }: Readonly<ProfileProps>) 
                   <div key={edu.id} className="p-4 bg-gray-50 rounded-lg border border-gray-200">
                     <h4 className="font-medium text-gray-900">{edu.degree} in {edu.field}</h4>
                     <p className="text-[#ff6b35]">{edu.school}</p>
+                    {edu.location && (
+                      <p className="text-sm text-gray-600 mt-1 flex items-center gap-1">
+                        <MapPin className="w-3 h-3" />
+                        {edu.location}
+                      </p>
+                    )}
                     <div className="flex items-center gap-3 text-sm text-gray-500 mt-1">
                       <span>
                         {formatDate(edu.startDate)} - {edu.current ? 'Present' : formatDate(edu.endDate!)}
@@ -1272,6 +1590,7 @@ export function Profile({ onNavigate, user, onLogout }: Readonly<ProfileProps>) 
                     {edu.activities && (
                       <p className="text-sm text-gray-700 mt-2">{edu.activities}</p>
                     )}
+                    {renderEducationDocuments(edu, false)}
                   </div>
                 ))}
               </div>
@@ -1376,10 +1695,15 @@ export function Profile({ onNavigate, user, onLogout }: Readonly<ProfileProps>) 
                 <Mail className="w-5 h-5 text-[#ff6b35]" />
                 <h3 className="text-lg text-gray-900">Contact & Links</h3>
               </div>
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                   <p className="text-sm text-gray-600 mb-1">Email</p>
-                  <p className="text-gray-900">{profileData.email}</p>
+                  <a
+                    href={`mailto:${profileData.email}`}
+                    className="text-gray-900 hover:text-[#ff6b35] hover:underline"
+                  >
+                    {profileData.email}
+                  </a>
                 </div>
                 <div>
                   <p className="text-sm text-gray-600 mb-1">Phone</p>
@@ -1388,19 +1712,40 @@ export function Profile({ onNavigate, user, onLogout }: Readonly<ProfileProps>) 
                 {profileData.linkedin && (
                   <div>
                     <p className="text-sm text-gray-600 mb-1">LinkedIn</p>
-                    <p className="text-[#ff6b35]">{profileData.linkedin}</p>
+                    <a
+                      href={profileData.linkedin.startsWith('http') ? profileData.linkedin : `https://${profileData.linkedin}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-[#ff6b35] hover:underline"
+                    >
+                      {profileData.linkedin}
+                    </a>
                   </div>
                 )}
                 {profileData.github && (
                   <div>
                     <p className="text-sm text-gray-600 mb-1">GitHub</p>
-                    <p className="text-[#ff6b35]">{profileData.github}</p>
+                    <a
+                      href={profileData.github.startsWith('http') ? profileData.github : `https://${profileData.github}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-[#ff6b35] hover:underline"
+                    >
+                      {profileData.github}
+                    </a>
                   </div>
                 )}
                 {profileData.portfolio && (
                   <div>
                     <p className="text-sm text-gray-600 mb-1">Portfolio</p>
-                    <p className="text-[#ff6b35]">{profileData.portfolio}</p>
+                    <a
+                      href={profileData.portfolio.startsWith('http') ? profileData.portfolio : `https://${profileData.portfolio}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-[#ff6b35] hover:underline"
+                    >
+                      {profileData.portfolio}
+                    </a>
                   </div>
                 )}
               </div>
@@ -1409,9 +1754,9 @@ export function Profile({ onNavigate, user, onLogout }: Readonly<ProfileProps>) 
 
           {/* Experience Tab */}
           <TabsContent value="experience" className="space-y-4">
-            <div className="flex items-center justify-between">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
               <h3 className="text-lg text-gray-900">Work Experience</h3>
-              <Button size="sm" onClick={handleAddExperience} className="bg-[#ff6b35] hover:bg-[#e55a2b]">
+              <Button size="sm" onClick={handleAddExperience} className="bg-[#ff6b35] hover:bg-[#e55a2b] self-start sm:self-auto">
                 <Plus className="w-4 h-4 mr-2" />
                 Add Experience
               </Button>
@@ -1447,7 +1792,7 @@ export function Profile({ onNavigate, user, onLogout }: Readonly<ProfileProps>) 
                     />
                     <label htmlFor="new-exp-current" className="text-sm text-gray-700">Current Position</label>
                   </div>
-                  <div className="grid grid-cols-2 gap-3">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     <Input
                       type="month"
                       value={newExperience.startDate}
@@ -1510,7 +1855,7 @@ export function Profile({ onNavigate, user, onLogout }: Readonly<ProfileProps>) 
                       />
                       <label htmlFor={`edit-current-${exp.id}`} className="text-sm text-gray-700">Current Position</label>
                     </div>
-                    <div className="grid grid-cols-2 gap-3">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                       <Input
                         type="month"
                         value={tempExperience.startDate}
@@ -1531,6 +1876,7 @@ export function Profile({ onNavigate, user, onLogout }: Readonly<ProfileProps>) 
                       placeholder="Description"
                       className="min-h-[100px]"
                     />
+                    {renderExperienceDocuments(exp, true)}
                     <div className="flex gap-2">
                       <Button size="sm" onClick={handleSaveExperience} className="bg-[#ff6b35] hover:bg-[#e55a2b]">
                         <Save className="w-4 h-4 mr-2" />
@@ -1542,13 +1888,13 @@ export function Profile({ onNavigate, user, onLogout }: Readonly<ProfileProps>) 
                     </div>
                   </div>
                 ) : (
-                  <div className="flex items-start justify-between">
-                    <div className="flex gap-4 flex-1">
+                  <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
+                    <div className="flex gap-4 flex-1 min-w-0">
                       <div className="text-4xl">{exp.logo}</div>
-                      <div className="flex-1">
+                      <div className="flex-1 min-w-0">
                         <h4 className="font-medium text-gray-900 mb-1">{exp.position}</h4>
                         <p className="text-[#ff6b35] mb-1">{exp.company}</p>
-                        <div className="flex items-center gap-3 text-sm text-gray-500 mb-3">
+                        <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-gray-500 mb-3">
                           <span>
                             {formatDate(exp.startDate)} - {exp.current ? 'Present' : formatDate(exp.endDate!)}
                           </span>
@@ -1563,6 +1909,7 @@ export function Profile({ onNavigate, user, onLogout }: Readonly<ProfileProps>) 
                           )}
                         </div>
                         <p className="text-gray-700 leading-relaxed">{exp.description}</p>
+                        {renderExperienceDocuments(exp, false)}
                       </div>
                     </div>
                     <div className="flex gap-2">
@@ -1587,9 +1934,9 @@ export function Profile({ onNavigate, user, onLogout }: Readonly<ProfileProps>) 
 
           {/* Education Tab */}
           <TabsContent value="education" className="space-y-4">
-            <div className="flex items-center justify-between">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
               <h3 className="text-lg text-gray-900">Education</h3>
-              <Button size="sm" onClick={handleAddEducation} className="bg-[#ff6b35] hover:bg-[#e55a2b]">
+              <Button size="sm" onClick={handleAddEducation} className="bg-[#ff6b35] hover:bg-[#e55a2b] self-start sm:self-auto">
                 <Plus className="w-4 h-4 mr-2" />
                 Add Education
               </Button>
@@ -1605,7 +1952,7 @@ export function Profile({ onNavigate, user, onLogout }: Readonly<ProfileProps>) 
                     onChange={(e) => setNewEducation({ ...newEducation, school: e.target.value })}
                     placeholder="School"
                   />
-                  <div className="grid grid-cols-2 gap-3">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     <Input
                       value={newEducation.degree}
                       onChange={(e) => setNewEducation({ ...newEducation, degree: e.target.value })}
@@ -1617,6 +1964,11 @@ export function Profile({ onNavigate, user, onLogout }: Readonly<ProfileProps>) 
                       placeholder="Field of Study"
                     />
                   </div>
+                  <Input
+                    value={newEducation.location}
+                    onChange={(e) => setNewEducation({ ...newEducation, location: e.target.value })}
+                    placeholder="Location (optional)"
+                  />
                   <div className="flex items-center gap-2">
                     <input
                       type="checkbox"
@@ -1627,7 +1979,7 @@ export function Profile({ onNavigate, user, onLogout }: Readonly<ProfileProps>) 
                     />
                     <label htmlFor="new-edu-current" className="text-sm text-gray-700">Currently Studying</label>
                   </div>
-                  <div className="grid grid-cols-2 gap-3">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     <Input
                       type="month"
                       value={newEducation.startDate}
@@ -1674,7 +2026,7 @@ export function Profile({ onNavigate, user, onLogout }: Readonly<ProfileProps>) 
                       onChange={(e) => setTempEducation({ ...tempEducation, school: e.target.value })}
                       placeholder="School"
                     />
-                    <div className="grid grid-cols-2 gap-3">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                       <Input
                         value={tempEducation.degree}
                         onChange={(e) => setTempEducation({ ...tempEducation, degree: e.target.value })}
@@ -1686,6 +2038,11 @@ export function Profile({ onNavigate, user, onLogout }: Readonly<ProfileProps>) 
                         placeholder="Field of Study"
                       />
                     </div>
+                    <Input
+                      value={tempEducation.location}
+                      onChange={(e) => setTempEducation({ ...tempEducation, location: e.target.value })}
+                      placeholder="Location (optional)"
+                    />
                     <div className="flex items-center gap-2">
                       <input
                         type="checkbox"
@@ -1696,7 +2053,7 @@ export function Profile({ onNavigate, user, onLogout }: Readonly<ProfileProps>) 
                       />
                       <label htmlFor={`edit-current-edu-${edu.id}`} className="text-sm text-gray-700">Currently Studying</label>
                     </div>
-                    <div className="grid grid-cols-2 gap-3">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                       <Input
                         type="month"
                         value={tempEducation.startDate}
@@ -1721,6 +2078,7 @@ export function Profile({ onNavigate, user, onLogout }: Readonly<ProfileProps>) 
                       onChange={(e) => setTempEducation({ ...tempEducation, activities: e.target.value })}
                       placeholder="Activities (optional)"
                     />
+                    {renderEducationDocuments(edu, true)}
                     <div className="flex gap-2">
                       <Button size="sm" onClick={handleSaveEducation} className="bg-[#ff6b35] hover:bg-[#e55a2b]">
                         <Save className="w-4 h-4 mr-2" />
@@ -1732,15 +2090,21 @@ export function Profile({ onNavigate, user, onLogout }: Readonly<ProfileProps>) 
                     </div>
                   </div>
                 ) : (
-                  <div className="flex items-start justify-between">
-                    <div className="flex gap-4 flex-1">
+                  <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
+                    <div className="flex gap-4 flex-1 min-w-0">
                       <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center">
                         <GraduationCap className="w-6 h-6 text-blue-600" />
                       </div>
-                      <div className="flex-1">
+                      <div className="flex-1 min-w-0">
                         <h4 className="font-medium text-gray-900 mb-1">{edu.degree} in {edu.field}</h4>
                         <p className="text-[#ff6b35] mb-1">{edu.school}</p>
-                        <div className="flex items-center gap-3 text-sm text-gray-500 mb-2">
+                        {edu.location && (
+                          <p className="text-sm text-gray-600 mb-1 flex items-center gap-1">
+                            <MapPin className="w-3 h-3" />
+                            {edu.location}
+                          </p>
+                        )}
+                        <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-gray-500 mb-2">
                           <span>
                             {formatDate(edu.startDate)} - {edu.current ? 'Present' : formatDate(edu.endDate!)}
                           </span>
@@ -1754,6 +2118,7 @@ export function Profile({ onNavigate, user, onLogout }: Readonly<ProfileProps>) 
                         {edu.activities && (
                           <p className="text-sm text-gray-600">{edu.activities}</p>
                         )}
+                        {renderEducationDocuments(edu, false)}
                       </div>
                     </div>
                     <div className="flex gap-2">
@@ -1780,9 +2145,9 @@ export function Profile({ onNavigate, user, onLogout }: Readonly<ProfileProps>) 
           <TabsContent value="skills" className="space-y-6">
             {/* Skills Section */}
             <Card className="p-6 bg-white/80 border-orange-100">
-              <div className="flex items-center justify-between mb-6">
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-6">
                 <h3 className="text-lg text-gray-900">Skills</h3>
-                <Button size="sm" onClick={handleAddSkill} className="bg-[#ff6b35] hover:bg-[#e55a2b]">
+                <Button size="sm" onClick={handleAddSkill} className="bg-[#ff6b35] hover:bg-[#e55a2b] self-start sm:self-auto">
                   <Plus className="w-4 h-4 mr-2" />
                   Add Skill
                 </Button>
@@ -1792,7 +2157,7 @@ export function Profile({ onNavigate, user, onLogout }: Readonly<ProfileProps>) 
               {isAddingNew === 'skill' && (
                 <div className="mb-6 p-4 bg-orange-50 rounded-lg border border-orange-200">
                   <h4 className="font-medium text-gray-900 mb-3">Add New Skill(s)</h4>
-                  <div className="flex gap-2">
+                  <div className="flex flex-col sm:flex-row gap-2">
                     <Input
                       value={newSkill.name}
                       onChange={(e) => setNewSkill({ ...newSkill, name: e.target.value })}
@@ -1815,7 +2180,7 @@ export function Profile({ onNavigate, user, onLogout }: Readonly<ProfileProps>) 
               {editingItemId && tempSkill && (
                 <div className="mb-6 p-4 bg-orange-50 rounded-lg border border-orange-200">
                   <h4 className="font-medium text-gray-900 mb-3">Edit Skill</h4>
-                  <div className="flex gap-2">
+                  <div className="flex flex-col sm:flex-row gap-2">
                     <Input
                       value={tempSkill.name}
                       onChange={(e) => setTempSkill({ ...tempSkill, name: e.target.value })}
@@ -1866,9 +2231,9 @@ export function Profile({ onNavigate, user, onLogout }: Readonly<ProfileProps>) 
 
             {/* Certifications Section */}
             <div>
-              <div className="flex items-center justify-between mb-6">
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-6">
                 <h3 className="text-lg text-gray-900">Certifications</h3>
-                <Button size="sm" onClick={handleAddCertification} className="bg-[#ff6b35] hover:bg-[#e55a2b]">
+                <Button size="sm" onClick={handleAddCertification} className="bg-[#ff6b35] hover:bg-[#e55a2b] self-start sm:self-auto">
                   <Plus className="w-4 h-4 mr-2" />
                   Add Certification
                 </Button>
@@ -1889,7 +2254,7 @@ export function Profile({ onNavigate, user, onLogout }: Readonly<ProfileProps>) 
                       onChange={(e) => setNewCertification({ ...newCertification, issuer: e.target.value })}
                       placeholder="Issuer"
                     />
-                    <div className="grid grid-cols-2 gap-3">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                       <Input
                         type="month"
                         value={newCertification.issueDate}
@@ -1926,7 +2291,7 @@ export function Profile({ onNavigate, user, onLogout }: Readonly<ProfileProps>) 
                 </Card>
               )}
               
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 {certifications.map((cert) => (
                   <Card key={cert.id} className="p-5 bg-white/80 border-orange-100 hover:border-orange-200 transition-colors group">
                     {editingItemId === cert.id && tempCertification ? (
@@ -1941,7 +2306,7 @@ export function Profile({ onNavigate, user, onLogout }: Readonly<ProfileProps>) 
                           onChange={(e) => setTempCertification({ ...tempCertification, issuer: e.target.value })}
                           placeholder="Issuer"
                         />
-                        <div className="grid grid-cols-2 gap-3">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                           <Input
                             type="month"
                             value={tempCertification.issueDate}
@@ -2145,9 +2510,19 @@ export function Profile({ onNavigate, user, onLogout }: Readonly<ProfileProps>) 
             ))}
           </TabsContent>
 
+          {/* Personality Tab */}
+          <TabsContent value="personality" className="space-y-6">
+            <PersonalityTab onComplete={refreshProfileData} />
+          </TabsContent>
+
           {/* Career Path Story Tab */}
           <TabsContent value="career" className="space-y-6">
-            <CareerPathStory user={user} onNavigate={onNavigate} />
+            <CareerPathStory
+              user={user}
+              onNavigate={onNavigate}
+              profileIndustry={profileData.industry}
+              profileExpLevel={rawProfile?.candidate_profile_data?.exp_level || ''}
+            />
           </TabsContent>
         </Tabs>
       </div>

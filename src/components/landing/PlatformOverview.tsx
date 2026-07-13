@@ -171,7 +171,7 @@ export function PlatformOverview({ onBack, onNavigate, user, onLogout }: Readonl
             {/* Key Platform Stats */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
               <Card className="p-6 bg-gradient-to-br from-blue-50 to-blue-100 border-blue-200">
-                <div className="flex items-center justify-between mb-4">
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4">
                   <div className="w-12 h-12 bg-gradient-to-r from-blue-500 to-blue-600 rounded-xl flex items-center justify-center">
                     <Users className="w-6 h-6 text-white" />
                   </div>
@@ -187,7 +187,7 @@ export function PlatformOverview({ onBack, onNavigate, user, onLogout }: Readonl
               </Card>
 
               <Card className="p-6 bg-gradient-to-br from-green-50 to-green-100 border-green-200">
-                <div className="flex items-center justify-between mb-4">
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4">
                   <div className="w-12 h-12 bg-gradient-to-r from-green-500 to-green-600 rounded-xl flex items-center justify-center">
                     <Briefcase className="w-6 h-6 text-white" />
                   </div>
@@ -203,7 +203,7 @@ export function PlatformOverview({ onBack, onNavigate, user, onLogout }: Readonl
               </Card>
 
               <Card className="p-6 bg-gradient-to-br from-purple-50 to-purple-100 border-purple-200">
-                <div className="flex items-center justify-between mb-4">
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4">
                   <div className="w-12 h-12 bg-gradient-to-r from-purple-500 to-purple-600 rounded-xl flex items-center justify-center">
                     <UserCheck className="w-6 h-6 text-white" />
                   </div>
@@ -219,7 +219,7 @@ export function PlatformOverview({ onBack, onNavigate, user, onLogout }: Readonl
               </Card>
 
               <Card className="p-6 bg-gradient-to-br from-orange-50 to-orange-100 border-orange-200">
-                <div className="flex items-center justify-between mb-4">
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4">
                   <div className="w-12 h-12 bg-gradient-to-r from-[#ff6b35] to-[#ff8c42] rounded-xl flex items-center justify-center">
                     <Star className="w-6 h-6 text-white" />
                   </div>
@@ -317,7 +317,7 @@ export function PlatformOverview({ onBack, onNavigate, user, onLogout }: Readonl
 
           <TabsContent value="activity" className="space-y-6">
             <Card className="p-6">
-              <div className="flex items-center justify-between mb-6">
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
                 <h3 className="text-lg font-medium text-gray-900">Real-Time Platform Activity</h3>
                 <div className="flex items-center gap-2">
                   <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
@@ -326,8 +326,8 @@ export function PlatformOverview({ onBack, onNavigate, user, onLogout }: Readonl
               </div>
 
               <div className="space-y-4">
-                {realtimeActivity.map((activity, index) => (
-                  <div key={index} className="flex items-start gap-4 p-4 bg-gradient-to-r from-gray-50 to-orange-50 rounded-lg">
+                {realtimeActivity.map((activity) => (
+                  <div key={`${activity.user}-${activity.time}`} className="flex items-start gap-4 p-4 bg-gradient-to-r from-gray-50 to-orange-50 rounded-lg">
                     <div className="w-10 h-10 bg-gradient-to-r from-[#ff6b35] to-[#ff8c42] rounded-full flex items-center justify-center text-white font-medium text-sm">
                       {activity.avatar}
                     </div>
@@ -359,10 +359,10 @@ export function PlatformOverview({ onBack, onNavigate, user, onLogout }: Readonl
 
           <TabsContent value="success" className="space-y-6">
             <div className="grid gap-6">
-              {successMetrics.map((metric, index) => {
+              {successMetrics.map((metric) => {
                 const IconComponent = metric.icon;
                 return (
-                  <Card key={index} className="p-6">
+                  <Card key={metric.category} className="p-6">
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-4">
                         <div className={`w-12 h-12 bg-gradient-to-r ${metric.color} rounded-xl flex items-center justify-center`}>
@@ -394,8 +394,8 @@ export function PlatformOverview({ onBack, onNavigate, user, onLogout }: Readonl
               <h3 className="text-lg font-medium text-gray-900 mb-6">Job Distribution by Region</h3>
               
               <div className="space-y-4">
-                {geographicData.map((region, index) => (
-                  <div key={index} className="space-y-2">
+                {geographicData.map((region) => (
+                  <div key={region.region} className="space-y-2">
                     <div className="flex justify-between items-center">
                       <span className="font-medium text-gray-900">{region.region}</span>
                       <div className="text-right">

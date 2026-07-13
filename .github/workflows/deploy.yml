@@ -23,15 +23,31 @@ jobs:
       with:
         node-version: '20'
         cache: 'npm'
-
+    
     - name: Install dependencies
       run: npm install --legacy-peer-deps
+      working-directory: ./frontend
     
     - name: Update dependencies
       run: npm audit fix --force --legacy-peer-deps
+      working-directory: ./frontend
 
     - name: Build project
       run: npm run build
+      working-directory: ./frontend
+
+    - name: Copy built files to root docs directory
+      run: |
+        rm -rf docs
+        cp -r frontend/docs docs
+        # Copy .nojekyll file from repository root
+        cp .nojekyll docs/.nojekyll
+        # Ensure SCSS directory exists for Jekyll
+        mkdir -p docs/assets/css
+        # Create dummy SCSS file if it doesn't exist
+        if [ ! -f docs/assets/css/style.scss ]; then
+          echo '/* Dummy SCSS file */ body { font-family: sans-serif; }' > docs/assets/css/style.scss
+        fi
 
     - name: Setup Pages
       uses: actions/configure-pages@v4
@@ -40,6 +56,7 @@ jobs:
       uses: actions/upload-pages-artifact@v3
       with:
         path: ./docs
+        retention-days: 1
 
   deploy:
     environment:

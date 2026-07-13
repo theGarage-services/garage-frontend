@@ -10,23 +10,23 @@ interface SocialAuthOptionsProps {
 
 export function SocialAuthOptions({ onSocialAuth, isLogin = false, userRole }: Readonly<SocialAuthOptionsProps>) {
   const handleSocialLogin = async (provider: string) => {
-    if (provider === 'google') {
-      try {
-        
-        if (!userRole) {
-          throw new Error('No user role provided for OAuth authentication');
-        }
-        
-        // Store role in session storage for OAuth callback
-        sessionStorage.setItem('oauth_role', userRole);
-        
-        // Redirect to Google OAuth with role parameter
-        oauthService.redirectToGoogleOAuth(userRole);
-      } catch (error) {
-        onSocialAuth(provider, null);
+    if (provider !== 'google') {
+      return;
+    }
+
+    try {
+      if (!userRole) {
+        throw new Error('No user role provided for OAuth authentication');
       }
-    } else {
-      // For other providers, show not implemented message
+
+      // Store role in session storage for OAuth callback, clearing any stale value first
+      sessionStorage.removeItem('oauth_role');
+      sessionStorage.setItem('oauth_role', userRole);
+
+      // Redirect to Google OAuth with role parameter
+      oauthService.redirectToGoogleOAuth(userRole);
+    } catch (error) {
+      console.error('Google OAuth setup failed:', error);
       onSocialAuth(provider, null);
     }
   };
@@ -42,7 +42,7 @@ export function SocialAuthOptions({ onSocialAuth, isLogin = false, userRole }: R
         </div>
       </div>
 
-      <div className="grid grid-cols-2 gap-3">
+      <div className="grid grid-cols-1 gap-3">
         {/* Google */}
         <Button
           variant="outline"
@@ -57,23 +57,6 @@ export function SocialAuthOptions({ onSocialAuth, isLogin = false, userRole }: R
               <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
             </svg>
             <span className="text-sm font-medium">Google</span>
-          </div>
-        </Button>
-
-        {/* Microsoft */}
-        <Button
-          variant="outline"
-          onClick={() => handleSocialLogin('microsoft')}
-          className="h-12 border-2 hover:bg-gray-50"
-        >
-          <div className="flex items-center gap-2">
-            <svg width="20" height="20" viewBox="0 0 24 24">
-              <path fill="#f25022" d="M0 0h11.333v11.333H0z"/>
-              <path fill="#00a4ef" d="M12.667 0H24v11.333H12.667z"/>
-              <path fill="#7fba00" d="M0 12.667h11.333V24H0z"/>
-              <path fill="#ffb900" d="M12.667 12.667H24V24H12.667z"/>
-            </svg>
-            <span className="text-sm font-medium">Microsoft</span>
           </div>
         </Button>
       </div>

@@ -57,7 +57,7 @@ export function ReportIssue({ onBack }: Readonly<ReportIssueProps>) {
       .map(val => val.toString(36))
       .join('')
       .toUpperCase()
-      .substr(0, 9);
+      .slice(0, 9);
     const id = 'RPT-' + randomString;
     setSubmissionId(id);
 
@@ -99,7 +99,7 @@ export function ReportIssue({ onBack }: Readonly<ReportIssueProps>) {
   if (submitted) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-gray-50 to-orange-50">
-        <div className="max-w-2xl mx-auto p-6">
+        <div className="max-w-[95vw] sm:max-w-2xl mx-auto p-6">
           <div className="flex items-center gap-4 mb-8">
             <Button 
               variant="outline" 
@@ -157,7 +157,7 @@ export function ReportIssue({ onBack }: Readonly<ReportIssueProps>) {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 to-orange-50">
-      <div className="max-w-3xl mx-auto p-6">
+      <div className="max-w-[95vw] sm:max-w-3xl mx-auto p-6">
         {/* Header */}
         <div className="flex items-center gap-4 mb-8">
           <Button 
@@ -413,7 +413,7 @@ export function ReportIssue({ onBack }: Readonly<ReportIssueProps>) {
                 <div className="space-y-2">
                   <h4 className="font-medium text-gray-900">Attached Files:</h4>
                   {attachments.map((file, index) => (
-                    <div key={index} className="flex items-center justify-between p-2 bg-gray-50 rounded">
+                    <div key={`${file.name}-${file.size}-${file.lastModified}`} className="flex items-center justify-between p-2 bg-gray-50 rounded">
                       <span className="text-sm text-gray-700">{file.name}</span>
                       <Button
                         variant="ghost"

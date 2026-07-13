@@ -205,7 +205,7 @@ export function DocumentManagementCenter({
         {/* Page Header */}
         <div className="bg-gradient-to-r from-indigo-600 to-indigo-700 text-white">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-            <div className="flex items-center justify-between">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
               <div className="flex items-center gap-4">
                 <div className="w-16 h-16 bg-white/20 backdrop-blur-sm rounded-xl flex items-center justify-center">
                   <FolderOpen className="w-8 h-8 text-white" />
@@ -217,7 +217,7 @@ export function DocumentManagementCenter({
               </div>
               <Button
                 onClick={() => setUploadModalOpen(true)}
-                className="bg-white text-indigo-600 hover:bg-indigo-50"
+                className="bg-white text-indigo-600 hover:bg-indigo-50 self-start sm:self-auto"
               >
                 <Upload className="w-4 h-4 mr-2" />
                 Upload Document
@@ -228,9 +228,9 @@ export function DocumentManagementCenter({
 
         {/* Main Content */}
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-          <div className="grid grid-cols-12 gap-6">
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
             {/* Sidebar - Categories */}
-            <div className="col-span-3">
+            <div className="col-span-1 lg:col-span-3">
               <Card className="p-4">
                 <h3 className="font-medium text-gray-900 mb-4">Categories</h3>
                 <div className="space-y-1">
@@ -266,10 +266,10 @@ export function DocumentManagementCenter({
             </div>
 
             {/* Main Content - Documents */}
-            <div className="col-span-9">
+            <div className="col-span-1 lg:col-span-9">
               {/* Search and Filter */}
               <Card className="p-4 mb-6">
-                <div className="flex items-center gap-4">
+                <div className="flex flex-col sm:flex-row gap-4">
                   <div className="relative flex-1">
                     <Search className="w-4 h-4 text-gray-400 absolute left-3 top-1/2 transform -translate-y-1/2" />
                     <Input
@@ -279,7 +279,7 @@ export function DocumentManagementCenter({
                       className="pl-10"
                     />
                   </div>
-                  <Button variant="outline" size="sm">
+                  <Button variant="outline" size="sm" className="self-start">
                     <Filter className="w-4 h-4 mr-2" />
                     Filter
                   </Button>
@@ -350,7 +350,7 @@ export function DocumentManagementCenter({
                             {getAccessBadge(doc.accessLevel)}
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap text-right">
-                            <div className="flex items-center justify-end gap-2">
+                            <div className="flex flex-wrap items-center justify-end gap-2">
                               <Button variant="ghost" size="sm">
                                 <Eye className="w-4 h-4" />
                               </Button>
@@ -408,8 +408,8 @@ export function DocumentManagementCenter({
       {/* Upload Modal */}
       {uploadModalOpen && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <Card className="max-w-lg w-full p-6">
-            <div className="flex items-center justify-between mb-6">
+          <Card className="max-w-[95vw] sm:max-w-lg w-full p-6">
+            <div className="flex items-center justify-between gap-4 mb-6">
               <h3 className="text-xl font-medium text-gray-900">Upload Document</h3>
               <button
                 onClick={() => setUploadModalOpen(false)}

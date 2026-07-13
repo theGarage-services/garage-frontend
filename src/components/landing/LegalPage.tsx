@@ -1,8 +1,8 @@
 import { useState, useEffect, useRef } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { Footer } from '../layout/Footer';
-import { Button } from '../ui/button';
-import { Menu, X, Shield, FileText, Cookie, AlertTriangle, Lock } from 'lucide-react';
+import { Navigation } from '../layout/Navigation';
+import { Shield, FileText, Cookie, AlertTriangle, Lock } from 'lucide-react';
 
 const SECTIONS = [
   { id: 'privacy-policy',   label: 'Privacy Policy',   icon: Shield },
@@ -18,7 +18,6 @@ export function LegalPage() {
   const navigate = useNavigate();
   const location = useLocation();
   const [activeSection, setActiveSection] = useState('privacy-policy');
-  const [isMenuOpen, setIsMenuOpen] = useState(false);
   const sectionRefs = useRef<Record<string, HTMLElement | null>>({});
 
   // On mount or hash change, scroll to the correct section
@@ -52,65 +51,19 @@ export function LegalPage() {
 
   const scrollTo = (id: string) => {
     setActiveSection(id);
-    setIsMenuOpen(false);
     navigate(`/legal#${id}`, { replace: true });
     sectionRefs.current[id]?.scrollIntoView({ behavior: 'smooth', block: 'start' });
   };
 
   return (
-    <div className="min-h-screen bg-white">
-      {/* Navbar */}
-      <nav className="sticky top-0 z-50 bg-white/95 backdrop-blur-sm border-b border-gray-100 shadow-sm">
-        <div className="container mx-auto px-6 py-4 flex items-center justify-between">
-          <button
-            onClick={() => navigate('/home')}
-            className="text-xl font-medium"
-          >
-            <span className="text-gray-900">the</span>
-            <span className="text-[#ff6b35]">Garage</span>
-          </button>
-
-          {/* Desktop nav */}
-          <div className="hidden md:flex items-center gap-4">
-            <Button
-              variant="ghost"
-              onClick={() => navigate('/home')}
-              className="text-gray-600 hover:text-gray-900"
-            >
-              Home
-            </Button>
-            <Button
-              variant="ghost"
-              onClick={() => navigate('/about')}
-              className="text-gray-600 hover:text-gray-900"
-            >
-              About
-            </Button>
-          </div>
-
-          {/* Mobile hamburger */}
-          <button
-            className="md:hidden text-gray-600"
-            onClick={() => setIsMenuOpen(!isMenuOpen)}
-          >
-            {isMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
-          </button>
-        </div>
-
-        {/* Mobile menu */}
-        {isMenuOpen && (
-          <div className="md:hidden border-t border-gray-100 bg-white px-6 py-4 space-y-2">
-            <button onClick={() => { navigate('/home'); setIsMenuOpen(false); }} className="block w-full text-left text-gray-600 hover:text-gray-900 py-2 text-sm">Home</button>
-            <button onClick={() => { navigate('/about'); setIsMenuOpen(false); }} className="block w-full text-left text-gray-600 hover:text-gray-900 py-2 text-sm">About</button>
-          </div>
-        )}
-      </nav>
+    <div className="min-h-screen bg-white pt-16">
+      <Navigation />
 
       {/* Hero */}
       <div className="bg-gradient-to-br from-slate-900 via-gray-800 to-slate-900 text-white py-16">
         <div className="container mx-auto px-6 text-center">
           <h1 className="text-4xl md:text-5xl font-bold mb-4">Legal &amp; Policies</h1>
-          <p className="text-gray-300 max-w-2xl mx-auto">
+          <p className="text-gray-300 max-w-[95vw] sm:max-w-2xl mx-auto">
             Transparency is core to how we operate. Read our policies to understand how we collect,
             use, and protect your information.
           </p>
@@ -119,13 +72,13 @@ export function LegalPage() {
       </div>
 
       {/* Section quick-links (mobile) */}
-      <div className="md:hidden bg-gray-50 border-b border-gray-200 sticky top-[65px] z-40 overflow-x-auto">
-        <div className="flex gap-2 px-6 py-3 min-w-max">
+      <div className="md:hidden bg-gray-50 border-b border-gray-200 sticky top-16 z-40">
+        <div className="flex flex-wrap gap-2 px-6 py-3">
           {SECTIONS.map(s => (
             <button
               key={s.id}
               onClick={() => scrollTo(s.id)}
-              className={`px-3 py-1.5 rounded-full text-xs font-medium whitespace-nowrap transition-colors ${
+              className={`px-3 py-1.5 rounded-full text-xs font-medium transition-colors ${
                 activeSection === s.id
                   ? 'bg-[#ff6b35] text-white'
                   : 'bg-white text-gray-600 border border-gray-200 hover:border-[#ff6b35] hover:text-[#ff6b35]'

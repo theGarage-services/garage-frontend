@@ -7,6 +7,7 @@ import { Input } from '../ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../ui/table';
 import { Calendar, MapPin, DollarSign, ExternalLink, Search, Filter } from 'lucide-react';
+import { safeOpenWindow } from '@/utils/safe-url';
 
 interface ApplicationsListProps {
   jobs: JobApplication[];
@@ -20,24 +21,26 @@ export function ApplicationsList({ jobs, onEditJob }: Readonly<ApplicationsListP
 
   const getStatusColor = (status: JobApplication['status']) => {
     switch (status) {
-      case 'application-received': return 'bg-blue-100 text-blue-800';
-      case 'not-considered': return 'bg-gray-100 text-gray-800';
-      case 'under-consideration': return 'bg-yellow-100 text-yellow-800';
-      case 'interview-stage': return 'bg-green-100 text-green-800';
+      case 'consider': return 'bg-yellow-100 text-yellow-800';
+      case 'applied': return 'bg-blue-100 text-blue-800';
+      case 'interviews': return 'bg-purple-100 text-purple-800';
+      case 'offers': return 'bg-emerald-100 text-emerald-800';
+      case 'hired': return 'bg-green-100 text-green-800';
       case 'rejected': return 'bg-red-100 text-red-800';
-      case 'offer': return 'bg-emerald-100 text-emerald-800';
+      case 'withdrawn': return 'bg-gray-100 text-gray-800';
       default: return 'bg-gray-100 text-gray-800';
     }
   };
 
   const getStatusLabel = (status: JobApplication['status']) => {
     switch (status) {
-      case 'application-received': return 'Application Received';
-      case 'not-considered': return 'Not Considered';
-      case 'under-consideration': return 'Under Consideration';
-      case 'interview-stage': return 'Interview Stage';
+      case 'consider': return 'Consider';
+      case 'applied': return 'Applied';
+      case 'interviews': return 'Interviews';
+      case 'offers': return 'Offers';
+      case 'hired': return 'Hired';
       case 'rejected': return 'Rejected';
-      case 'offer': return 'Offer';
+      case 'withdrawn': return 'Withdrawn';
       default: return status;
     }
   };
@@ -84,23 +87,24 @@ export function ApplicationsList({ jobs, onEditJob }: Readonly<ApplicationsListP
           <div className="flex items-center gap-2">
             <Filter className="w-4 h-4 text-muted-foreground" />
             <Select value={statusFilter} onValueChange={setStatusFilter}>
-              <SelectTrigger className="w-[180px]">
+              <SelectTrigger className="w-full sm:w-[180px]">
                 <SelectValue placeholder="Filter by status" />
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">All Statuses</SelectItem>
-                <SelectItem value="application-received">Application Received</SelectItem>
-                <SelectItem value="not-considered">Not Considered</SelectItem>
-                <SelectItem value="under-consideration">Under Consideration</SelectItem>
-                <SelectItem value="interview-stage">Interview Stage</SelectItem>
+                <SelectItem value="consider">Consider</SelectItem>
+                <SelectItem value="applied">Applied</SelectItem>
+                <SelectItem value="interviews">Interviews</SelectItem>
+                <SelectItem value="offers">Offers</SelectItem>
+                <SelectItem value="hired">Hired</SelectItem>
                 <SelectItem value="rejected">Rejected</SelectItem>
-                <SelectItem value="offer">Offer</SelectItem>
+                <SelectItem value="withdrawn">Withdrawn</SelectItem>
               </SelectContent>
             </Select>
           </div>
           
           <Select value={sortBy} onValueChange={setSortBy}>
-            <SelectTrigger className="w-[150px]">
+            <SelectTrigger className="w-full sm:w-[150px]">
               <SelectValue placeholder="Sort by" />
             </SelectTrigger>
             <SelectContent>
@@ -122,7 +126,7 @@ export function ApplicationsList({ jobs, onEditJob }: Readonly<ApplicationsListP
       </div>
 
       {/* Applications Table */}
-      <Card>
+      <Card className="overflow-x-auto">
         <Table>
           <TableHeader>
             <TableRow>
@@ -200,7 +204,7 @@ export function ApplicationsList({ jobs, onEditJob }: Readonly<ApplicationsListP
                         size="sm"
                         onClick={(e: { stopPropagation: () => void; }) => {
                           e.stopPropagation();
-                          window.open(job.jobUrl, '_blank');
+                          safeOpenWindow(job.jobUrl, '_blank');
                         }}
                       >
                         <ExternalLink className="w-4 h-4" />

@@ -1,5 +1,4 @@
 import { useState, useEffect } from 'react';
-import { useSearchParams } from 'react-router-dom';
 import { Button } from '../ui/button';
 import { Input } from '../ui/input';
 import { Label } from '../ui/label';
@@ -166,7 +165,7 @@ function SecurityCheck({ met, metText, unmetText }: Readonly<{ met: boolean; met
 function InvalidTokenScreen({ error, onBack }: Readonly<{ error: string; onBack: () => void }>) {
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 via-orange-50 to-gray-100 flex items-center justify-center p-4">
-      <div className="w-full max-w-md">
+      <div className="w-full max-w-[95vw] sm:max-w-md">
         <Card className="p-8 shadow-xl border-0 bg-white/80 backdrop-blur-sm text-center">
           <div className="mb-6">
             <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
@@ -193,7 +192,7 @@ function InvalidTokenScreen({ error, onBack }: Readonly<{ error: string; onBack:
 function SuccessScreen({ onBack }: Readonly<{ onBack: () => void }>) {
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 via-orange-50 to-gray-100 flex items-center justify-center p-4">
-      <div className="w-full max-w-md">
+      <div className="w-full max-w-[95vw] sm:max-w-md">
         <Card className="p-8 shadow-xl border-0 bg-white/80 backdrop-blur-sm text-center">
           <div className="mb-6">
             <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
@@ -345,7 +344,7 @@ function ResetPasswordForm({
 
 export function ResetPassword({ onBack, token: propToken }: Readonly<ResetPasswordProps>) {
   // Get token from URL or prop
-  const [urlParams] = useSearchParams();
+  const urlParams = new URLSearchParams(globalThis.location.search);
   const token = propToken || urlParams.get('token');
   
   const [password, setPassword] = useState('');
@@ -433,7 +432,7 @@ export function ResetPassword({ onBack, token: propToken }: Readonly<ResetPasswo
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 via-orange-50 to-gray-100 flex items-center justify-center p-4">
-      <div className="w-full max-w-md">
+      <div className="w-full max-w-[95vw] sm:max-w-md">
         <Card className="p-8 shadow-xl border-0 bg-white/80 backdrop-blur-sm">
           <div className="text-center mb-8">
             <div className="flex items-center justify-center gap-2 mb-4">

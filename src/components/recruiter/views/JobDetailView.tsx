@@ -77,6 +77,7 @@ export const JobDetailView = ({
           setCandidateCount(0);
         }
       } catch (error) {
+        console.error('Error fetching candidate count:', error);
         setCandidateCount(0);
       } finally {
         setIsLoadingCount(false);
@@ -89,16 +90,16 @@ export const JobDetailView = ({
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 via-orange-50 to-gray-100 p-6">
       <div className="max-w-4xl mx-auto">
-        <div className="flex items-center justify-between mb-8">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-8">
           <Button
             variant="outline"
             onClick={handleBackToList}
-            className="text-gray-900 hover:text-[#ff6b35] hover:border-[#ff6b35] border-2"
+            className="text-gray-900 hover:text-[#ff6b35] hover:border-[#ff6b35] border-2 self-start"
           >
             <ArrowLeft className="w-5 h-5 mr-2" />
             <span className="font-medium">Back to Job List</span>
           </Button>
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
           <Button variant="outline" onClick={() => handleEditJob(selectedJob)}>
             <Edit className="w-4 h-4 mr-2" />
             Edit Job
@@ -126,10 +127,10 @@ export const JobDetailView = ({
       </div>
 
       <Card className="p-8">
-        <div className="flex items-center justify-between mb-6">
+        <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4 mb-6">
           <div>
             <h1 className="text-3xl text-gray-900 mb-2">{selectedJob.title}</h1>
-            <div className="flex items-center gap-4 text-gray-600 mb-2">
+            <div className="flex flex-wrap items-center gap-4 text-gray-600 mb-2">
               <div className="flex items-center gap-1">
                 <Building2 className="w-4 h-4" />
                 {selectedJob.department}
@@ -158,7 +159,7 @@ export const JobDetailView = ({
         </div>
 
         {/* Job Stats */}
-        <div className="grid grid-cols-4 gap-4 mb-8">
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4 mb-8">
           <div className="text-center p-4 bg-blue-50 rounded-lg">
             <div className="text-2xl text-blue-600 mb-1">{selectedJob.applicants}</div>
             <div className="text-sm text-blue-600">Applicants</div>
@@ -187,8 +188,8 @@ export const JobDetailView = ({
           <div>
             <h3 className="text-xl text-gray-900 mb-3">Requirements</h3>
             <ul className="space-y-2">
-              {selectedJob.requirements?.map((req: string, index: number) => (
-                <li key={index} className="flex items-start gap-2 text-gray-700">
+              {selectedJob.requirements?.map((req: string) => (
+                <li key={req} className="flex items-start gap-2 text-gray-700">
                   <CheckCircle className="w-5 h-5 text-green-500 mt-0.5 flex-shrink-0" />
                   {req}
                 </li>
@@ -199,8 +200,8 @@ export const JobDetailView = ({
           <div>
             <h3 className="text-xl text-gray-900 mb-3">Responsibilities</h3>
             <ul className="space-y-2">
-              {selectedJob.responsibilities?.map((resp: string, index: number) => (
-                <li key={index} className="flex items-start gap-2 text-gray-700">
+              {selectedJob.responsibilities?.map((resp: string) => (
+                <li key={resp} className="flex items-start gap-2 text-gray-700">
                   <Target className="w-5 h-5 text-[#ff6b35] mt-0.5 flex-shrink-0" />
                   {resp}
                 </li>

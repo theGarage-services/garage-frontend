@@ -175,7 +175,16 @@ export function AdminLogin({ onLogin, onBack }: Readonly<AdminLoginProps>) {
         onLogin(response);
       }
     } catch (error: any) {
-      setLoginError(error.message || 'Authentication failed. Please try again.');
+      let message = error.message || 'Authentication failed. Please try again.';
+      try {
+        const errorData = JSON.parse(message);
+        if (errorData.error === 'Account suspended') {
+          message = errorData.details || 'Your account has been suspended due to fraud reports.';
+        }
+      } catch {
+        // keep original message
+      }
+      setLoginError(message);
     } finally {
       setIsLoading(false);
     }
@@ -206,7 +215,7 @@ export function AdminLogin({ onLogin, onBack }: Readonly<AdminLoginProps>) {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 via-orange-50 to-gray-100 flex items-center justify-center p-4">
-      <div className="w-full max-w-md">
+      <div className="w-full max-w-[95vw] sm:max-w-md">
         {/* Header */}
         <div className="text-center mb-8">
           <button
@@ -267,7 +276,7 @@ export function AdminLogin({ onLogin, onBack }: Readonly<AdminLoginProps>) {
           {mode === 'login' && Object.keys(demoAccounts).length > 0 && (
             <div className="mb-6 space-y-3">
               <p className="text-sm font-medium text-gray-700 mb-2">Quick Demo Login ({Object.keys(demoAccounts).length} User Types):</p>
-              <div className="grid grid-cols-2 gap-2">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                 {demoAccounts.map((account) => (
                   <Button
                     key={account.email}
@@ -304,7 +313,7 @@ export function AdminLogin({ onLogin, onBack }: Readonly<AdminLoginProps>) {
             {/* Registration Fields - Only show in register mode */}
             {mode === 'register' && (
               <>
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <FormField
                     id="firstName"
                     label="First Name"

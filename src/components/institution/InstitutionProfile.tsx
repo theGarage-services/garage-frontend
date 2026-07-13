@@ -74,12 +74,12 @@ export function InstitutionProfile({ institution, user, onBack, onNavigate }: Re
       firstName: member.user.first_name || '',
       lastName: member.user.last_name || '',
       email: member.user.email || '',
-      title: member.title || '',
+      title: member.job_title || '',
       department: member.department || '',
-      role: member.role === 'owner' ? 'admin' : member.role === 'viewer' ? 'member' : member.role,
-      accessLevel: member.role === 'owner' || member.role === 'admin' ? 'full' : member.role === 'recruiter' ? 'limited' : 'view-only',
+      role: member.role === 'owner' ? 'admin' : member.role === 'viewer' ? 'member' : member.role === 'team-lead' ? 'admin' : member.role,
+      accessLevel: member.role === 'owner' || member.role === 'admin' || member.role === 'team-lead' ? 'full' : member.role === 'recruiter' ? 'limited' : 'view-only',
       joinedAt: member.joined_at,
-      status: member.status === 'invited' ? 'pending' : member.status === 'inactive' ? 'suspended' : 'active',
+      status: member.status === 'invited' ? 'pending' : member.status === 'removed' ? 'suspended' : 'active',
       permissions: {
         canPostJobs: member.permissions.can_post_jobs,
         canViewCandidates: member.permissions.can_view_candidates,
@@ -179,7 +179,7 @@ export function InstitutionProfile({ institution, user, onBack, onNavigate }: Re
       {/* Header */}
       <div className="bg-white border-b border-gray-200 shadow-sm">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center justify-between h-16">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 py-4">
             <div className="flex items-center gap-4">
               <Button variant="ghost" onClick={onBack} className="p-2">
                 <X className="w-5 h-5" />
@@ -188,7 +188,7 @@ export function InstitutionProfile({ institution, user, onBack, onNavigate }: Re
                 <div className="w-10 h-10 bg-gradient-to-r from-[#ff6b35] to-[#ff8c42] rounded-lg flex items-center justify-center">
                   <Building2 className="w-6 h-6 text-white" />
                 </div>
-                <div>
+                <div className="min-w-0">
                   <h1 className="text-xl font-medium text-gray-900">
                     {institution?.institutionName || 'Institution Profile'}
                   </h1>
@@ -198,7 +198,7 @@ export function InstitutionProfile({ institution, user, onBack, onNavigate }: Re
                 </div>
               </div>
             </div>
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-3 self-start sm:self-auto">
               {institution?.verificationStatus === 'verified' && (
                 <div className="flex items-center gap-2 text-green-600">
                   <CheckCircle className="w-5 h-5" />
@@ -247,7 +247,7 @@ export function InstitutionProfile({ institution, user, onBack, onNavigate }: Re
           </div>
         ) : (
         <Tabs defaultValue="profile" className="space-y-6">
-          <TabsList className="grid w-full grid-cols-4">
+          <TabsList className="grid w-full grid-cols-2 sm:grid-cols-4">
             <TabsTrigger value="profile" className="flex items-center gap-2">
               <Building2 className="w-4 h-4" />
               Profile

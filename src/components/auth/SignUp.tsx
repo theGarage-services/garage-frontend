@@ -3,7 +3,7 @@ import { Card } from '../ui/card';
 import { UserPlus, ArrowLeft, CheckCircle, AlertCircle } from 'lucide-react';
 import { Alert, AlertDescription } from '../ui/alert';
 import { authService } from '@/api/auth';
-import apiClient from '@/api/client';
+import { verificationService } from '@/api/verifications';
 import { useSignUp } from '@/hooks/auth/useSignUp';
 import { AccountStep, ProfileStep, ResumeStep, InstitutionStepWrapper, PreferencesSetup, IndividualJobPreferences } from './signup-steps';
 import { SignUpProps, FormFieldValue } from '@/types/auth/signup';
@@ -57,6 +57,13 @@ export function SignUp({
   };
 
   const handleBack = () => {
+    // OAuth users skip account creation; back from their first visible step
+    // returns them to role selection instead of a non-existent account step.
+    if (isOAuthUser && (step === 'resume' || step === 'profile')) {
+      onBack?.();
+      return;
+    }
+
     const backSteps: Record<string, string> = {
       resume: 'account',
       profile: 'resume',
@@ -67,6 +74,18 @@ export function SignUp({
     if (prevStep) {
       setStep(prevStep as typeof step);
     }
+  };
+
+  const resolveWorkHistoryIndex = (
+    workHistory: Array<{ title?: string; role?: string; position?: string }>,
+    jobTitle: string
+  ): number => {
+    if (!workHistory?.length) return 0;
+    const normalizedJobTitle = jobTitle.toLowerCase().trim();
+    const matchIndex = workHistory.findIndex((item) =>
+      (item.title || item.role || item.position || '').toLowerCase().trim().includes(normalizedJobTitle)
+    );
+    return matchIndex === -1 ? 0 : matchIndex;
   };
 
   const buildProfilePayload = (preferences?: IndividualJobPreferences) => ({
@@ -101,14 +120,22 @@ export function SignUp({
     // Education and work history from parsed resume
     education: formData.education,
     work_history: formData.work_history,
+    // Mark profile as complete now that the signup flow is finished
+    profile_complete: true,
     // Note: resume_file should be handled separately as File upload
     // resume_text is not stored in backend - parsed data goes to education/work_history
   });
 
   const submitUserProfile = async (preferences?: IndividualJobPreferences) => {
-    // Note: Resume file is already parsed in ResumeStep via parseResume API
-    // Do NOT pass resumeFile here to avoid duplicate parsing in OAuthProfileCompletionView
-    const response = await authService.updateOAuthProfile(buildProfilePayload(preferences), userRole);
+    // Resume file is parsed in ResumeStep for preview/editing; pass it to the
+    // backend profile completion endpoint so it can be saved and re-parsed to
+    // populate any remaining empty candidate fields. This applies to both OAuth
+    // and email/password job-seeker flows.
+    const response = await authService.updateOAuthProfile(
+      buildProfilePayload(preferences),
+      userRole,
+      formData.resumeFile ?? undefined
+    );
     return response;
   };
 
@@ -122,10 +149,26 @@ export function SignUp({
       const response = await submitUserProfile(preferences);
       console.log('[SignUp] submitUserProfile completed successfully');
 
-      // Store JWT tokens from response
-      if (response.tokens) {
-        console.log('[SignUp] Storing JWT tokens');
-        apiClient.setTokens(response.tokens.access, response.tokens.refresh);
+      // Backend sets JWT tokens as httpOnly cookies during profile completion.
+
+      // For job-seekers, automatically initiate a reference check now that the
+      // candidate profile has been created. Any failure here is non-blocking.
+      if (userRole === 'job-seeker' && response.candidate_profile_id && response.work_history?.length) {
+        const workHistory = response.work_history as Array<{ title?: string; role?: string; position?: string }>;
+        const workHistoryIndex = resolveWorkHistoryIndex(workHistory, formData.jobTitle);
+        try {
+          await verificationService.createRequest({
+            candidate_id: response.candidate_profile_id,
+            work_history_index: workHistoryIndex,
+            check_category: 'reference',
+            min_reference: 3,
+            role: formData.jobTitle,
+            notes: 'Reference check initiated automatically after candidate profile creation.',
+          });
+          console.log('[SignUp] Reference check request created successfully');
+        } catch (verificationError: any) {
+          console.error('[SignUp] Failed to initiate reference check:', verificationError);
+        }
       }
 
       const userData = isOAuthUser
@@ -192,6 +235,7 @@ export function SignUp({
         isNewUser: userRole === 'job-seeker',
       }, userRole);
     } catch (error) {
+      console.error('Sign up error:', error);
       setSignUpError('Failed to sign up. Please try again.');
     } finally {
       setIsLoading(false);
@@ -253,7 +297,7 @@ export function SignUp({
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 via-orange-50 to-gray-100 flex items-center justify-center p-4">
-      <div className="w-full max-w-2xl">
+      <div className="w-full max-w-[95vw] sm:max-w-2xl">
         {/* Header */}
         <div className="text-center mb-8">
           {onBack && step === 'account' && (

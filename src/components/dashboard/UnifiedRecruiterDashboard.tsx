@@ -73,7 +73,7 @@ export function UnifiedRecruiterDashboard({ onNavigate, onLogout, user }: Readon
         {/* Page Header */}
         <div className="bg-gradient-to-r from-[#ff6b35] to-[#ff8c42] text-white">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-            <div className="flex items-center justify-between">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
               <div>
                 <h1 className="text-3xl text-white mb-2">
                   Welcome back, {user?.firstName || 'User'}!
@@ -82,7 +82,7 @@ export function UnifiedRecruiterDashboard({ onNavigate, onLogout, user }: Readon
                   {user?.title || 'Recruiter'} • {user?.company || 'TechCorp Solutions'}
                 </p>
               </div>
-              <div className="text-right">
+              <div className="text-left sm:text-right">
                 <div className="text-sm text-orange-100 mb-1">Your Role</div>
                 <Badge className="bg-white text-[#ff6b35] text-lg px-4 py-2">
                   {getRoleDisplayName(userRole)}
@@ -96,11 +96,11 @@ export function UnifiedRecruiterDashboard({ onNavigate, onLogout, user }: Readon
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
           {/* Stats Grid */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-            {stats.map((stat, index) => {
+            {stats.map((stat) => {
               const Icon = stat.icon;
               return (
                 <button
-                  key={index}
+                  key={stat.title}
                   onClick={() => onNavigate(getStatRoute(stat.title))}
                   className="text-left"
                 >
@@ -131,12 +131,12 @@ export function UnifiedRecruiterDashboard({ onNavigate, onLogout, user }: Readon
               {/* Quick Actions */}
               <Card className="p-6">
                 <h2 className="text-lg font-medium text-gray-900 mb-4">Quick Actions</h2>
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                  {quickActions.map((action, index) => {
+                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3">
+                  {quickActions.map((action) => {
                     const Icon = action.icon;
                     return (
                       <Button
-                        key={index}
+                        key={action.label}
                         variant="outline"
                         onClick={action.action}
                         className="h-auto py-4 flex flex-col items-center gap-2 hover:border-[#ff6b35] hover:text-[#ff6b35]"
@@ -151,9 +151,9 @@ export function UnifiedRecruiterDashboard({ onNavigate, onLogout, user }: Readon
 
               {/* Recent Activity */}
               <Card className="p-6">
-                <div className="flex items-center justify-between mb-4">
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4">
                   <h2 className="text-lg font-medium text-gray-900">Recent Activity</h2>
-                  <Button variant="ghost" size="sm" onClick={() => onNavigate('job-management')}>
+                  <Button variant="ghost" size="sm" onClick={() => onNavigate('job-management')} className="self-start sm:self-auto">
                     View All
                   </Button>
                 </div>
@@ -192,9 +192,9 @@ export function UnifiedRecruiterDashboard({ onNavigate, onLogout, user }: Readon
               {/* Conditional: Pending Approvals for Managers/Leads */}
               {permissions.canApproveJobs && (
                 <Card className="p-6">
-                  <div className="flex items-center justify-between mb-4">
+                  <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4">
                     <h2 className="text-lg font-medium text-gray-900">Pending Approvals</h2>
-                    <Badge variant="outline" className="bg-orange-50 text-orange-600 border-orange-200">
+                    <Badge variant="outline" className="bg-orange-50 text-orange-600 border-orange-200 self-start sm:self-auto">
                       3 Pending
                     </Badge>
                   </div>
@@ -203,11 +203,11 @@ export function UnifiedRecruiterDashboard({ onNavigate, onLogout, user }: Readon
                       { title: 'Senior Engineer Position', submitter: 'John Doe', time: '2 hours ago' },
                       { title: 'Product Manager Role', submitter: 'Sarah Chen', time: '5 hours ago' },
                       { title: 'UX Designer Position', submitter: 'Mike Wilson', time: '1 day ago' }
-                    ].map((approval, idx) => (
+                    ].map((approval) => (
                       <button
-                        key={idx}
+                        key={approval.title}
                         onClick={() => onNavigate('approval-queue')}
-                        className="w-full flex items-center justify-between p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors"
+                        className="w-full flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors text-left"
                       >
                         <div className="flex items-center gap-3">
                           <Briefcase className="w-5 h-5 text-blue-600" />
@@ -236,11 +236,12 @@ export function UnifiedRecruiterDashboard({ onNavigate, onLogout, user }: Readon
             <div className="space-y-6">
               {/* Calendar Widget */}
               <Card className="p-6">
-                <div className="flex items-center justify-between mb-4">
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4">
                   <h3 className="font-medium text-gray-900">Upcoming Interviews</h3>
-                  <Button 
-                    variant="ghost" 
-                    size="sm" 
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="self-start sm:self-auto" 
                     onClick={() => onNavigate('interview-calendar')}
                   >
                     View All
@@ -258,21 +259,21 @@ export function UnifiedRecruiterDashboard({ onNavigate, onLogout, user }: Readon
                   </h3>
                   <div className="space-y-4">
                     <div>
-                      <div className="flex items-center justify-between mb-2">
+                      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1 mb-2">
                         <span className="text-sm text-gray-600">Monthly Target</span>
                         <span className="text-sm font-medium text-gray-900">75%</span>
                       </div>
                       <Progress value={75} className="h-2" />
                     </div>
                     <div>
-                      <div className="flex items-center justify-between mb-2">
+                      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1 mb-2">
                         <span className="text-sm text-gray-600">Time to Hire</span>
                         <span className="text-sm font-medium text-green-600">-15%</span>
                       </div>
                       <Progress value={85} className="h-2" />
                     </div>
                     <div>
-                      <div className="flex items-center justify-between mb-2">
+                      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1 mb-2">
                         <span className="text-sm text-gray-600">Fill Rate</span>
                         <span className="text-sm font-medium text-gray-900">82%</span>
                       </div>

@@ -166,8 +166,8 @@ export function JobCandidateRanking({ job, onBack, onViewProfile, onStartChat, o
   const renderCardView = (candidates: any[], isRecommended = true) => (
     <div className="space-y-4">
       {candidates.map((candidate) => (
-        <Card key={candidate.id} className="p-6 hover:shadow-lg transition-all duration-300">
-          <div className="flex items-start justify-between mb-4">
+        <Card key={candidate.id} className="p-4 sm:p-6 hover:shadow-lg transition-all duration-300">
+          <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4 mb-4">
             <div className="flex items-start gap-4">
               <div className="relative">
                 <Avatar className="w-16 h-16">
@@ -180,7 +180,7 @@ export function JobCandidateRanking({ job, onBack, onViewProfile, onStartChat, o
                 )}
               </div>
               <div className="flex-1">
-                <div className="flex items-center gap-3 mb-2">
+                <div className="flex flex-wrap items-center gap-3 mb-2">
                   <h3 className="text-xl text-gray-900">{candidate.name}</h3>
                   {isRecommended ? (
                     <>
@@ -210,7 +210,7 @@ export function JobCandidateRanking({ job, onBack, onViewProfile, onStartChat, o
                   )}
                 </div>
                 
-                <div className="flex items-center gap-6 text-gray-600 mb-3">
+                <div className="flex flex-wrap items-center gap-x-6 gap-y-2 text-gray-600 mb-3">
                   <div className="flex items-center gap-1">
                     <Briefcase className="w-4 h-4" />
                     {candidate.title} at {candidate.company}
@@ -231,8 +231,8 @@ export function JobCandidateRanking({ job, onBack, onViewProfile, onStartChat, o
                 </div>
                 
                 <div className="flex flex-wrap gap-2 mb-4">
-                  {candidate.skills.slice(0, 5).map((skill: string, idx: number) => (
-                    <Badge key={idx} variant="secondary" className="text-xs">
+                  {candidate.skills.slice(0, 5).map((skill: string) => (
+                    <Badge key={skill} variant="secondary" className="text-xs">
                       {skill}
                     </Badge>
                   ))}
@@ -244,12 +244,12 @@ export function JobCandidateRanking({ job, onBack, onViewProfile, onStartChat, o
                 </div>
 
                 {isRecommended ? (
-                  <div className="grid grid-cols-3 gap-4 mb-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-4">
                     <div>
                       <p className="text-xs text-gray-500">Key Strengths</p>
                       <div className="text-sm text-gray-900">
-                        {candidate.keyStrengths.slice(0, 2).map((strength: string, idx: number) => (
-                          <div key={idx} className="flex items-center gap-1">
+                        {candidate.keyStrengths.slice(0, 2).map((strength: string) => (
+                          <div key={strength} className="flex items-center gap-1">
                             <CheckCircle className="w-3 h-3 text-green-500" />
                             {strength}
                           </div>
@@ -266,7 +266,7 @@ export function JobCandidateRanking({ job, onBack, onViewProfile, onStartChat, o
                     </div>
                   </div>
                 ) : (
-                  <div className="grid grid-cols-3 gap-4 mb-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-4">
                     <div>
                       <p className="text-xs text-gray-500">Application Source</p>
                       <p className="text-sm font-medium text-gray-900">{candidate.source}</p>
@@ -303,7 +303,7 @@ export function JobCandidateRanking({ job, onBack, onViewProfile, onStartChat, o
           </div>
 
           {isRecommended && (
-            <div className="grid grid-cols-4 gap-4 mb-4 p-3 bg-gray-50 rounded-lg">
+            <div className="grid grid-cols-1 sm:grid-cols-2 sm:grid-cols-4 gap-4 mb-4 p-3 bg-gray-50 rounded-lg">
               <div className="text-center">
                 <div className="text-lg font-medium text-gray-900">{candidate.projects}</div>
                 <div className="text-xs text-gray-600">Projects</div>
@@ -330,7 +330,7 @@ export function JobCandidateRanking({ job, onBack, onViewProfile, onStartChat, o
             </div>
           )}
           
-          <div className="flex items-center justify-between">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             {isRecommended ? (
               <div className="flex items-center gap-2 text-sm text-gray-600">
                 <Star className="w-4 h-4 text-yellow-500" />
@@ -342,7 +342,7 @@ export function JobCandidateRanking({ job, onBack, onViewProfile, onStartChat, o
               </div>
             )}
             
-            <div className="flex gap-2">
+            <div className="flex flex-col sm:flex-row gap-2">
               <Button 
                 size="sm" 
                 variant="outline"
@@ -369,7 +369,7 @@ export function JobCandidateRanking({ job, onBack, onViewProfile, onStartChat, o
                 size="sm" 
                 className={isRecommended ? "bg-[#ff6b35] hover:bg-[#e55a2b] text-white" : "bg-blue-500 hover:bg-blue-600 text-white"}
                 onClick={() => {
-                  const newStatus = isRecommended ? 'under-consideration' : 'reviewed';
+                  const newStatus = 'applied';
                   onUpdateCandidateStatus?.(candidate.id, newStatus);
                 }}
               >
@@ -396,7 +396,7 @@ export function JobCandidateRanking({ job, onBack, onViewProfile, onStartChat, o
     <div className="space-y-3">
       {candidates.map((candidate) => (
         <Card key={candidate.id} className="p-4 hover:shadow-md transition-all duration-200">
-          <div className="flex items-center justify-between">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
             <div className="flex items-center gap-4 flex-1">
               <div className="relative">
                 <Avatar className="w-12 h-12">
@@ -410,7 +410,7 @@ export function JobCandidateRanking({ job, onBack, onViewProfile, onStartChat, o
               </div>
               
               <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-2 mb-1">
+                <div className="flex flex-wrap items-center gap-2 mb-1">
                   <h3 className="font-medium text-gray-900 truncate">{candidate.name}</h3>
                   {isRecommended && (
                     <Badge className="bg-blue-100 text-blue-800 text-xs">
@@ -431,8 +431,8 @@ export function JobCandidateRanking({ job, onBack, onViewProfile, onStartChat, o
                 </div>
                 
                 <div className="flex items-center gap-2">
-                  {candidate.skills.slice(0, 3).map((skill: string, idx: number) => (
-                    <Badge key={idx} variant="secondary" className="text-xs">
+                  {candidate.skills.slice(0, 3).map((skill: string) => (
+                    <Badge key={skill} variant="secondary" className="text-xs">
                       {skill}
                     </Badge>
                   ))}
@@ -463,7 +463,7 @@ export function JobCandidateRanking({ job, onBack, onViewProfile, onStartChat, o
               </div>
             </div>
             
-            <div className="flex gap-2 ml-4">
+            <div className="flex flex-wrap gap-2 ml-4">
               <Button 
                 size="sm" 
                 variant="outline"
@@ -484,7 +484,7 @@ export function JobCandidateRanking({ job, onBack, onViewProfile, onStartChat, o
                 size="sm" 
                 className={isRecommended ? "bg-[#ff6b35] hover:bg-[#e55a2b] text-white" : "bg-blue-500 hover:bg-blue-600 text-white"}
                 onClick={() => {
-                  const newStatus = isRecommended ? 'under-consideration' : 'reviewed';
+                  const newStatus = 'applied';
                   onUpdateCandidateStatus?.(candidate.id, newStatus);
                 }}
               >
@@ -580,7 +580,7 @@ export function JobCandidateRanking({ job, onBack, onViewProfile, onStartChat, o
                       size="sm" 
                       className={`h-8 w-8 p-0 ${isRecommended ? "bg-[#ff6b35] hover:bg-[#e55a2b] text-white" : "bg-blue-500 hover:bg-blue-600 text-white"}`}
                       onClick={() => {
-                        const newStatus = isRecommended ? 'under-consideration' : 'reviewed';
+                        const newStatus = 'applied';
                         onUpdateCandidateStatus?.(candidate.id, newStatus);
                       }}
                     >
@@ -597,10 +597,10 @@ export function JobCandidateRanking({ job, onBack, onViewProfile, onStartChat, o
   );
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-50 via-orange-50 to-gray-100 p-6">
+    <div className="min-h-screen bg-gradient-to-br from-gray-50 via-orange-50 to-gray-100 p-4 sm:p-6 lg:p-8">
       <div className="max-w-7xl mx-auto">
         {/* Header */}
-        <div className="flex items-center justify-between mb-6">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
           <div>
             <Button 
               variant="ghost" 
@@ -611,7 +611,7 @@ export function JobCandidateRanking({ job, onBack, onViewProfile, onStartChat, o
               Back to Job Management
             </Button>
             <h1 className="text-3xl text-gray-900 mb-2">Candidates for {job.title}</h1>
-            <div className="flex items-center gap-4 text-gray-600">
+            <div className="flex flex-wrap items-center gap-4 text-gray-600">
               <div className="flex items-center gap-1">
                 <MapPin className="w-4 h-4" />
                 {job.location}
@@ -629,10 +629,10 @@ export function JobCandidateRanking({ job, onBack, onViewProfile, onStartChat, o
         </div>
 
         {/* Search and Filters */}
-        <Card className="p-6 mb-6">
-          <div className="flex flex-col lg:flex-row gap-4 items-center justify-between">
-            <div className="flex gap-4 flex-1">
-              <div className="relative flex-1 max-w-md">
+        <Card className="p-4 sm:p-6 mb-6">
+          <div className="flex flex-col lg:flex-row gap-4 items-stretch lg:items-center justify-between">
+            <div className="flex flex-col sm:flex-row gap-4 flex-1">
+              <div className="relative flex-1 max-w-[95vw] sm:max-w-md">
                 <Search className="w-4 h-4 absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
                 <Input
                   placeholder="Search candidates..."
@@ -641,8 +641,8 @@ export function JobCandidateRanking({ job, onBack, onViewProfile, onStartChat, o
                   className="pl-10"
                 />
               </div>
-              
-              <div className="flex gap-2">
+
+              <div className="flex flex-wrap gap-2">
                 <Button
                   variant={selectedFilter === 'all' ? 'default' : 'outline'}
                   size="sm"
@@ -724,7 +724,7 @@ export function JobCandidateRanking({ job, onBack, onViewProfile, onStartChat, o
             <div className="space-y-4">
               {/* Summary Card */}
               <Card className="p-6 bg-gradient-to-r from-[#ff6b35] to-[#ff8c42] text-white">
-                <div className="flex items-center justify-between">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                   <div>
                     <h3 className="text-xl font-medium mb-2">AI-Powered Recommendations</h3>
                     <p className="opacity-90">
@@ -759,7 +759,7 @@ export function JobCandidateRanking({ job, onBack, onViewProfile, onStartChat, o
             <div className="space-y-4">
               {/* Summary Card */}
               <Card className="p-6 bg-gradient-to-r from-blue-500 to-blue-600 text-white">
-                <div className="flex items-center justify-between">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                   <div>
                     <h3 className="text-xl font-medium mb-2">Direct Applications</h3>
                     <p className="opacity-90">

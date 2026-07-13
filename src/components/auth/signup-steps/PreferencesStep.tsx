@@ -113,7 +113,7 @@ export const PreferencesSetup: React.FC<PreferencesSetupProps> = ({
           </p>
           
           {/* Info Banner */}
-          <div className="max-w-2xl mx-auto bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
+          <div className="max-w-[95vw] sm:max-w-2xl mx-auto bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
             <div className="flex items-start gap-3">
               <Info className="w-5 h-5 text-blue-600 mt-0.5 flex-shrink-0" />
               <div className="text-left">
@@ -135,7 +135,7 @@ export const PreferencesSetup: React.FC<PreferencesSetupProps> = ({
 
           {/* Error Display */}
           {error && (
-            <div className={`max-w-2xl mx-auto border rounded-lg p-4 mb-6 ${error.includes('successfully') ? 'border-green-200 bg-green-50' : 'border-red-200 bg-red-50'}`}>
+            <div className={`max-w-[95vw] sm:max-w-2xl mx-auto border rounded-lg p-4 mb-6 ${error.includes('successfully') ? 'border-green-200 bg-green-50' : 'border-red-200 bg-red-50'}`}>
               <div className="flex items-start gap-3">
                 {error.includes('successfully') ? (
                   <CheckCircle className="w-5 h-5 text-green-600 mt-0.5 flex-shrink-0" />
@@ -294,9 +294,11 @@ const PreferenceSection: React.FC<PreferenceSectionProps> = ({
 
   return (
     <div className="space-y-3">
-      <div 
-        className="flex items-center justify-between cursor-pointer"
+      <button
+        type="button"
+        className="w-full flex items-center justify-between bg-transparent border-0 p-0"
         onClick={() => setIsExpanded(!isExpanded)}
+        aria-expanded={isExpanded}
       >
         <div className="flex items-center gap-3">
           <div className={`p-2 rounded-lg ${colors.icon}`}>
@@ -307,10 +309,10 @@ const PreferenceSection: React.FC<PreferenceSectionProps> = ({
             <p className="text-sm text-slate-500">{description}</p>
           </div>
         </div>
-        <ChevronDown 
+        <ChevronDown
           className={`w-5 h-5 text-slate-400 transition-transform ${isExpanded ? 'rotate-180' : ''}`}
         />
-      </div>
+      </button>
 
       {isExpanded && (
         <div className="space-y-2 pl-1">

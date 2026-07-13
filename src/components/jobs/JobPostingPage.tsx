@@ -4,14 +4,16 @@ import { Card } from '../ui/card';
 import { Progress } from '../ui/progress';
 import { Step1BasicInfo } from './posting/Step1BasicInfo';
 import { Step2Description } from './posting/Step2Description';
-import { Step3Queues } from './posting/Step3Queues';
-import { Step4Advanced } from './posting/Step4Advanced';
-import { Step5Review } from './posting/Step5Review';
+import { Step3VideoPrompts } from './posting/Step3VideoPrompts';
+import { Step4Queues } from './posting/Step4Queues';
+import { Step5Advanced } from './posting/Step5Advanced';
+import { Step6Review } from './posting/Step6Review';
 import { useJobPDFParser } from '../../hooks/useJobPDFParser';
-import { ArrowLeft, Plus, Eye, CheckCircle, Code } from 'lucide-react';
+import { ArrowLeft, Plus, Eye, CheckCircle, Code, X } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import type { JobData, ExperienceLevel, EducationLevel } from '../../api/jobPosts';
 import { jobPostsApi } from '../../api/jobPosts';
+import { predictJobIndustryAndLevel } from '../../api/jobMlServices';
 
 interface JobPostingPageProps {
   onBack: () => void;
@@ -21,11 +23,12 @@ interface JobPostingPageProps {
 interface Queue {
   id: string;
   name: string;
+  industry: string;
   icon: LucideIcon;
   color: string;
   members: number;
   avgSalary: string;
-  matchPercentage: number;
+  matchScore: number;
   description: string;
   topSkills: string[];
   hiringTrends: string;
@@ -35,9 +38,10 @@ interface Queue {
 const steps = [
   { id: 1, title: 'Basic Information', subtitle: 'Job title, location, and compensation' },
   { id: 2, title: 'Job Details', subtitle: 'Description, requirements, and responsibilities' },
-  { id: 3, title: 'Queue Targeting', subtitle: 'Select job seeker queues to target' },
-  { id: 4, title: 'Advanced Settings', subtitle: 'Deadlines, requirements, and preferences' },
-  { id: 5, title: 'Review & Publish', subtitle: 'Final review before posting' }
+  { id: 3, title: 'Video Prompts', subtitle: '3-5 questions candidates answer on video' },
+  { id: 4, title: 'Queue Targeting', subtitle: 'Select job seeker queues to target' },
+  { id: 5, title: 'Advanced Settings', subtitle: 'Deadlines, requirements, and preferences' },
+  { id: 6, title: 'Review & Publish', subtitle: 'Final review before posting' }
 ];
 
 // Queues will be fetched dynamically from API based on ML predictions
@@ -56,6 +60,9 @@ export function JobPostingPage({ onBack, user }: Readonly<JobPostingPageProps>) 
     matchSuccessRate: 87
   });
   const [isLoadingStats, setIsLoadingStats] = useState(false);
+  const [predictedIndustry, setPredictedIndustry] = useState<string>('');
+  const [predictedLevel, setPredictedLevel] = useState<string>('');
+  const [isAnalyzingML, setIsAnalyzingML] = useState(false);
   const [jobData, setJobData] = useState<JobData>({
     title: '',
     department: '',
@@ -63,6 +70,7 @@ export function JobPostingPage({ onBack, user }: Readonly<JobPostingPageProps>) 
     industry: '',
     workArrangement: 'hybrid',
     employmentType: 'full-time',
+    vacancyType: 'current' as const,
     salaryMin: '',
     salaryMax: '',
     currency: 'CAD' as const,
@@ -91,7 +99,8 @@ export function JobPostingPage({ onBack, user }: Readonly<JobPostingPageProps>) 
     },
     hiringManager: '',
     recruiterNotes: '',
-    internalJobCode: ''
+    internalJobCode: '',
+    videoPrompts: []
   });
 
   const {
@@ -116,11 +125,12 @@ export function JobPostingPage({ onBack, user }: Readonly<JobPostingPageProps>) 
         const queues: Queue[] = response.data.map((queue, index) => ({
           id: queue.id,
           name: queue.name,
+          industry: queue.industry,
           icon: Code,
           color: ['blue', 'purple', 'green', 'orange', 'cyan'][index % 5],
           members: queue.members,
           avgSalary: `$${Math.round((queue.avg_salary_min + queue.avg_salary_max) / 2000)}k`,
-          matchPercentage: queue.match_score || Math.round(70 + Math.random() * 25),
+          matchScore: queue.match_score || Math.round(70 + Math.random() * 25),
           description: queue.description,
           topSkills: queue.top_skills || [],
           hiringTrends: queue.hiring_trend,
@@ -139,6 +149,27 @@ export function JobPostingPage({ onBack, user }: Readonly<JobPostingPageProps>) 
   useEffect(() => {
     fetchRecommendedQueues();
   }, []);
+
+  // Fetch ML predictions when the job is saved and the user reaches step 3
+  useEffect(() => {
+    const fetchPredictions = async () => {
+      if (!savedJobId || currentStep !== 3) return;
+      setIsAnalyzingML(true);
+      try {
+        const result = await predictJobIndustryAndLevel(savedJobId, jobData);
+        if (result.success && result.data) {
+          setPredictedIndustry(result.data.predicted_industry || '');
+          setPredictedLevel(result.data.predicted_level || '');
+        }
+      } catch (error) {
+        console.error('Failed to fetch ML predictions:', error);
+      } finally {
+        setIsAnalyzingML(false);
+      }
+    };
+
+    fetchPredictions();
+  }, [savedJobId, currentStep]);
 
   // Fetch platform stats on component mount
   useEffect(() => {
@@ -175,12 +206,33 @@ export function JobPostingPage({ onBack, user }: Readonly<JobPostingPageProps>) 
 
   const getQueueColor = (color: string): string => queueColorMap[color] || queueColorMap.blue;
 
+  const MAX_SALARY_SPREAD = 50000;
+
+  const parseSalaryString = (value: string): number | null => {
+    const num = Number.parseFloat(value.replaceAll(',', '').trim());
+    return Number.isNaN(num) ? null : num;
+  };
+
+  const clampSalaryRange = (data: Partial<JobData>): Partial<JobData> => {
+    const min = parseSalaryString(data.salaryMin ?? jobData.salaryMin);
+    const max = parseSalaryString(data.salaryMax ?? jobData.salaryMax);
+    if (min !== null && max !== null && max - min > MAX_SALARY_SPREAD) {
+      return { ...data, salaryMax: String(min + MAX_SALARY_SPREAD) };
+    }
+    return data;
+  };
+
   const validateBasicInfo = (errors: Record<string, string>) => {
     if (!jobData.title.trim()) errors.title = 'Job title is required';
     if (!jobData.department) errors.department = 'Department is required';
     if (!jobData.location.trim()) errors.location = 'Location is required';
     if (!jobData.salaryMin.trim()) errors.salaryMin = 'Minimum salary is required';
     if (!jobData.salaryMax.trim()) errors.salaryMax = 'Maximum salary is required';
+    const min = parseSalaryString(jobData.salaryMin);
+    const max = parseSalaryString(jobData.salaryMax);
+    if (min !== null && max !== null && max - min > MAX_SALARY_SPREAD) {
+      errors.salaryRange = `Salary range cannot exceed ${MAX_SALARY_SPREAD.toLocaleString()}`;
+    }
   };
 
   const validateDescription = (errors: Record<string, string>) => {
@@ -194,39 +246,62 @@ export function JobPostingPage({ onBack, user }: Readonly<JobPostingPageProps>) 
 
     if (step === 1) validateBasicInfo(newErrors);
     else if (step === 2) validateDescription(newErrors);
+    else if (step === 3) validateVideoPrompts(newErrors);
+    else if (step === 6) validateVideoPrompts(newErrors);
 
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
 
+  const validateVideoPrompts = (newErrors: Record<string, string>) => {
+    const prompts = jobData.videoPrompts || [];
+    if (prompts.length === 0) return;
+    if (prompts.length > 5) {
+      newErrors.videoPrompts = 'You can have at most 5 video prompts.';
+    }
+    const emptyIndex = prompts.findIndex((p) => !p.questionText.trim());
+    if (emptyIndex !== -1) {
+      newErrors.videoPrompts = `Prompt ${emptyIndex + 1} must have question text.`;
+    }
+  };
+
+  const saveJobAsDraft = async (): Promise<boolean> => {
+    setIsSubmitting(true);
+    try {
+      const companyId =
+        user?.company_id ||
+        user?.company?.id ||
+        user?.company_memberships?.[0]?.company_id;
+      const response = savedJobId
+        ? await jobPostsApi.updateJobPost(savedJobId, jobData)
+        : await jobPostsApi.createJobPost(jobData, 'draft', companyId);
+
+      if (response.success) {
+        setSavedJobId(response.data.id);
+        return true;
+      } else {
+        console.error('Failed to save draft:', response.message);
+        return false;
+      }
+    } catch (error) {
+      console.error('Error saving draft:', error);
+      return false;
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleSaveDraft = async () => {
+    await saveJobAsDraft();
+  };
+
   const handleNext = async () => {
     if (!validateStep(currentStep)) return;
 
-    // Save job as draft when moving between steps
-    if (currentStep === 1 || currentStep === 2 || currentStep === 3 || currentStep === 4) {
-      setIsSubmitting(true);
-      try {
-        let response;
-        
-        // Update existing job if savedJobId exists, otherwise create new
-        if (savedJobId) {
-          response = await jobPostsApi.updateJobPost(savedJobId, jobData);
-        } else {
-          response = await jobPostsApi.createJobPost(jobData);
-        }
-
-        if (response.success) {
-          setSavedJobId(response.data.id);
-          setCurrentStep(currentStep + 1);
-        } else {
-          console.error('Failed to save job:', response.message);
-          // Could add toast notification here
-        }
-      } catch (error) {
-        console.error('Error saving job:', error);
-        // Could add toast notification here
-      } finally {
-        setIsSubmitting(false);
+    if (currentStep === 1 || currentStep === 2 || currentStep === 3 || currentStep === 4 || currentStep === 5) {
+      const saved = await saveJobAsDraft();
+      if (saved) {
+        setCurrentStep(currentStep + 1);
       }
     } else {
       setCurrentStep(currentStep + 1);
@@ -237,29 +312,69 @@ export function JobPostingPage({ onBack, user }: Readonly<JobPostingPageProps>) 
     setCurrentStep(currentStep - 1);
   };
 
+  const submitDraft = async (companyId?: string) => {
+    if (savedJobId) {
+      return await jobPostsApi.updateJobPost(savedJobId, jobData);
+    }
+    return await jobPostsApi.createJobPost(jobData, 'draft', companyId);
+  };
+
+  const publishExistingJob = async (jobId: number) => {
+    const updateResponse = await jobPostsApi.updateJobPost(jobId, jobData);
+    if (!updateResponse.success) {
+      return { success: false, message: updateResponse.message };
+    }
+
+    const publishResponse = await jobPostsApi.publishJobPost(jobId);
+    if (!publishResponse.success) {
+      return { success: false, message: publishResponse.message };
+    }
+
+    const predictionResponse = await jobPostsApi.predictAndSaveJobPost(jobId);
+    return {
+      success: predictionResponse.success,
+      data: { ...publishResponse.data, predictions: predictionResponse.data },
+      message: predictionResponse.message,
+      approval_required: false,
+      approval_id: undefined,
+    };
+  };
+
+  const publishJob = async (companyId?: string) => {
+    if (savedJobId) {
+      return await publishExistingJob(savedJobId);
+    }
+    return await jobPostsApi.createJobPostWithPrediction(jobData, companyId);
+  };
+
+  const handleSubmitResponse = (response: any, submitAction: 'draft' | 'publish') => {
+    if (!response.success) {
+      console.error('Failed to save job:', response.message);
+      return;
+    }
+    if ('approval_required' in response && response.approval_required) {
+      console.log('Job post submitted for approval:', response.approval_id);
+      alert('Your job post has been submitted for approval and will be published once reviewed.');
+    } else {
+      console.log(`${submitAction === 'draft' ? 'Draft saved' : 'Job published'}:`, response.data);
+    }
+    onBack();
+  };
+
   const handleSubmit = async (action: 'draft' | 'publish') => {
     if (!validateStep(currentStep)) return;
     setIsSubmitting(true);
     try {
-      let response;
-      if (action === 'draft') {
-        // Save as draft
-        response = await jobPostsApi.createJobPost(jobData);
-      } else {
-        // Publish with ML prediction
-        response = await jobPostsApi.createJobPostWithPrediction(jobData);
-      }
-
-      if (response.success) {
-        console.log(`${action === 'draft' ? 'Draft saved' : 'Job published'}:`, response.data);
-        onBack();
-      } else {
-        console.error('Failed to save job:', response.message);
-        // Could add toast notification here
-      }
+      const companyId =
+        user?.company_id ||
+        user?.company?.id ||
+        user?.company_memberships?.[0]?.company_id;
+      const response = action === 'draft'
+        ? await submitDraft(companyId)
+        : await publishJob(companyId);
+      handleSubmitResponse(response, action);
     } catch (error) {
       console.error('Error submitting job:', error);
-      // Could add toast notification here
     } finally {
       setIsSubmitting(false);
     }
@@ -267,7 +382,7 @@ export function JobPostingPage({ onBack, user }: Readonly<JobPostingPageProps>) 
 
   const handleApplyParsedData = () => {
     applyParsedData((data) => {
-      setJobData(prev => ({ ...prev, ...data } as JobData));
+      setJobData(prev => ({ ...prev, ...clampSalaryRange(data as Partial<JobData>) }));
       if (currentStep === 1) {
         setCurrentStep(2);
       }
@@ -291,29 +406,36 @@ export function JobPostingPage({ onBack, user }: Readonly<JobPostingPageProps>) 
             onApplyParsedData={handleApplyParsedData}
             onDiscardParsedData={discardParsedData}
             onTriggerFileInput={() => fileInputRef.current?.click()}
+            onSaveDraft={handleSaveDraft}
+            isSubmitting={isSubmitting}
           />
         );
       case 2:
-        return <Step2Description jobData={jobData} setJobData={setJobData} errors={errors} />;
+        return <Step2Description jobData={jobData} setJobData={setJobData} errors={errors} onSaveDraft={handleSaveDraft} isSubmitting={isSubmitting} />;
       case 3:
+        return <Step3VideoPrompts jobData={jobData} setJobData={setJobData} errors={errors} onSaveDraft={handleSaveDraft} isSubmitting={isSubmitting} />;
+      case 4:
         return (
-          <Step3Queues
+          <Step4Queues
             jobData={jobData}
             setJobData={setJobData}
             errors={errors}
             availableQueues={availableQueues}
-            recommendedQueues={availableQueues}
-            isLoadingQueues={isLoadingQueues}
+            isLoadingQueues={isLoadingQueues || isAnalyzingML}
+            isAnalyzing={isAnalyzingML}
+            predictedIndustry={predictedIndustry}
+            predictedLevel={predictedLevel}
             getQueueColor={getQueueColor}
             onBackToBasicInfo={() => setCurrentStep(1)}
-            savedJobId={savedJobId}
+            onSaveDraft={handleSaveDraft}
+            isSubmitting={isSubmitting}
           />
         );
-      case 4:
-        return <Step4Advanced jobData={jobData} setJobData={setJobData} />;
       case 5:
+        return <Step5Advanced jobData={jobData} setJobData={setJobData} onSaveDraft={handleSaveDraft} isSubmitting={isSubmitting} />;
+      case 6:
         return (
-          <Step5Review
+          <Step6Review
             jobData={jobData}
             user={user}
             isSubmitting={isSubmitting}
@@ -330,7 +452,7 @@ export function JobPostingPage({ onBack, user }: Readonly<JobPostingPageProps>) 
       {/* Header */}
       <div className="bg-white border-b border-gray-200 shadow-sm sticky top-0 z-50">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center justify-between h-16">
+          <div className="flex flex-wrap items-center justify-between h-auto min-h-16 py-2 gap-2">
             <div className="flex items-center gap-4">
               <Button variant="ghost" onClick={onBack} className="p-2">
                 <ArrowLeft className="w-5 h-5" />
@@ -421,12 +543,16 @@ export function JobPostingPage({ onBack, user }: Readonly<JobPostingPageProps>) 
 
           {/* Main Content */}
           <div className="lg:col-span-3">
-            <Card className="p-8">
+            <Card className="p-6 sm:p-8">
               {renderStep()}
 
               {/* Navigation */}
-              <div className="flex items-center justify-between pt-8 border-t border-gray-200 mt-8">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pt-8 border-t border-gray-200 mt-8">
                 <div className="flex items-center gap-2">
+                  <Button variant="outline" onClick={onBack} className="text-red-600 border-red-300 hover:bg-red-50 hover:text-red-700">
+                    <X className="w-4 h-4 mr-2" />
+                    Cancel
+                  </Button>
                   {currentStep > 1 && (
                     <Button variant="outline" onClick={handleBack}>
                       <ArrowLeft className="w-4 h-4 mr-2" />
@@ -444,7 +570,7 @@ export function JobPostingPage({ onBack, user }: Readonly<JobPostingPageProps>) 
 
                 <div className="flex items-center gap-2">
                   {currentStep < steps.length && (
-                    <Button onClick={handleNext} className="bg-[#ff6b35] hover:bg-[#e55a2b]">
+                    <Button onClick={handleNext} className="bg-[#ff6b35] hover:bg-[#e55a2b]" disabled={isSubmitting}>
                       Next
                       <ArrowLeft className="w-4 h-4 ml-2 rotate-180" />
                     </Button>

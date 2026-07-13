@@ -42,6 +42,18 @@ export interface JobPosting {
   };
 }
 
+export interface ScoreBreakdown {
+  semantic?: number;
+  skill_jaccard?: number;
+  education_score?: number;
+  experience_score?: number;
+  industry_alignment?: number;
+  level_alignment?: number;
+  composite_score?: number;
+  match_percentage?: number;
+  skill_gaps?: string[];
+}
+
 export interface QueueCandidate {
   id: string;
   name: string;
@@ -65,6 +77,7 @@ export interface QueueCandidate {
   considerationStatus?: string;
   considerationMatchScore?: number;
   predicted_industry?: string;
+  scoreBreakdown?: ScoreBreakdown;
 }
 
 export interface ConsiderationRequest {
@@ -266,7 +279,16 @@ export const jobManagementApi = {
           match_score: matchScore,
         }),
       });
-      return await response.json();
+      const data = await response.json();
+      if (!response.ok) {
+        const errorMsg =
+          data.detail
+          || (data.non_field_errors?.[0])
+          || Object.values(data).flat().find((v: any) => typeof v === 'string')
+          || 'Request failed';
+        return { success: false, error: errorMsg };
+      }
+      return { success: true, data };
     } catch (error: any) {
       console.error('Error sending consideration request:', error);
       return { success: false, error: error.message };
@@ -276,15 +298,57 @@ export const jobManagementApi = {
   /**
    * Accept a consideration request (candidate action, but available for testing)
    */
-  async acceptConsiderationRequest(requestId: number, responseMessage: string = ''): Promise<{ success: boolean; error?: string }> {
+  async acceptConsiderationRequest(requestId: number, responseMessage: string = '', videoResponseIds?: number[]): Promise<{ success: boolean; data?: any; error?: string; requires_video_prompts?: boolean; missing_prompt_ids?: number[] }> {
     try {
+      const body: Record<string, any> = { response_message: responseMessage };
+      if (videoResponseIds) {
+        body.video_response_ids = videoResponseIds;
+      }
       const response = await apiClient.request(`/chat/consideration-requests/${requestId}/accept/`, {
         method: 'POST',
-        body: JSON.stringify({ response_message: responseMessage }),
+        body: JSON.stringify(body),
       });
       return await response.json();
     } catch (error: any) {
       console.error('Error accepting consideration request:', error);
+      return { success: false, error: error.message };
+    }
+  },
+
+  /**
+   * Withdraw (delete) a consideration request (recruiter only)
+   */
+  async withdrawConsiderationRequest(requestId: number): Promise<{ success: boolean; error?: string }> {
+    try {
+      const response = await apiClient.request(`/chat/consideration-requests/${requestId}/`, {
+        method: 'DELETE',
+      });
+      if (response.status === 204 || response.status === 200) {
+        return { success: true };
+      }
+      const data = await response.json();
+      return { success: false, error: data.detail || data.error || 'Failed to withdraw consideration request' };
+    } catch (error: any) {
+      console.error('Error withdrawing consideration request:', error);
+      return { success: false, error: error.message };
+    }
+  },
+
+  /**
+   * Revoke (delete) a job application (recruiter only)
+   */
+  async revokeApplication(applicationId: number): Promise<{ success: boolean; error?: string }> {
+    try {
+      const response = await apiClient.request(`/jobposts/applications/${applicationId}/`, {
+        method: 'DELETE',
+      });
+      if (response.status === 204 || response.status === 200) {
+        return { success: true };
+      }
+      const data = await response.json();
+      return { success: false, error: data.detail || data.error || 'Failed to revoke application' };
+    } catch (error: any) {
+      console.error('Error revoking application:', error);
       return { success: false, error: error.message };
     }
   },
@@ -307,7 +371,7 @@ export const jobManagementApi = {
   /**
    * Get job hiring status
    */
-  async getJobHiringStatus(jobId: number): Promise<{ success: boolean; data?: JobPosting['hiringStatus']; error?: string }> {
+  async getJobHiringStatus(jobId: number): Promise<{ success: boolean; data: JobPosting['hiringStatus']; error?: string }> {
     try {
       const response = await apiClient.request(`/jobposts/${jobId}/hiring-status/`, {
         method: 'GET',
@@ -315,6 +379,25 @@ export const jobManagementApi = {
       return await response.json();
     } catch (error: any) {
       console.error('Error fetching job hiring status:', error);
+      return { success: false, data: undefined, error: error.message };
+    }
+  },
+
+  /**
+   * Delete a job posting
+   */
+  async deleteJobPosting(jobId: number): Promise<{ success: boolean; error?: string }> {
+    try {
+      const response = await apiClient.request(`/jobposts/${jobId}/`, {
+        method: 'DELETE',
+      });
+      if (response.status === 204 || response.status === 200) {
+        return { success: true };
+      }
+      const data = await response.json();
+      return { success: false, error: data.detail || data.error || 'Failed to delete job post' };
+    } catch (error: any) {
+      console.error('Error deleting job posting:', error);
       return { success: false, error: error.message };
     }
   },
@@ -322,7 +405,7 @@ export const jobManagementApi = {
   /**
    * Update job hiring status
    */
-  async updateJobHiringStatus(jobId: number, status: Partial<JobPosting['hiringStatus']>): Promise<{ success: boolean; data?: JobPosting['hiringStatus']; error?: string }> {
+  async updateJobHiringStatus(jobId: number, status: Partial<JobPosting['hiringStatus']>): Promise<{ success: boolean; data: JobPosting['hiringStatus']; error?: string }> {
     try {
       const response = await apiClient.request(`/jobposts/${jobId}/hiring-status/`, {
         method: 'PUT',
@@ -331,7 +414,7 @@ export const jobManagementApi = {
       return await response.json();
     } catch (error: any) {
       console.error('Error updating job hiring status:', error);
-      return { success: false, error: error.message };
+      return { success: false, data: undefined, error: error.message };
     }
   },
 };

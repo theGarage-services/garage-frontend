@@ -42,8 +42,6 @@ export interface BucketPrediction {
   isSelected: boolean;
 }
 
-
-
 export interface QueueCandidate {
   id: string;
   rank: number;
@@ -54,6 +52,7 @@ export interface QueueCandidate {
   avatar: string;
   trending: 'up' | 'down' | 'stable';
   isUser?: boolean;
+  userId?: number | null;
   // Optional fields for enhanced display
   title?: string;
   company?: string;
@@ -166,29 +165,40 @@ class QueueService {
    * Get ranked candidates for a bucket (industry/level group)
    * Uses candidate-rank service to rank profiles in the same bucket
    */
-  async getBucketLeaderboard(industry: string, level: string): Promise<QueueCandidate[]> {
+  async getBucketLeaderboard(industry: string, level: string, forceRefresh = false): Promise<QueueCandidate[]> {
     try {
       const response = await apiClient.request('/candidates/candidate-rank/rank-profiles/', {
         method: 'POST',
         body: JSON.stringify({
           job_industry: industry,
           job_level: level,
-          top_k: 50
+          top_k: 50,
+          force_refresh: forceRefresh
         }),
       });
-      const result = (response as any)?.result;
+      const data = await response.json();
+      const result = data?.result;
       if (!result?.candidates) return [];
 
       // Transform to QueueCandidate format
       return result.candidates.map((c: any, index: number) => ({
         id: c.profile_id?.toString() || `c-${index}`,
         rank: index + 1,
-        name: c.candidate_info?.full_name || 'Candidate',
+        name: c.candidate_info?.full_name || `Candidate #${index + 1}`,
         score: Math.round(c.score * 100),
         change: 0,
         location: 'Unknown',
         avatar: '',
-        trending: 'stable'
+        trending: 'stable',
+        userId: c.user_id ?? null,
+        title: c.candidate_info?.job_title || '',
+        company: c.candidate_info?.current_company || '',
+        experience: c.candidate_info?.years_exp ? `${c.candidate_info.years_exp} years` : '',
+        skills: c.candidate_info?.skills || [],
+        bio: c.candidate_info?.bio || '',
+        education: c.candidate_info?.education || [],
+        work_history: c.candidate_info?.work_history || [],
+        industry: c.candidate_info?.industry || ''
       }));
     } catch (error) {
       console.error('Failed to fetch bucket leaderboard:', error);
@@ -209,7 +219,8 @@ class QueueService {
       const response = await apiClient.request('/candidates/candidate-rank/groups/', {
         method: 'GET',
       });
-      return (response as any)?.data?.groups || [];
+      const data = await response.json();
+      return data?.data?.groups || [];
     } catch (error) {
       console.error('Failed to fetch available buckets:', error);
       return [];
@@ -262,6 +273,142 @@ class QueueService {
     candidate_count: number;
   }>> {
     return this.getAvailableBuckets();
+  }
+
+  /**
+   * Get the user's manually selected buckets (premium override)
+   */
+  async getSelectedBuckets(): Promise<{
+    selected_buckets: Array<{ industry: string; level: string }>;
+    selected_bucket_scores: Array<{ industry: string; level: string; industry_probability: number; level_probability: number }>;
+    predicted_industry: string | null;
+    predicted_level: string | null;
+  } | null> {
+    try {
+      const response = await apiClient.request('/candidates/candidate-sort/selected-buckets/', {
+        method: 'GET',
+      });
+      if (!response.ok) {
+        console.error(`[QueueService] getSelectedBuckets returned status ${response.status}`);
+        return null;
+      }
+      return await response.json();
+    } catch (error) {
+      console.error('[QueueService] Failed to get selected buckets:', error);
+      return null;
+    }
+  }
+
+  /**
+   * Update the user's manually selected buckets (premium override)
+   * selectedBuckets: array of up to 4 { industry, level } objects
+   */
+  async updateSelectedBuckets(selectedBuckets: Array<{ industry: string; level: string }>): Promise<{
+    success: boolean;
+    selected_buckets: Array<{ industry: string; level: string }>;
+    selected_bucket_scores: Array<{ industry: string; level: string; industry_probability: number; level_probability: number }>;
+    predicted_industry: string | null;
+    predicted_level: string | null;
+  } | null> {
+    try {
+      const response = await apiClient.request('/candidates/candidate-sort/selected-buckets/', {
+        method: 'PUT',
+        body: JSON.stringify({ selected_buckets: selectedBuckets }),
+      });
+      if (!response.ok) {
+        console.error(`[QueueService] updateSelectedBuckets returned status ${response.status}`);
+        return null;
+      }
+      return await response.json();
+    } catch (error) {
+      console.error('[QueueService] Failed to update selected buckets:', error);
+      return null;
+    }
+  }
+
+  /**
+   * Get statistics for a specific bucket (industry/level group)
+   */
+  async getBucketStats(industry: string, level: string): Promise<{
+    success: boolean;
+    job_industry: string;
+    job_level: string;
+    candidate_count: number;
+    years_stats: { mean: number | null; median: number | null; min: number | null; max: number | null };
+    top_skills: Array<{ skill: string; count: number }>;
+  } | null> {
+    try {
+      const response = await apiClient.request(
+        `/candidates/candidate-rank/group-stats/?job_industry=${encodeURIComponent(industry)}&job_level=${encodeURIComponent(level)}`,
+        { method: 'GET' }
+      );
+      if (!response.ok) {
+        console.error(`[QueueService] getBucketStats returned status ${response.status}`);
+        return null;
+      }
+      return await response.json();
+    } catch (error) {
+      console.error('[QueueService] Failed to get bucket stats:', error);
+      return null;
+    }
+  }
+
+  /**
+   * Get the authenticated user's match score against a specific bucket
+   */
+  async getMyBucketMatchScore(industry: string, level: string): Promise<{
+    success: boolean;
+    match_percentage: number;
+    score_breakdown: Record<string, number>;
+  } | null> {
+    try {
+      const response = await apiClient.request(
+        `/candidates/candidate-rank/my-match-score/?industry=${encodeURIComponent(industry)}&level=${encodeURIComponent(level)}`,
+        { method: 'GET' }
+      );
+      if (!response.ok) {
+        console.error(`[QueueService] getMyBucketMatchScore returned status ${response.status}`);
+        return null;
+      }
+      return await response.json();
+    } catch (error) {
+      console.error('[QueueService] Failed to get my bucket match score:', error);
+      return null;
+    }
+  }
+
+  /**
+   * Build a Queue object from backend data for a specific industry/level.
+   * This is a metadata-only call; the ranked leaderboard is fetched separately
+   * via getBucketLeaderboard to avoid triggering duplicate ML ranking work.
+   */
+  async getBucketDetails(industry: string, level: string): Promise<Partial<Queue> | null> {
+    try {
+      const [stats, buckets] = await Promise.all([
+        this.getBucketStats(industry, level),
+        this.getAvailableBuckets(),
+      ]);
+
+      const bucket = buckets.find(b => b.industry === industry && b.level === level);
+      // stats.candidate_count is the live DB count for the bucket; fallback to
+      // the groups endpoint count if stats are unavailable.
+      const total = stats?.candidate_count ?? bucket?.candidate_count ?? 0;
+
+      return {
+        id: `${industry}-${level}`,
+        title: industry,
+        description: `${industry} professionals at ${level} level`,
+        industry,
+        level,
+        total,
+        trend: 'stable',
+        isAuto: false,
+        category: 'custom',
+      };
+    } catch (error) {
+      console.error('[QueueService] Failed to get bucket details:', error);
+      return null;
+    }
   }
 }
 

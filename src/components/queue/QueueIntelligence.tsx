@@ -12,9 +12,10 @@ interface QueueIntelligenceProps {
   queue: any;
   userPosition: number;
   onClose: () => void;
+  user?: any;
 }
 
-export function QueueIntelligence({ queue, onClose }: Readonly<QueueIntelligenceProps>) {
+export function QueueIntelligence({ queue, onClose, user }: Readonly<QueueIntelligenceProps>) {
   const [activeSection, setActiveSection] = useState<'predictions' | 'optimization' | 'market' | 'timing'>('predictions');
   const [bucketPrediction, setBucketPrediction] = useState<{
     predicted_industry: string;
@@ -25,6 +26,10 @@ export function QueueIntelligence({ queue, onClose }: Readonly<QueueIntelligence
 
   // Fetch user's bucket prediction to personalize intelligence
   useEffect(() => {
+    if (!user) {
+      setIsLoading(false);
+      return;
+    }
     const fetchBucket = async () => {
       setIsLoading(true);
       try {
@@ -37,7 +42,7 @@ export function QueueIntelligence({ queue, onClose }: Readonly<QueueIntelligence
       }
     };
     fetchBucket();
-  }, [queue.id]);
+  }, [queue.id, user]);
 
   // Default data with bucket-aware personalization
   const userBucket = bucketPrediction;
@@ -173,7 +178,7 @@ export function QueueIntelligence({ queue, onClose }: Readonly<QueueIntelligence
       <div className="bg-white w-full max-w-7xl h-[95vh] rounded-3xl shadow-2xl overflow-hidden flex flex-col">
         
         {/* Header */}
-        <div className="bg-gradient-to-r from-purple-600 via-blue-600 to-indigo-600 p-6 flex items-center justify-between">
+        <div className="bg-gradient-to-r from-purple-600 via-blue-600 to-indigo-600 p-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
           <div className="flex items-center gap-4">
             <div className="w-16 h-16 bg-white/20 rounded-2xl flex items-center justify-center backdrop-blur-sm">
               <Brain className="w-8 h-8 text-white" />
@@ -282,8 +287,8 @@ export function QueueIntelligence({ queue, onClose }: Readonly<QueueIntelligence
               <Card className="p-8">
                 <h3 className="text-2xl font-semibold text-gray-900 mb-6">AI Analysis: Key Factors</h3>
                 <div className="grid gap-4">
-                  {data.predictions.factors.map((factor, index) => (
-                    <div key={index} className="flex items-center justify-between p-4 bg-gray-50 rounded-xl border border-gray-200">
+                  {data.predictions.factors.map((factor) => (
+                    <div key={factor.factor} className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 p-4 bg-gray-50 rounded-xl border border-gray-200">
                       <div className="flex items-center gap-4">
                         <div className={`w-4 h-4 rounded-full ${
                           factor.impact === 'positive' ? 'bg-green-500' :
@@ -317,8 +322,8 @@ export function QueueIntelligence({ queue, onClose }: Readonly<QueueIntelligence
               <Card className="p-8">
                 <h3 className="text-2xl font-semibold text-gray-900 mb-6">⚡ Immediate Impact Actions</h3>
                 <div className="grid gap-6">
-                  {data.optimization.immediateActions.map((action, index) => (
-                    <div key={index} className="p-6 bg-gradient-to-r from-orange-50 to-orange-100/30 rounded-xl border-2 border-orange-200">
+                  {data.optimization.immediateActions.map((action) => (
+                    <div key={action.action} className="p-6 bg-gradient-to-r from-orange-50 to-orange-100/30 rounded-xl border-2 border-orange-200">
                       <div className="flex items-start justify-between">
                         <div className="flex-1">
                           <h4 className="text-lg font-semibold text-gray-900 mb-2">{action.action}</h4>
@@ -346,8 +351,8 @@ export function QueueIntelligence({ queue, onClose }: Readonly<QueueIntelligence
               <Card className="p-8">
                 <h3 className="text-2xl font-semibold text-gray-900 mb-6">🎯 Long-term Strategy</h3>
                 <div className="grid gap-6">
-                  {data.optimization.longTermStrategy.map((strategy, index) => (
-                    <div key={index} className="p-6 bg-gradient-to-r from-blue-50 to-blue-100/30 rounded-xl border-2 border-blue-200">
+                  {data.optimization.longTermStrategy.map((strategy) => (
+                    <div key={strategy.strategy} className="p-6 bg-gradient-to-r from-blue-50 to-blue-100/30 rounded-xl border-2 border-blue-200">
                       <div className="flex items-start justify-between">
                         <div className="flex-1">
                           <h4 className="text-lg font-semibold text-gray-900 mb-2">{strategy.strategy}</h4>
@@ -378,15 +383,15 @@ export function QueueIntelligence({ queue, onClose }: Readonly<QueueIntelligence
                 <Card className="p-6">
                   <h3 className="text-xl font-semibold text-gray-900 mb-4">💰 Salary Intelligence</h3>
                   <div className="space-y-4">
-                    <div className="flex items-center justify-between p-3 bg-green-50 rounded-lg">
+                    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 p-3 bg-green-50 rounded-lg">
                       <span className="font-medium text-gray-700">Current Range</span>
                       <span className="font-bold text-green-600">{data.market.salaryTrends.current}</span>
                     </div>
-                    <div className="flex items-center justify-between p-3 bg-blue-50 rounded-lg">
+                    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 p-3 bg-blue-50 rounded-lg">
                       <span className="font-medium text-gray-700">6M Projection</span>
                       <span className="font-bold text-blue-600">{data.market.salaryTrends.projected6m}</span>
                     </div>
-                    <div className="flex items-center justify-between p-3 bg-purple-50 rounded-lg">
+                    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 p-3 bg-purple-50 rounded-lg">
                       <span className="font-medium text-gray-700">Growth Rate</span>
                       <span className="font-bold text-purple-600">{data.market.salaryTrends.change}</span>
                     </div>
@@ -396,15 +401,15 @@ export function QueueIntelligence({ queue, onClose }: Readonly<QueueIntelligence
                 <Card className="p-6">
                   <h3 className="text-xl font-semibold text-gray-900 mb-4">📊 Market Demand</h3>
                   <div className="space-y-4">
-                    <div className="flex items-center justify-between p-3 bg-orange-50 rounded-lg">
+                    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 p-3 bg-orange-50 rounded-lg">
                       <span className="font-medium text-gray-700">Active Job Postings</span>
                       <span className="font-bold text-orange-600">{data.market.demandMetrics.jobPostings}</span>
                     </div>
-                    <div className="flex items-center justify-between p-3 bg-green-50 rounded-lg">
+                    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 p-3 bg-green-50 rounded-lg">
                       <span className="font-medium text-gray-700">Weekly Growth</span>
                       <span className="font-bold text-green-600">+{data.market.demandMetrics.weeklyGrowth}%</span>
                     </div>
-                    <div className="flex items-center justify-between p-3 bg-blue-50 rounded-lg">
+                    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 p-3 bg-blue-50 rounded-lg">
                       <span className="font-medium text-gray-700">Hiring Velocity</span>
                       <span className="font-bold text-blue-600">{data.market.demandMetrics.hiringVelocity}</span>
                     </div>
@@ -416,8 +421,8 @@ export function QueueIntelligence({ queue, onClose }: Readonly<QueueIntelligence
               <Card className="p-8">
                 <h3 className="text-2xl font-semibold text-gray-900 mb-6">🏢 Top Hiring Companies</h3>
                 <div className="grid gap-4">
-                  {data.market.topCompanies.map((company, index) => (
-                    <div key={index} className="flex items-center justify-between p-4 bg-gray-50 rounded-xl border border-gray-200 hover:shadow-md transition-shadow">
+                  {data.market.topCompanies.map((company) => (
+                    <div key={company.name} className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 p-4 bg-gray-50 rounded-xl border border-gray-200 hover:shadow-md transition-shadow">
                       <div className="flex items-center gap-4">
                         <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-purple-600 rounded-lg flex items-center justify-center text-white font-bold">
                           {company.name[0]}
@@ -455,8 +460,8 @@ export function QueueIntelligence({ queue, onClose }: Readonly<QueueIntelligence
                       Hottest Skills
                     </h4>
                     <div className="space-y-2">
-                      {data.market.skills.hottest.map((skill, index) => (
-                        <Badge key={index} className="bg-green-100 text-green-800 w-full justify-center">
+                      {data.market.skills.hottest.map((skill) => (
+                        <Badge key={skill} className="bg-green-100 text-green-800 w-full justify-center">
                           {skill}
                         </Badge>
                       ))}
@@ -469,8 +474,8 @@ export function QueueIntelligence({ queue, onClose }: Readonly<QueueIntelligence
                       Emerging Skills
                     </h4>
                     <div className="space-y-2">
-                      {data.market.skills.emerging.map((skill, index) => (
-                        <Badge key={index} className="bg-blue-100 text-blue-800 w-full justify-center">
+                      {data.market.skills.emerging.map((skill) => (
+                        <Badge key={skill} className="bg-blue-100 text-blue-800 w-full justify-center">
                           {skill}
                         </Badge>
                       ))}
@@ -483,8 +488,8 @@ export function QueueIntelligence({ queue, onClose }: Readonly<QueueIntelligence
                       Declining Skills
                     </h4>
                     <div className="space-y-2">
-                      {data.market.skills.declining.map((skill, index) => (
-                        <Badge key={index} className="bg-red-100 text-red-800 w-full justify-center">
+                      {data.market.skills.declining.map((skill) => (
+                        <Badge key={skill} className="bg-red-100 text-red-800 w-full justify-center">
                           {skill}
                         </Badge>
                       ))}
@@ -506,8 +511,8 @@ export function QueueIntelligence({ queue, onClose }: Readonly<QueueIntelligence
                     <div>
                       <h4 className="font-medium text-gray-700 mb-2">Best Days</h4>
                       <div className="flex gap-2">
-                        {data.timing.bestDays.map((day, index) => (
-                          <Badge key={index} className="bg-green-100 text-green-800">
+                        {data.timing.bestDays.map((day) => (
+                          <Badge key={day} className="bg-green-100 text-green-800">
                             {day}
                           </Badge>
                         ))}
@@ -516,8 +521,8 @@ export function QueueIntelligence({ queue, onClose }: Readonly<QueueIntelligence
                     <div>
                       <h4 className="font-medium text-gray-700 mb-2">Best Times</h4>
                       <div className="flex gap-2">
-                        {data.timing.bestTimes.map((time, index) => (
-                          <Badge key={index} className="bg-blue-100 text-blue-800">
+                        {data.timing.bestTimes.map((time) => (
+                          <Badge key={time} className="bg-blue-100 text-blue-800">
                             {time}
                           </Badge>
                         ))}
@@ -529,13 +534,13 @@ export function QueueIntelligence({ queue, onClose }: Readonly<QueueIntelligence
                 <Card className="p-6 bg-gradient-to-br from-blue-50 to-blue-100/30 border-2 border-blue-200">
                   <h3 className="text-xl font-semibold text-gray-900 mb-4">📈 Seasonal Trends</h3>
                   <div className="space-y-3">
-                    <div className="flex items-center justify-between p-3 bg-white rounded-lg border">
+                    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 p-3 bg-white rounded-lg border">
                       <span className="font-medium text-gray-700">Current Period</span>
                       <Badge className="bg-green-100 text-green-800">
                         {data.timing.seasonalTrends.current}
                       </Badge>
                     </div>
-                    <div className="flex items-center justify-between p-3 bg-white rounded-lg border">
+                    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 p-3 bg-white rounded-lg border">
                       <span className="font-medium text-gray-700">Next Quarter</span>
                       <Badge className="bg-blue-100 text-blue-800">
                         {data.timing.seasonalTrends.next}
@@ -554,8 +559,8 @@ export function QueueIntelligence({ queue, onClose }: Readonly<QueueIntelligence
               <Card className="p-8">
                 <h3 className="text-2xl font-semibold text-gray-900 mb-6">📊 Weekly Activity Patterns</h3>
                 <div className="grid grid-cols-7 gap-4">
-                  {data.timing.weeklyPattern.map((day, index) => (
-                    <div key={index} className="text-center">
+                  {data.timing.weeklyPattern.map((day) => (
+                    <div key={day.day} className="text-center">
                       <div className="mb-2">
                         <div 
                           className="w-full bg-gray-200 rounded-full h-24 flex items-end justify-center relative overflow-hidden"

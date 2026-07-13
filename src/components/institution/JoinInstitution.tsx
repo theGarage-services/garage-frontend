@@ -180,17 +180,17 @@ export function JoinInstitution({ onBack, onJoinRequest, recruiterData }: Readon
           <Card className="p-8 shadow-xl border-0 bg-white/80 backdrop-blur-sm">
             {/* Institution Summary */}
             <div className="mb-6 p-4 bg-gray-50 rounded-lg">
-              <div className="flex items-start gap-4">
+              <div className="flex flex-col sm:flex-row sm:items-start gap-4">
                 <div className="w-12 h-12 bg-gradient-to-r from-blue-500 to-purple-600 rounded-lg flex items-center justify-center text-white font-medium">
                   {selectedInstitution.name?.[0] || 'I'}
                 </div>
-                <div className="flex-1">
-                  <div className="flex items-center gap-2 mb-1">
+                <div className="flex-1 min-w-0">
+                  <div className="flex flex-wrap items-center gap-2 mb-1">
                     <h3 className="font-medium text-gray-900">{selectedInstitution.name}</h3>
                     {getVerificationBadge(selectedInstitution.is_verified ? 'verified' : 'pending')}
                   </div>
                   <p className="text-sm text-gray-600 mb-2">{selectedInstitution.description}</p>
-                  <div className="flex items-center gap-4 text-sm text-gray-500">
+                  <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-gray-500">
                     <span>{getInstitutionTypeLabel(selectedInstitution.company_type)}</span>
                     <span>•</span>
                     <span>{getIndustryLabel(selectedInstitution.industry)}</span>
@@ -222,7 +222,7 @@ export function JoinInstitution({ onBack, onJoinRequest, recruiterData }: Readon
               <div className="space-y-2">
                 <Label>Your Information</Label>
                 <div className="p-4 bg-gray-50 rounded-lg">
-                  <div className="grid grid-cols-2 gap-4 text-sm">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
                     <div>
                       <span className="text-gray-500">Name:</span>
                       <p className="font-medium">{recruiterData.firstName} {recruiterData.lastName}</p>
@@ -244,7 +244,7 @@ export function JoinInstitution({ onBack, onJoinRequest, recruiterData }: Readon
               </div>
 
               {/* Approval Notice */}
-              {selectedInstitution.settings?.require_approval_for_jobs !== false && (
+              {selectedInstitution.settings?.approval_required !== false && (
                 <Alert className="border-blue-200 bg-blue-50">
                   <Clock className="h-4 w-4 text-blue-600" />
                   <AlertDescription className="text-blue-700">
@@ -255,11 +255,11 @@ export function JoinInstitution({ onBack, onJoinRequest, recruiterData }: Readon
             </div>
 
             {/* Navigation Buttons */}
-            <div className="flex justify-between pt-6">
+            <div className="flex flex-col-reverse sm:flex-row sm:justify-between gap-4 pt-6">
               <Button
                 variant="outline"
                 onClick={() => setShowRequestForm(false)}
-                className="px-6"
+                className="px-6 w-full sm:w-auto"
               >
                 <ArrowLeft className="w-4 h-4 mr-2" />
                 Back to Search
@@ -268,7 +268,7 @@ export function JoinInstitution({ onBack, onJoinRequest, recruiterData }: Readon
               <Button
                 onClick={handleJoinRequest}
                 disabled={isLoading || !requestMessage.trim()}
-                className="px-8 bg-gradient-to-r from-[#ff6b35] to-[#ff8c42] hover:from-[#e55a2b] hover:to-[#d4461f]"
+                className="px-8 w-full sm:w-auto bg-gradient-to-r from-[#ff6b35] to-[#ff8c42] hover:from-[#e55a2b] hover:to-[#d4461f]"
               >
                 {isLoading ? (
                   <div className="flex items-center gap-2">
@@ -356,20 +356,21 @@ export function JoinInstitution({ onBack, onJoinRequest, recruiterData }: Readon
             ) : (
               companies.map((company) => (
                 <div key={company.id} className="p-6 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors">
-                  <div className="flex items-start justify-between">
-                    <div className="flex items-start gap-4 flex-1">
+                  <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
+                    <div className="flex flex-col sm:flex-row items-start gap-4 flex-1 min-w-0">
                       <div className="w-16 h-16 bg-gradient-to-r from-blue-500 to-purple-600 rounded-lg flex items-center justify-center text-white font-medium text-xl">
                         {company.name?.[0] || '?'}
                       </div>
-                      <div className="flex-1">
-                        <div className="flex items-center gap-3 mb-2">
+                      <div className="flex-1 min-w-0">
+                        <div className="flex flex-wrap items-center gap-3 mb-2">
                           <h3 className="text-lg font-medium text-gray-900">{company.name}</h3>
                           {getVerificationBadge(company.is_verified ? 'verified' : 'pending')}
                         </div>
                         
+
                         <p className="text-gray-600 mb-3">{company.description || 'No description available'}</p>
                         
-                        <div className="flex items-center gap-6 text-sm text-gray-500 mb-3">
+                        <div className="flex flex-wrap items-center gap-x-6 gap-y-1 text-sm text-gray-500 mb-3">
                           <span>{getInstitutionTypeLabel(company.company_type)}</span>
                           <span>•</span>
                           <span>{getIndustryLabel(company.industry)}</span>
@@ -380,10 +381,10 @@ export function JoinInstitution({ onBack, onJoinRequest, recruiterData }: Readon
                           </span>
                         </div>
 
-                        <div className="flex items-center gap-6 text-sm">
+                        <div className="flex flex-wrap items-center gap-x-6 gap-y-1 text-sm">
                           <div className="flex items-center gap-1 text-blue-600">
                             <Users className="w-4 h-4" />
-                            <span>{company.size || 'Size not specified'}</span>
+                            <span>{company.company_size || 'Size not specified'}</span>
                           </div>
                           {company.website && (
                             <a 
@@ -398,7 +399,7 @@ export function JoinInstitution({ onBack, onJoinRequest, recruiterData }: Readon
                           )}
                         </div>
 
-                        {company.settings?.require_approval_for_jobs && (
+                        {company.settings?.approval_required && (
                           <div className="mt-3">
                             <Badge className="bg-yellow-100 text-yellow-800 hover:bg-yellow-100 flex items-center gap-1 w-fit">
                               <Clock className="w-3 h-3" />
@@ -409,7 +410,7 @@ export function JoinInstitution({ onBack, onJoinRequest, recruiterData }: Readon
                       </div>
                     </div>
                     
-                    <div className="flex flex-col gap-2 ml-4">
+                    <div className="flex flex-col sm:flex-row lg:flex-col gap-2 self-start sm:self-auto">
                       <Button
                         variant="outline"
                         size="sm"

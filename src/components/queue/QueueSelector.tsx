@@ -1,127 +1,107 @@
-import { useState, useEffect, MouseEvent, useCallback } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Button } from '../ui/button';
 import { Card } from '../ui/card';
 import { Badge } from '../ui/badge';
 import { Input } from '../ui/input';
-import { Switch } from '../ui/switch';
-import { Search, Sparkles, TrendingUp, Zap, X, Check, Star, Filter, ArrowLeft, Crown, Bot, Lock, Award, Sliders, Pause } from 'lucide-react';
-import { QueuePreferencesModal } from './QueuePreferencesModal';
-import type { IndividualJobPreferences } from '../auth/signup-steps/PreferencesStep';
-import { queueService, type Queue } from '../../api/queueService';
+import { Search, Zap, X, Check, Star, ArrowLeft, Crown, Bot, Lock, RotateCcw } from 'lucide-react';
+import { queueService, type Queue, type BucketPrediction } from '../../api/queueService';
+import { AppHeader } from '../layout/AppHeader';
+import { INDUSTRY_CHOICES } from './BucketManager';
+
+const INDUSTRY_ICONS: Record<string, string> = {
+  'accountant': '💰', 'advocate': '⚖️', 'agriculture': '🌾', 'apparel': '👔',
+  'arts': '🎨', 'automobile': '🚗', 'aviation': '✈️', 'banking': '🏦',
+  'bpo': '📞', 'business-development': '📈', 'chef': '👨‍🍳', 'construction': '🏗️',
+  'consultant': '💼', 'designer': '✏️', 'digital-marketing': '📱', 'education': '📚',
+  'engineering': '⚙️', 'finance': '💵', 'fitness': '💪', 'healthcare': '🏥',
+  'hr': '👥', 'information-technology': '💻', 'public-relations': '📢', 'sales': '🤝',
+};
+
+const EXP_LEVEL_LABELS: Record<string, string> = {
+  'L1': 'Entry Level', 'L2': 'Associate', 'L3': 'Professional', 'L4': 'Senior', 'L5': 'Principal',
+};
+
+function getIndustryEmoji(industry: string): string {
+  return INDUSTRY_ICONS[industry.toLowerCase().replaceAll('_', '-')] || '📋';
+}
 
 interface QueueSelectorProps {
-  onClose: () => void;
-  currentQueues: string[];
-  onUpdateQueues: (selectedQueues: string[]) => void;
+  onClose?: () => void;
+  currentQueues?: string[];
+  onUpdateQueues?: (selectedQueues: string[]) => void;
   queueStatuses?: Record<string, boolean>;
   onUpdateQueueStatuses?: (statuses: Record<string, boolean>) => void;
   user?: any;
+  onNavigate?: (view: string) => void;
+  onLogout?: () => void;
 }
 
-// AI Queue IDs - constant outside component
-const AI_QUEUE_IDS = ['data-engineer', 'product-analyst', 'business-intelligence'];
-
-// Helper functions extracted outside component to reduce cognitive complexity
-function getRankColor(rank: number, total: number): string {
-  const percentage = (rank / total) * 100;
-  if (percentage <= 25) return 'text-emerald-600';
-  if (percentage <= 50) return 'text-[#ff6b35]';
-  if (percentage <= 75) return 'text-amber-600';
-  return 'text-rose-600';
+interface IndustryPickerGridProps {
+  selectedBuckets: Array<{ industry: string; level: string }>;
+  aiPredictionIds: Set<string>;
+  predictedIndustry: string;
+  predictedLevel: string;
+  searchQuery: string;
+  onToggle: (industry: string) => void;
+  onReplaceRequest: (industry: string) => void;
 }
 
-function getMatchColor(match: number): string {
-  if (match >= 85) return 'bg-emerald-50 text-emerald-700 border-emerald-200';
-  if (match >= 75) return 'bg-orange-50 text-[#ff6b35] border-orange-200';
-  return 'bg-amber-50 text-amber-700 border-amber-200';
-}
+function IndustryPickerGrid({ selectedBuckets, aiPredictionIds, predictedIndustry, predictedLevel, searchQuery, onToggle, onReplaceRequest }: Readonly<IndustryPickerGridProps>) {
+  const isSelected = (industry: string) => selectedBuckets.some(b => b.industry === industry);
+  const isFull = selectedBuckets.length >= 4;
 
-function filterQueues(queues: Queue[], searchQuery: string, selectedCategory: string): Queue[] {
-  const lowerQuery = searchQuery.toLowerCase();
-  return queues.filter(queue => {
-    const matchesSearch = queue.title.toLowerCase().includes(lowerQuery) ||
-                         queue.description.toLowerCase().includes(lowerQuery) ||
-                         queue.requiredSkills?.some(skill => skill.toLowerCase().includes(lowerQuery));
-    const matchesCategory = selectedCategory === 'All' || queue.category === selectedCategory;
-    return matchesSearch && matchesCategory;
-  });
-}
-
-interface ManualQueueCardProps {
-  queue: Queue;
-  selectedQueues: string[];
-  onToggle: (queueId: string) => void;
-}
-
-function ManualQueueCard({ queue, selectedQueues, onToggle }: Readonly<ManualQueueCardProps>) {
-  const IconComponent = queue.icon;
-  const isSelected = selectedQueues.includes(queue.id);
-  const canSelect = selectedQueues.length < 2 || isSelected;
-  const isFull = selectedQueues.length >= 2;
+  const filtered = INDUSTRY_CHOICES.filter(ind =>
+    ind.value !== predictedIndustry &&
+    (!searchQuery || ind.label.toLowerCase().includes(searchQuery.toLowerCase()) ||
+     ind.value.toLowerCase().includes(searchQuery.toLowerCase()))
+  );
 
   return (
-    <Card
-      className={`group p-5 border-2 transition-all duration-300 ${
-        isSelected
-          ? 'border-[#ff6b35] bg-orange-50/50 shadow-lg shadow-orange-100/50'
-          : 'border-gray-200 bg-white hover:border-gray-300'
-      }`}
-    >
-      <div className="flex items-start gap-4">
-        <div className={`w-12 h-12 ${queue.color} rounded-xl flex items-center justify-center shadow-md transition-transform group-hover:scale-110`}>
-          <IconComponent className="w-6 h-6 text-white" />
-        </div>
-        <div className="flex-1 min-w-0">
-          <div className="flex items-start justify-between mb-1">
-            <h3 className="font-semibold text-gray-900 text-sm">{queue.title}</h3>
-            {isSelected && (
-              <Badge className="bg-[#ff6b35] text-white border-0 ml-2 shrink-0">
-                <Check className="w-3 h-3 mr-1" />
-                Selected
-              </Badge>
-            )}
-          </div>
-          <p className="text-xs text-gray-600 mb-2 line-clamp-2">{queue.description}</p>
-          <div className="flex items-center gap-3 text-xs">
-            <span className="text-gray-500">{queue.category}</span>
-            <span className="text-gray-300">|</span>
-            <span className={`font-medium ${getMatchColor(queue.match)}`}>
-              {queue.match}% match
-            </span>
-          </div>
-        </div>
-      </div>
+    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
+      {filtered.map(industry => {
+        const selected = isSelected(industry.value);
+        const aiPick = aiPredictionIds.has(`${industry.value}-${predictedLevel}`);
 
-      <Button
-        size="sm"
-        className={`w-full mt-4 transition-all ${
-          isSelected
-            ? 'bg-gray-200 text-gray-700 hover:bg-gray-300'
-            : canSelect
-            ? 'bg-[#ff6b35] text-white hover:bg-[#e55a2b] shadow-md shadow-orange-200'
-            : 'bg-gray-100 text-gray-400 cursor-not-allowed'
-        }`}
-        onClick={() => onToggle(queue.id)}
-        disabled={!canSelect && !isSelected}
-      >
-        {isSelected ? (
-          <>
-            <X className="w-4 h-4 mr-2" />
-            Remove
-          </>
-        ) : isFull ? (
-          <>
-            <Lock className="w-4 h-4 mr-2" />
-            Limit Reached
-          </>
-        ) : (
-          <>
-            <Star className="w-4 h-4 mr-2" />
-            Select Queue
-          </>
-        )}
-      </Button>
-    </Card>
+        return (
+          <button
+            key={industry.value}
+            onClick={() => {
+              if (selected) onToggle(industry.value);
+              else if (isFull) onReplaceRequest(industry.value);
+              else onToggle(industry.value);
+            }}
+            className={`p-3 rounded-xl border-2 text-left transition-all w-full ${
+              selected
+                ? 'border-green-300 bg-green-50'
+                : aiPick
+                ? 'border-blue-200 bg-blue-50/30 hover:border-blue-400 hover:bg-blue-50/50'
+                : 'border-gray-100 hover:border-orange-200 hover:bg-orange-50'
+            } ${isFull && !selected ? 'opacity-70' : ''}`}
+          >
+            <div className="flex items-start gap-2.5">
+              <span className="text-2xl flex-shrink-0">{industry.icon}</span>
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-1.5">
+                  <p className={`font-medium text-sm truncate ${selected ? 'text-green-800' : 'text-gray-900'}`}>
+                    {industry.label}
+                  </p>
+                  {selected && <Check className="w-3.5 h-3.5 text-green-600 flex-shrink-0" />}
+                </div>
+                {selected && <p className="text-xs text-green-600 mt-1 font-medium">In loadout</p>}
+                {!selected && aiPick && (
+                  <p className="text-xs text-blue-600 mt-1 font-medium inline-flex items-center gap-0.5">
+                    <Zap className="w-3 h-3" />AI pick
+                  </p>
+                )}
+                {!selected && isFull && (
+                  <p className="text-xs text-orange-600 mt-1 font-medium">Replace a slot</p>
+                )}
+              </div>
+            </div>
+          </button>
+        );
+      })}
+    </div>
   );
 }
 
@@ -134,7 +114,7 @@ function LockedQueuePreview({ queues, onUpgrade }: Readonly<LockedQueuePreviewPr
   return (
     <div className="relative">
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 opacity-30 pointer-events-none blur-sm">
-        {queues.filter(q => !AI_QUEUE_IDS.includes(q.id)).slice(0, 8).map((queue) => {
+        {queues.slice(0, 8).map((queue) => {
           const IconComponent = queue.icon;
           return (
             <Card key={queue.id} className="p-5 border border-gray-200 bg-white">
@@ -169,265 +149,197 @@ function LockedQueuePreview({ queues, onUpgrade }: Readonly<LockedQueuePreviewPr
   );
 }
 
-interface SearchFilterSectionProps {
-  searchQuery: string;
-  onSearchChange: (value: string) => void;
-  selectedCategory: string;
-  onCategoryChange: (category: string) => void;
-  categories: string[];
-}
-
-function SearchFilterSection({ searchQuery, onSearchChange, selectedCategory, onCategoryChange, categories }: Readonly<SearchFilterSectionProps>) {
+function SearchFilterSection({ searchQuery, onSearchChange }: Readonly<{ searchQuery: string; onSearchChange: (value: string) => void }>) {
   return (
     <div className="bg-white rounded-xl border border-orange-100 p-4 mb-6 shadow-sm">
-      <div className="flex flex-col lg:flex-row gap-4">
-        <div className="relative flex-1">
-          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
-          <Input
-            placeholder="Search by title, skills, or company..."
-            value={searchQuery}
-            onChange={(e) => onSearchChange(e.target.value)}
-            className="pl-10 border-orange-100 focus:border-[#ff6b35] focus:ring-[#ff6b35]"
-          />
-        </div>
-        <div className="flex items-center gap-2 overflow-x-auto pb-2 lg:pb-0">
-          <Filter className="w-4 h-4 text-gray-500 flex-shrink-0" />
-          <div className="flex gap-2">
-            {categories.map(category => (
-              <Button
-                key={category}
-                size="sm"
-                variant={selectedCategory === category ? "default" : "outline"}
-                onClick={() => onCategoryChange(category)}
-                className={selectedCategory === category
-                  ? "bg-[#ff6b35] hover:bg-[#e55a2b] text-white"
-                  : "border-orange-200 text-gray-700 hover:bg-orange-50 hover:border-[#ff6b35]"}
-              >
-                {category}
-              </Button>
-            ))}
-          </div>
-        </div>
+      <div className="relative">
+        <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+        <Input
+          placeholder="Search industries..."
+          value={searchQuery}
+          onChange={(e) => onSearchChange(e.target.value)}
+          className="pl-10 border-orange-100 focus:border-[#ff6b35] focus:ring-[#ff6b35]"
+        />
       </div>
     </div>
   );
 }
 
-interface AIQueuesSectionProps {
-  queues: Queue[];
-  localQueueStatuses: Record<string, boolean>;
-  onStatusToggle: (queueId: string, isActive: boolean) => void;
-  onOpenPreferences: (queue: Queue, e: React.MouseEvent) => void;
+interface SlotCardProps {
+  bucket: { industry: string; level: string } | null;
+  slotNum: number;
+  aiPredictionIds: Set<string>;
+  onRemove: () => void;
 }
 
-function AIQueuesSection({ queues, localQueueStatuses, onStatusToggle, onOpenPreferences }: Readonly<AIQueuesSectionProps>) {
-  return (
-    <div className="mb-10">
-      <div className="flex items-start justify-between mb-6">
-        <div className="flex items-start gap-4">
-          <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-xl flex items-center justify-center shadow-lg shadow-blue-500/30">
-            <Bot className="w-6 h-6 text-white" />
+function SlotCard({ bucket, slotNum, aiPredictionIds, onRemove }: Readonly<SlotCardProps>) {
+  if (!bucket) {
+    return (
+      <Card className="p-3 border-2 border-dashed border-gray-200 bg-gray-50/50">
+        <div className="flex items-center gap-3 text-gray-400">
+          <div className="w-9 h-9 flex items-center justify-center rounded-lg border-2 border-dashed border-gray-300 text-gray-300">
+            <span className="text-base leading-none">+</span>
           </div>
-          <div>
-            <h2 className="text-xl text-gray-900 mb-1">AI-Recommended Queues</h2>
-            <p className="text-sm text-gray-600 leading-relaxed max-w-2xl">
-              These queues are automatically selected and optimized based on your profile, skills, and career preferences.
-            </p>
-          </div>
+          <p className="text-sm">Empty slot {slotNum}</p>
         </div>
-        <Badge variant="outline" className="border-blue-200 text-blue-700 bg-blue-50/80 px-3 py-1.5">
-          <Sparkles className="w-3 h-3 mr-1.5" />
-          Always Active
-        </Badge>
-      </div>
-
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
-        {queues.filter(q => AI_QUEUE_IDS.includes(q.id)).map((queue) => (
-          <AIQueueCard
-            key={queue.id}
-            queue={queue}
-            queueStatus={localQueueStatuses[queue.id] ?? true}
-            onStatusToggle={onStatusToggle}
-            onOpenPreferences={onOpenPreferences}
-          />
-        ))}
-      </div>
-    </div>
-  );
-}
-
-interface AIQueueCardProps {
-  queue: Queue;
-  queueStatus: boolean;
-  onStatusToggle: (queueId: string, isActive: boolean) => void;
-  onOpenPreferences: (queue: Queue, e: React.MouseEvent) => void;
-}
-
-function AIQueueCard({ queue, queueStatus, onStatusToggle, onOpenPreferences }: Readonly<AIQueueCardProps>) {
-  const IconComponent = queue.icon;
+      </Card>
+    );
+  }
 
   return (
-    <Card key={queue.id} className="group p-6 border-2 border-orange-100 bg-white hover:shadow-xl hover:shadow-orange-100/50 transition-all duration-300 hover:-translate-y-1 hover:border-[#ff6b35]">
-      <div className="flex items-start justify-between mb-4">
-        <div className={`w-14 h-14 ${queue.color} rounded-xl flex items-center justify-center shadow-lg transition-transform group-hover:scale-110`}>
-          <IconComponent className="w-7 h-7 text-white" />
+    <Card className="p-3 border-2 border-orange-200 bg-white group hover:border-orange-300 transition-colors">
+      <div className="flex items-center gap-3">
+        <div className="text-xl w-9 h-9 flex items-center justify-center bg-orange-50 rounded-lg flex-shrink-0">
+          {getIndustryEmoji(bucket.industry)}
         </div>
-        <div className="flex flex-col items-end gap-2">
-          <Badge className="bg-gradient-to-r from-blue-50 to-indigo-50 text-blue-700 border border-blue-200">
-            <Bot className="w-3 h-3 mr-1" />
-            AI
-          </Badge>
-          <Badge variant="outline" className={getMatchColor(queue.match)}>
-            {queue.match}% match
-          </Badge>
-        </div>
-      </div>
-
-      <h3 className="font-semibold text-gray-900 mb-2">{queue.title}</h3>
-      <p className="text-sm text-gray-600 mb-4 leading-relaxed">{queue.description}</p>
-
-      <div className="space-y-3 mb-4">
-        <div className="flex items-center justify-between text-sm">
-          <span className="text-gray-600">Your Rank</span>
-          <span className={`font-semibold ${getRankColor(queue.estimatedRank ?? 0, queue.totalInQueue ?? 100)}`}>
-            #{queue.estimatedRank ?? 0} of {queue.totalInQueue ?? 100}
-          </span>
-        </div>
-        <div className="w-full bg-orange-50 rounded-full h-2">
-          <div
-            className="h-2 rounded-full bg-gradient-to-r from-[#ff6b35] to-[#ff8c42] shadow-sm"
-            style={{ width: `${100 - ((queue.estimatedRank ?? 0) / (queue.totalInQueue ?? 100)) * 100}%` }}
-          ></div>
-        </div>
-        <div className="flex items-center justify-between text-xs text-gray-500">
-          <span>{queue.avgSalary}</span>
-          <span className="flex items-center gap-1 text-emerald-600 font-medium">
-            <TrendingUp className="w-3 h-3" />
-            {queue.growthRate}
-          </span>
-        </div>
-      </div>
-
-      {/* Status Toggle */}
-      <div className="pt-4 border-t border-gray-100">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            {queueStatus ? (
-              <div className="flex items-center gap-2 text-emerald-600">
-                <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></div>
-                <span className="text-sm font-medium">Active</span>
-              </div>
-            ) : (
-              <div className="flex items-center gap-2 text-gray-500">
-                <Pause className="w-4 h-4" />
-                <span className="text-sm">Paused</span>
-              </div>
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-1.5 mb-0.5">
+            <p className="font-medium text-gray-900 text-sm truncate">{bucket.industry}</p>
+            {aiPredictionIds.has(`${bucket.industry}-${bucket.level}`) && (
+              <Badge className="bg-blue-100 text-blue-700 border-blue-200 text-xs py-0 shrink-0">
+                <Zap className="w-2.5 h-2.5 mr-0.5" />AI
+              </Badge>
             )}
           </div>
-          <Switch
-            checked={queueStatus}
-            onCheckedChange={(checked: boolean) => onStatusToggle(queue.id, checked)}
-            className="data-[state=checked]:bg-[#ff6b35]"
-          />
+          <p className="text-xs text-gray-500">{EXP_LEVEL_LABELS[bucket.level] || bucket.level}</p>
         </div>
-      </div>
-
-      {/* Preferences Button */}
-      <div className="mt-3">
-        <Button
-          size="sm"
-          variant="outline"
-          onClick={(e: MouseEvent) => onOpenPreferences(queue, e)}
-          className="w-full border-[#ff6b35] text-[#ff6b35] hover:bg-[#ff6b35] hover:text-white transition-all"
+        <button
+          onClick={onRemove}
+          className="opacity-0 group-hover:opacity-100 transition-opacity p-1 hover:bg-red-50 rounded text-gray-400 hover:text-red-500 flex-shrink-0"
         >
-          <Sliders className="w-4 h-4 mr-2" />
-          Preferences
-        </Button>
+          <X className="w-3.5 h-3.5" />
+        </button>
       </div>
     </Card>
   );
 }
 
-interface ManualQueueSectionProps {
-  isPremium: boolean;
-  selectedQueues: string[];
-  availableQueues: Queue[];
-  filteredQueues: Queue[];
-  searchQuery: string;
-  selectedCategory: string;
-  categories: string[];
-  onSearchChange: (value: string) => void;
-  onCategoryChange: (category: string) => void;
-  onQueueToggle: (queueId: string) => void;
-  onShowPremiumPrompt: () => void;
+interface LoadoutColumnProps {
+  selectedBuckets: Array<{ industry: string; level: string }>;
+  aiPredictionIds: Set<string>;
+  predictedIndustry: string;
+  predictedLevel: string;
+  onRemove: (index: number) => void;
+  onRestoreDefaults: () => void;
 }
 
-function ManualQueueSection({
-  isPremium,
-  selectedQueues,
-  availableQueues,
-  filteredQueues,
-  searchQuery,
-  selectedCategory,
-  categories,
-  onSearchChange,
-  onCategoryChange,
-  onQueueToggle,
-  onShowPremiumPrompt
-}: Readonly<ManualQueueSectionProps>) {
-  return (
-    <div className="mb-8">
-      <div className="flex items-start justify-between mb-6">
-        <div className="flex items-start gap-4">
-          <div className={`w-12 h-12 ${isPremium ? 'bg-gradient-to-br from-[#ff6b35] to-[#ff8c42]' : 'bg-gray-200'} rounded-xl flex items-center justify-center shadow-lg ${isPremium ? 'shadow-orange-500/30' : ''}`}>
-            {isPremium ? (
-              <Award className="w-6 h-6 text-white" />
-            ) : (
-              <Lock className="w-6 h-6 text-gray-400" />
-            )}
-          </div>
-          <div>
-            <h2 className="text-xl text-gray-900 mb-1">Manual Queue Selection</h2>
-            <p className="text-sm text-gray-600 leading-relaxed max-w-2xl">
-              {isPremium
-                ? 'Select up to 2 additional queues that align perfectly with your career goals.'
-                : 'Upgrade to Premium to manually select 2 additional queues beyond your AI recommendations.'}
-            </p>
-          </div>
-        </div>
+function LoadoutColumn({ selectedBuckets, aiPredictionIds, predictedIndustry, predictedLevel, onRemove, onRestoreDefaults }: Readonly<LoadoutColumnProps>) {
+  const slots = Array.from({ length: 4 }, (_, i) => selectedBuckets[i] ?? null);
 
-        <div className="flex items-center gap-3">
-          {isPremium ? (
-            <Badge variant="outline" className={`${selectedQueues.length === 2 ? 'border-[#ff6b35] text-[#ff6b35] bg-orange-50' : 'border-gray-300 text-gray-700 bg-white'} px-3 py-1.5`}>
-              {selectedQueues.length}/2 Selected
-              {selectedQueues.length === 2 && <Check className="w-3 h-3 ml-1.5" />}
-            </Badge>
-          ) : (
-            <Button
-              size="sm"
-              onClick={onShowPremiumPrompt}
-              className="bg-gradient-to-r from-[#ff6b35] to-[#ff8c42] hover:from-[#e55a2b] hover:to-[#ff6b35] text-white shadow-md hover:shadow-lg transition-all"
-            >
-              <Crown className="w-4 h-4 mr-2" />
-              Upgrade to Premium
-            </Button>
-          )}
+  return (
+    <div>
+      {/* Fixed Primary Industry */}
+      {predictedIndustry && (
+        <div className="mb-4">
+          <p className="text-xs font-medium text-gray-500 uppercase tracking-wider mb-2">Your Default Industry</p>
+          <Card className="p-3 border-2 border-blue-200 bg-blue-50/40">
+            <div className="flex items-center gap-3">
+              <div className="text-xl w-9 h-9 flex items-center justify-center bg-white rounded-lg border border-blue-100 shadow-sm flex-shrink-0">
+                {getIndustryEmoji(predictedIndustry)}
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="font-medium text-gray-900 text-sm truncate">{predictedIndustry}</p>
+                <p className="text-xs text-gray-500">{EXP_LEVEL_LABELS[predictedLevel] || predictedLevel}</p>
+              </div>
+              <Badge className="bg-blue-100 text-blue-700 border-blue-200 text-xs py-0 shrink-0">
+                <Lock className="w-2.5 h-2.5 mr-0.5" />Fixed
+              </Badge>
+            </div>
+          </Card>
         </div>
+      )}
+
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 mb-3">
+        <div>
+          <h2 className="text-lg font-semibold text-gray-900">Your Loadout</h2>
+          <p className="text-xs text-gray-500 mt-0.5">{selectedBuckets.length}/4 secondary buckets</p>
+        </div>
+        <Button size="sm" variant="ghost" onClick={onRestoreDefaults} className="text-xs text-gray-500 hover:text-gray-700 h-7 px-2">
+          <RotateCcw className="w-3 h-3 mr-1" />Reset to AI
+        </Button>
       </div>
 
-      {/* Search and Filter Controls - Premium Only */}
-      {isPremium && <SearchFilterSection searchQuery={searchQuery} onSearchChange={onSearchChange} selectedCategory={selectedCategory} onCategoryChange={onCategoryChange} categories={categories} />}
+      <div className="space-y-2.5">
+        <SlotCard
+          bucket={slots[0]}
+          slotNum={1}
+          aiPredictionIds={aiPredictionIds}
+          onRemove={() => onRemove(0)}
+        />
+        <SlotCard
+          bucket={slots[1]}
+          slotNum={2}
+          aiPredictionIds={aiPredictionIds}
+          onRemove={() => onRemove(1)}
+        />
+        <SlotCard
+          bucket={slots[2]}
+          slotNum={3}
+          aiPredictionIds={aiPredictionIds}
+          onRemove={() => onRemove(2)}
+        />
+        <SlotCard
+          bucket={slots[3]}
+          slotNum={4}
+          aiPredictionIds={aiPredictionIds}
+          onRemove={() => onRemove(3)}
+        />
+      </div>
+    </div>
+  );
+}
 
-      {/* Queue Grid */}
-      {isPremium ? (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-          {filteredQueues.filter(q => !AI_QUEUE_IDS.includes(q.id)).map((queue) => (
-            <ManualQueueCard key={queue.id} queue={queue} selectedQueues={selectedQueues} onToggle={onQueueToggle} />
+interface ReplaceSlotModalProps {
+  candidateIndustry: string | null;
+  selectedBuckets: Array<{ industry: string; level: string }>;
+  aiPredictionIds: Set<string>;
+  onReplace: (slotIndex: number) => void;
+  onCancel: () => void;
+}
+
+function ReplaceSlotModal({ candidateIndustry, selectedBuckets, aiPredictionIds, onReplace, onCancel }: Readonly<ReplaceSlotModalProps>) {
+  if (!candidateIndustry) return null;
+
+  return (
+    <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+      <Card className="max-w-[95vw] sm:max-w-sm w-full p-6 shadow-2xl border border-orange-100">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 mb-4">
+          <div>
+            <h3 className="font-semibold text-gray-900">Replace which slot?</h3>
+            <p className="text-sm text-gray-500 mt-0.5">
+              Adding <span className="font-medium text-gray-700">{candidateIndustry}</span>
+            </p>
+          </div>
+          <button onClick={onCancel} className="p-1.5 hover:bg-gray-100 rounded-lg transition-colors">
+            <X className="w-4 h-4 text-gray-500" />
+          </button>
+        </div>
+
+        <div className="space-y-2">
+          {selectedBuckets.map((b) => (
+            <button
+              key={`${b.industry}-${b.level}`}
+              onClick={() => onReplace(selectedBuckets.indexOf(b))}
+              className="w-full flex items-center gap-3 p-3 rounded-xl border border-gray-200 hover:border-[#ff6b35] hover:bg-orange-50 transition-all text-left"
+            >
+              <span className="text-xl">{getIndustryEmoji(b.industry)}</span>
+              <div className="flex-1 min-w-0">
+                <p className="font-medium text-gray-900 text-sm truncate">{b.industry}</p>
+                <p className="text-xs text-gray-500">{EXP_LEVEL_LABELS[b.level] || b.level}</p>
+              </div>
+              {aiPredictionIds.has(`${b.industry}-${b.level}`) && (
+                <Badge className="bg-blue-100 text-blue-700 border-blue-200 text-xs shrink-0">
+                  <Zap className="w-2.5 h-2.5 mr-0.5" />AI
+                </Badge>
+              )}
+            </button>
           ))}
         </div>
-      ) : (
-        <LockedQueuePreview queues={availableQueues} onUpgrade={onShowPremiumPrompt} />
-      )}
+
+        <Button variant="ghost" onClick={onCancel} className="w-full mt-3 text-sm text-gray-500 hover:text-gray-700">
+          Cancel
+        </Button>
+      </Card>
     </div>
   );
 }
@@ -442,7 +354,7 @@ function PremiumModal({ isOpen, onClose }: Readonly<PremiumModalProps>) {
 
   return (
     <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-      <Card className="max-w-lg w-full p-8 relative shadow-2xl border-2 border-orange-200">
+      <Card className="max-w-[95vw] sm:max-w-lg w-full p-8 relative shadow-2xl border-2 border-orange-200">
         <button
           onClick={onClose}
           className="absolute top-4 right-4 p-2 hover:bg-orange-50 rounded-lg transition-colors"
@@ -473,8 +385,8 @@ function PremiumModal({ isOpen, onClose }: Readonly<PremiumModalProps>) {
           <div className="flex items-start gap-3 p-4 bg-gradient-to-br from-orange-50 to-orange-100 rounded-xl border-2 border-[#ff6b35]">
             <Star className="w-5 h-5 text-[#ff6b35] mt-0.5 flex-shrink-0" />
             <div>
-              <p className="font-medium text-gray-900">+ 2 Manual Queues</p>
-              <p className="text-sm text-gray-600">Choose any roles that match your goals</p>
+              <p className="font-medium text-gray-900">+ 4 Custom Buckets</p>
+              <p className="text-sm text-gray-600">Choose any industry/level combinations</p>
             </div>
           </div>
           <div className="flex items-start gap-3 p-4 bg-purple-50 rounded-xl border border-purple-200">
@@ -519,7 +431,7 @@ function QueueSelectorHeader({ isPremium, onClose }: Readonly<QueueSelectorHeade
   return (
     <div className="bg-white/60 backdrop-blur-md border-b border-orange-100 sticky top-0 z-10 shadow-sm">
       <div className="container mx-auto px-6 py-5">
-        <div className="flex items-center justify-between">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
           <div className="flex items-center gap-4">
             <Button
               variant="ghost"
@@ -568,15 +480,15 @@ interface FooterActionsProps {
 
 function FooterActions({ isPremium, selectedQueues, onSave, onCancel }: Readonly<FooterActionsProps>) {
   return (
-    <div className="flex items-center justify-between pt-6 border-t border-orange-100 bg-white/80 backdrop-blur-sm sticky bottom-0 -mx-6 px-6 py-4 rounded-t-xl shadow-lg">
+    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 pt-6 border-t border-orange-100 bg-white/80 backdrop-blur-sm sticky bottom-0 -mx-6 px-6 py-4 rounded-t-xl shadow-lg">
       <div className="text-sm text-gray-600">
         <div className="flex items-center gap-2">
           <div className="flex items-center gap-1.5">
             <div className="w-2 h-2 rounded-full bg-[#ff6b35]"></div>
             <span className="font-medium text-gray-900">
               {isPremium
-                ? `${AI_QUEUE_IDS.length} AI + ${selectedQueues.length} Manual = ${AI_QUEUE_IDS.length + selectedQueues.length} Total`
-                : `${AI_QUEUE_IDS.length} AI Queues Active`}
+                ? `${selectedQueues.length} of 4 Buckets Selected`
+                : `${selectedQueues.length} AI Buckets Active`}
             </span>
           </div>
         </div>
@@ -592,7 +504,7 @@ function FooterActions({ isPremium, selectedQueues, onSave, onCancel }: Readonly
         </Button>
         <Button
           onClick={onSave}
-          disabled={isPremium && selectedQueues.length !== 2}
+          disabled={isPremium && (selectedQueues.length === 0 || selectedQueues.length > 4)}
           className="bg-gradient-to-r from-[#ff6b35] to-[#ff8c42] hover:from-[#e55a2b] hover:to-[#ff6b35] text-white shadow-md hover:shadow-lg transition-all"
         >
           <Check className="w-4 h-4 mr-2" />
@@ -603,130 +515,156 @@ function FooterActions({ isPremium, selectedQueues, onSave, onCancel }: Readonly
   );
 }
 
-export function QueueSelector({ onClose, currentQueues, onUpdateQueues, queueStatuses = {}, onUpdateQueueStatuses, user }: Readonly<QueueSelectorProps>) {
+export function QueueSelector({ onClose, currentQueues: _currentQueues = [], onUpdateQueues, queueStatuses = {}, onUpdateQueueStatuses, user, onNavigate, onLogout }: Readonly<QueueSelectorProps>) {
   const isPremium = user?.isPremium || false;
-  
-  // For premium users, filter out the AI queues to get manual selections
-  // For basic users, no manual selections allowed
-  const getInitialManualSelections = useCallback(() => {
-    if (!isPremium) return [];
-    return currentQueues.filter(id => !AI_QUEUE_IDS.includes(id));
-  }, [isPremium, currentQueues]);
-  
-  const [selectedQueues, setSelectedQueues] = useState<string[]>(getInitialManualSelections());
+
+  const handleClose = useCallback(() => {
+    if (onClose) {
+      onClose();
+    } else if (onNavigate) {
+      onNavigate('dashboard');
+    }
+  }, [onClose, onNavigate]);
+
+  const [selectedBuckets, setSelectedBuckets] = useState<Array<{ industry: string; level: string }>>([]);
+  const [aiPredictions, setAiPredictions] = useState<BucketPrediction[]>([]);
+  const [predictedIndustry, setPredictedIndustry] = useState('');
+  const [predictedLevel, setPredictedLevel] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
-  const [selectedCategory, setSelectedCategory] = useState<string>('All');
-  const [localQueueStatuses, setLocalQueueStatuses] = useState<Record<string, boolean>>(queueStatuses);
+  const localQueueStatuses = queueStatuses;
   const [showPremiumPrompt, setShowPremiumPrompt] = useState(false);
-  const [showPreferencesModal, setShowPreferencesModal] = useState(false);
-  const [selectedQueueForPreferences, setSelectedQueueForPreferences] = useState<any>(null);
-  const [queuePreferences, setQueuePreferences] = useState<Record<string, IndividualJobPreferences>>({});
   const [availableQueues, setAvailableQueues] = useState<Queue[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [replaceCandidate, setReplaceCandidate] = useState<string | null>(null);
 
-  // Fetch available queues from backend
-  useEffect(() => {
-    const fetchQueues = async () => {
-      setIsLoading(true);
-      try {
-        const data = await queueService.getAvailableQueues();
-        // Transform API data to Queue format
-        const transformedQueues: Queue[] = data.map((item: any) => ({
-          id: `${item.industry}-${item.level}`,
-          title: `${item.industry} - ${item.level}`,
-          description: `Queue for ${item.industry} at ${item.level} level`,
-          industry: item.industry,
-          level: item.level,
-          current: 0,
-          total: item.candidate_count || 0,
-          trend: 'stable',
-          match: 0,
-          change: 0,
-          isAuto: true,
-          userSelected: false,
-          category: item.industry,
-        }));
-        setAvailableQueues(transformedQueues);
-      } catch (error) {
-        console.error('Failed to fetch available queues:', error);
-        setAvailableQueues([]);
-      } finally {
-        setIsLoading(false);
+  // Fetch available queues, AI predictions, and selected buckets from backend
+  const fetchQueues = useCallback(async () => {
+    setIsLoading(true);
+    try {
+      // Fetch available queues
+      const data = await queueService.getAvailableQueues();
+      const transformedQueues: Queue[] = data.map((item: any) => ({
+        id: `${item.industry}-${item.level}`,
+        title: `${item.industry} - ${item.level}`,
+        description: `Queue for ${item.industry} at ${item.level} level`,
+        industry: item.industry,
+        level: item.level,
+        current: 0,
+        total: item.candidate_count || 0,
+        trend: 'stable',
+        match: 0,
+        change: 0,
+        isAuto: true,
+        userSelected: false,
+        category: item.industry,
+      }));
+      setAvailableQueues(transformedQueues);
+
+      // Fetch AI predictions
+      const prediction = await queueService.getMyBucketPrediction();
+      if (prediction?.industry_predictions) {
+        setAiPredictions(prediction.industry_predictions);
       }
-    };
+      if (prediction?.predicted_industry) {
+        setPredictedIndustry(prediction.predicted_industry);
+        setPredictedLevel(prediction.predicted_level || 'L3');
+      }
 
-    void fetchQueues();
+      // Fetch user's selected buckets (premium override)
+      const selected = await queueService.getSelectedBuckets();
+      if (selected?.selected_buckets?.length) {
+        setSelectedBuckets(selected.selected_buckets);
+      } else if (prediction?.industry_predictions) {
+        // Loadout = industries 2-5 (exclude predicted_industry which is fixed)
+        const secondary = prediction.industry_predictions
+          .filter(p => p.industry !== prediction.predicted_industry)
+          .slice(0, 4)
+          .map(p => ({ industry: p.industry, level: prediction.predicted_level || p.predicted_level || 'L3' }));
+        setSelectedBuckets(secondary);
+      }
+    } catch (error) {
+      console.error('Failed to fetch queue data:', error);
+      setAvailableQueues([]);
+    } finally {
+      setIsLoading(false);
+    }
   }, []);
 
-  // Use API data only
-  const queues = availableQueues;
+  useEffect(() => {
+    void fetchQueues();
+  }, [fetchQueues]);
 
-  const filteredQueues = filterQueues(queues, searchQuery, selectedCategory);
+  // Derive selectedQueue IDs from selectedBuckets for UI compatibility
+  const selectedQueues = selectedBuckets.map(b => `${b.industry}-${b.level}`);
+  const aiPredictionIds = new Set(aiPredictions.map(p => `${p.industry}-${p.predicted_level}`));
 
-  const handleQueueToggle = (queueId: string) => {
+  const handleReplaceRequest = (industry: string) => setReplaceCandidate(industry);
+
+  const handleReplaceSlot = (slotIndex: number) => {
+    if (!replaceCandidate) return;
+    const newBuckets = [...selectedBuckets];
+    newBuckets[slotIndex] = { industry: replaceCandidate, level: predictedLevel };
+    setSelectedBuckets(newBuckets);
+    setReplaceCandidate(null);
+  };
+
+  const handleRestoreDefaults = () => {
+    // Restore to industries 2-5 (exclude predicted_industry which is fixed)
+    const secondary = aiPredictions
+      .filter(p => p.industry !== predictedIndustry)
+      .slice(0, 4)
+      .map(p => ({ industry: p.industry, level: p.predicted_level }));
+    setSelectedBuckets(secondary);
+  };
+
+  const handleQueueToggle = (industry: string) => {
     // Basic users cannot manually select queues - premium only feature
     if (!isPremium) {
       setShowPremiumPrompt(true);
       return;
     }
 
-    if (selectedQueues.includes(queueId)) {
-      setSelectedQueues(selectedQueues.filter(id => id !== queueId));
-    } else if (selectedQueues.length < 2) {  // Premium users get 2 manual queues
-      setSelectedQueues([...selectedQueues, queueId]);
+    const existingIndex = selectedBuckets.findIndex(b => b.industry === industry);
+    if (existingIndex >= 0) {
+      setSelectedBuckets(selectedBuckets.filter((_, i) => i !== existingIndex));
+    } else if (selectedBuckets.length < 4) {
+      setSelectedBuckets([...selectedBuckets, { industry, level: predictedLevel }]);
     }
   };
 
-  const handleSave = () => {
-    // NEW STRUCTURE:
-    // Basic users: 3 AI queues (data-engineer, product-analyst, business-intelligence)
-    // Premium users: 3 AI queues + 2 manual queues
-    const allQueues = isPremium ? [...AI_QUEUE_IDS, ...selectedQueues] : AI_QUEUE_IDS;
-    
-    onUpdateQueues(allQueues);
-    
+  const handleSave = async () => {
+    // Save selected buckets to backend for premium users
+    if (isPremium && selectedBuckets.length > 0) {
+      const result = await queueService.updateSelectedBuckets(selectedBuckets);
+      if (result?.success) {
+        console.log('[QueueSelector] Saved selected buckets:', result.selected_buckets);
+      }
+    }
+
+    // Also notify parent component with queue IDs for backward compatibility
+    if (onUpdateQueues) {
+      onUpdateQueues(selectedQueues);
+    }
+
     // Update queue statuses if callback provided
     if (onUpdateQueueStatuses) {
       onUpdateQueueStatuses(localQueueStatuses);
     }
-    
-    onClose();
-  };
 
-  const handleStatusToggle = (queueId: string, isActive: boolean) => {
-    setLocalQueueStatuses(prev => ({
-      ...prev,
-      [queueId]: isActive
-    }));
+    handleClose();
   };
-
-  const handleOpenPreferences = (queue: Queue, e: React.MouseEvent) => {
-    e.stopPropagation(); // Prevent card click
-    setSelectedQueueForPreferences(queue);
-    setShowPreferencesModal(true);
-  };
-
-  const handleSavePreferences = (queueId: string, preferences: IndividualJobPreferences, applyToAll: boolean) => {
-    if (applyToAll) {
-      // Apply to all queues
-      const allQueueIds = isPremium
-        ? [...AI_QUEUE_IDS, ...selectedQueues]
-        : AI_QUEUE_IDS;
-      const updatedPreferences: Record<string, IndividualJobPreferences> = {};
-      allQueueIds.forEach(id => {
-        updatedPreferences[id] = preferences;
-      });
-      setQueuePreferences(updatedPreferences);
-    } else {
-      setQueuePreferences(prev => ({ ...prev, [queueId]: preferences }));
-    }
-    setShowPreferencesModal(false);
-  };
-
-  const categories = ['All', 'Engineering', 'Analytics', 'AI/ML', 'Science', 'Cloud', 'Operations', 'Product', 'Security', 'Development', 'Architecture', 'Business'];
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 to-orange-50">
+      {onNavigate && (
+        <AppHeader
+          userRole="job-seeker"
+          user={user}
+          currentView="queues"
+          onNavigate={onNavigate}
+          onLogout={onLogout || (() => {})}
+        />
+      )}
       {isLoading ? (
         <div className="flex items-center justify-center h-screen">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#ff6b35]"></div>
@@ -734,49 +672,75 @@ export function QueueSelector({ onClose, currentQueues, onUpdateQueues, queueSta
         </div>
       ) : (
       <>
-      <QueueSelectorHeader isPremium={isPremium} onClose={onClose} />
+      <QueueSelectorHeader isPremium={isPremium} onClose={handleClose} />
 
       <div className="container mx-auto px-6 py-8 max-w-7xl">
-        <AIQueuesSection
-          queues={availableQueues}
-          localQueueStatuses={localQueueStatuses}
-          onStatusToggle={handleStatusToggle}
-          onOpenPreferences={handleOpenPreferences}
-        />
+        {isPremium ? (
+          <div className="flex gap-8 items-start">
+            {/* Left column — sticky loadout */}
+            <div className="w-72 flex-shrink-0 sticky top-24">
+              <LoadoutColumn
+                selectedBuckets={selectedBuckets}
+                aiPredictionIds={aiPredictionIds}
+                predictedIndustry={predictedIndustry}
+                predictedLevel={predictedLevel}
+                onRemove={(i) => setSelectedBuckets(selectedBuckets.filter((_, idx) => idx !== i))}
+                onRestoreDefaults={handleRestoreDefaults}
+              />
+            </div>
 
-        <ManualQueueSection
-          isPremium={isPremium}
-          selectedQueues={selectedQueues}
-          availableQueues={availableQueues}
-          filteredQueues={filteredQueues}
-          searchQuery={searchQuery}
-          selectedCategory={selectedCategory}
-          categories={categories}
-          onSearchChange={setSearchQuery}
-          onCategoryChange={setSelectedCategory}
-          onQueueToggle={handleQueueToggle}
-          onShowPremiumPrompt={() => setShowPremiumPrompt(true)}
-        />
+            {/* Right column — searchable picker */}
+            <div className="flex-1 min-w-0">
+              <div className="mb-5">
+                <h2 className="text-lg font-semibold text-gray-900 mb-1">Pick Your Buckets</h2>
+                <p className="text-sm text-gray-500">
+                  Select up to 4 buckets.{' '}
+                  <span className="text-blue-600 font-medium inline-flex items-center gap-0.5">
+                    <Zap className="w-3 h-3" />AI picks
+                  </span>{' '}
+                  are highlighted based on your profile.
+                </p>
+              </div>
+              <SearchFilterSection
+                searchQuery={searchQuery}
+                onSearchChange={setSearchQuery}
+              />
+              <IndustryPickerGrid
+                selectedBuckets={selectedBuckets}
+                aiPredictionIds={aiPredictionIds}
+                predictedIndustry={predictedIndustry}
+                predictedLevel={predictedLevel}
+                searchQuery={searchQuery}
+                onToggle={handleQueueToggle}
+                onReplaceRequest={handleReplaceRequest}
+              />
+            </div>
+          </div>
+        ) : (
+          <div>
+            <div className="mb-6 p-4 bg-blue-50 rounded-xl border border-blue-200 flex items-center gap-3">
+              <Bot className="w-5 h-5 text-blue-600 flex-shrink-0" />
+              <div>
+                <p className="font-medium text-gray-900 text-sm">AI-managed queues active</p>
+                <p className="text-sm text-gray-500">Upgrade to Premium to select your own 4 job-search buckets.</p>
+              </div>
+            </div>
+            <LockedQueuePreview queues={availableQueues} onUpgrade={() => setShowPremiumPrompt(true)} />
+          </div>
+        )}
 
-        <FooterActions isPremium={isPremium} selectedQueues={selectedQueues} onSave={handleSave} onCancel={onClose} />
+        <FooterActions isPremium={isPremium} selectedQueues={selectedQueues} onSave={handleSave} onCancel={handleClose} />
       </div>
 
-      <PremiumModal isOpen={showPremiumPrompt} onClose={() => setShowPremiumPrompt(false)} />
+      <ReplaceSlotModal
+        candidateIndustry={replaceCandidate}
+        selectedBuckets={selectedBuckets}
+        aiPredictionIds={aiPredictionIds}
+        onReplace={handleReplaceSlot}
+        onCancel={() => setReplaceCandidate(null)}
+      />
 
-      {/* Queue Preferences Modal */}
-      {selectedQueueForPreferences && (
-        <QueuePreferencesModal
-          isOpen={showPreferencesModal}
-          onClose={() => {
-            setShowPreferencesModal(false);
-            setSelectedQueueForPreferences(null);
-          }}
-          queueId={selectedQueueForPreferences.id}
-          queueTitle={selectedQueueForPreferences.title}
-          currentPreferences={queuePreferences[selectedQueueForPreferences.id]}
-          onSave={handleSavePreferences}
-        />
-      )}
+      <PremiumModal isOpen={showPremiumPrompt} onClose={() => setShowPremiumPrompt(false)} />
       </>
       )}
     </div>

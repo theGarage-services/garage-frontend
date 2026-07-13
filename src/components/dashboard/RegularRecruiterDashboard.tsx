@@ -123,14 +123,14 @@ export function RegularRecruiterDashboard({
         {/* Welcome Header */}
         <div className="bg-gradient-to-r from-blue-600 to-blue-700 text-white">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-            <div className="flex items-center justify-between">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
               <div>
                 <h1 className="text-3xl text-white mb-2">
                   Welcome back, {user?.firstName || 'Recruiter'}!
                 </h1>
                 <p className="text-blue-100">Here's your recruiting overview for today</p>
               </div>
-              <div className="text-right">
+              <div className="text-left sm:text-right">
                 <div className="text-sm text-blue-100 mb-1">Monthly Progress</div>
                 <div className="flex items-center gap-3">
                   <Progress value={(stats.currentHires / stats.monthlyTarget) * 100} className="w-40 h-2 bg-white/20" />
@@ -193,9 +193,9 @@ export function RegularRecruiterDashboard({
             <div className="lg:col-span-2 space-y-6">
               {/* My Active Jobs */}
               <Card className="p-6">
-                <div className="flex items-center justify-between mb-6">
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
                   <h2 className="text-lg font-medium text-gray-900">My Active Jobs</h2>
-                  <Button variant="outline" size="sm" onClick={() => onNavigate('job-management')}>
+                  <Button variant="outline" size="sm" onClick={() => onNavigate('job-management')} className="self-start sm:self-auto">
                     View All
                   </Button>
                 </div>
@@ -203,9 +203,9 @@ export function RegularRecruiterDashboard({
                 <div className="space-y-4">
                   {myJobs.map((job) => (
                     <div key={job.id} className="p-4 border border-gray-200 rounded-lg hover:border-blue-500 transition-colors">
-                      <div className="flex items-start justify-between mb-3">
-                        <div>
-                          <div className="flex items-center gap-2 mb-1">
+                      <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3 mb-3">
+                        <div className="min-w-0">
+                          <div className="flex flex-wrap items-center gap-2 mb-1">
                             <h3 className="font-medium text-gray-900">{job.title}</h3>
                             {job.priority === 'high' && (
                               <Badge className="bg-red-100 text-red-700 border-red-200 text-xs">High Priority</Badge>
@@ -213,12 +213,12 @@ export function RegularRecruiterDashboard({
                           </div>
                           <p className="text-sm text-gray-600">{job.department}</p>
                         </div>
-                        <Badge variant="outline" className="text-xs">
+                        <Badge variant="outline" className="text-xs self-start sm:self-auto">
                           Due {job.deadline}
                         </Badge>
                       </div>
 
-                      <div className="grid grid-cols-3 gap-4">
+                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                         <div className="text-center p-2 bg-blue-50 rounded">
                           <div className="text-xl font-medium text-blue-600">{job.candidates}</div>
                           <div className="text-xs text-gray-600">Candidates</div>
@@ -233,7 +233,7 @@ export function RegularRecruiterDashboard({
                         </div>
                       </div>
 
-                      <div className="mt-3 flex gap-2">
+                      <div className="mt-3 flex flex-col sm:flex-row gap-2">
                         <Button variant="outline" size="sm" className="flex-1">
                           <Eye className="w-4 h-4 mr-2" />
                           View Details
@@ -274,9 +274,9 @@ export function RegularRecruiterDashboard({
             <div className="space-y-6">
               {/* Upcoming Interviews */}
               <Card className="p-6">
-                <div className="flex items-center justify-between mb-6">
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
                   <h2 className="text-lg font-medium text-gray-900">Upcoming Interviews</h2>
-                  <Button variant="ghost" size="sm" onClick={() => onNavigate('interview-calendar')}>
+                  <Button variant="ghost" size="sm" onClick={() => onNavigate('interview-calendar')} className="self-start sm:self-auto">
                     <Calendar className="w-4 h-4" />
                   </Button>
                 </div>
@@ -284,12 +284,12 @@ export function RegularRecruiterDashboard({
                 <div className="space-y-3">
                   {upcomingInterviews.map((interview) => (
                     <div key={interview.id} className="p-3 border border-gray-200 rounded-lg hover:border-green-500 transition-colors">
-                      <div className="flex items-start justify-between mb-2">
-                        <div>
+                      <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-2 mb-2">
+                        <div className="min-w-0">
                           <p className="font-medium text-gray-900 text-sm">{interview.candidateName}</p>
                           <p className="text-xs text-gray-600">{interview.position}</p>
                         </div>
-                        <Badge variant="outline" className="text-xs">{interview.duration}</Badge>
+                        <Badge variant="outline" className="text-xs self-start sm:self-auto">{interview.duration}</Badge>
                       </div>
                       <div className="flex items-center gap-2 text-sm text-gray-600">
                         <Clock className="w-4 h-4" />
@@ -311,7 +311,7 @@ export function RegularRecruiterDashboard({
                 
                 <div className="space-y-4">
                   <div className="p-4 bg-gradient-to-r from-green-50 to-emerald-50 rounded-lg border border-green-200">
-                    <div className="flex items-center justify-between mb-2">
+                    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1 mb-2">
                       <span className="text-sm text-gray-700">Monthly Target</span>
                       <Target className="w-4 h-4 text-green-600" />
                     </div>
@@ -324,7 +324,7 @@ export function RegularRecruiterDashboard({
                     </p>
                   </div>
 
-                  <div className="grid grid-cols-2 gap-3">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     <div className="p-3 bg-blue-50 rounded-lg border border-blue-200">
                       <div className="flex items-center gap-2 mb-1">
                         <Clock className="w-4 h-4 text-blue-600" />

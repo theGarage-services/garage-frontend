@@ -32,7 +32,7 @@ export function Support({ onBack }: Readonly<SupportProps>) {
         </div>
 
         <Tabs defaultValue="guides" className="space-y-6">
-          <TabsList className="grid w-full grid-cols-2 bg-white border border-gray-200">
+          <TabsList className="grid w-full grid-cols-1 sm:grid-cols-2 bg-white border border-gray-200">
             <TabsTrigger value="guides">Guides</TabsTrigger>
             <TabsTrigger value="status">System Status</TabsTrigger>
           </TabsList>
@@ -137,32 +137,32 @@ export function Support({ onBack }: Readonly<SupportProps>) {
               </CardHeader>
               <CardContent>
                 <div className="space-y-3">
-                  <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                  <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 p-3 bg-gray-50 rounded-lg">
                     <div>
                       <p className="font-medium text-gray-900">How to write an effective job application</p>
                       <p className="text-sm text-gray-600">Tips for standing out to recruiters</p>
                     </div>
-                    <Button variant="ghost" size="sm" className="text-[#ff6b35]">
+                    <Button variant="ghost" size="sm" className="text-[#ff6b35] self-start sm:self-auto">
                       Read
                     </Button>
                   </div>
-                  
-                  <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+
+                  <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 p-3 bg-gray-50 rounded-lg">
                     <div>
                       <p className="font-medium text-gray-900">Understanding job application statuses</p>
                       <p className="text-sm text-gray-600">What each stage means for your application</p>
                     </div>
-                    <Button variant="ghost" size="sm" className="text-[#ff6b35]">
+                    <Button variant="ghost" size="sm" className="text-[#ff6b35] self-start sm:self-auto">
                       Read
                     </Button>
                   </div>
-                  
-                  <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+
+                  <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 p-3 bg-gray-50 rounded-lg">
                     <div>
                       <p className="font-medium text-gray-900">Maximizing your premium membership</p>
                       <p className="text-sm text-gray-600">Get the most out of premium features</p>
                     </div>
-                    <Button variant="ghost" size="sm" className="text-[#ff6b35]">
+                    <Button variant="ghost" size="sm" className="text-[#ff6b35] self-start sm:self-auto">
                       Read
                     </Button>
                   </div>
@@ -190,44 +190,44 @@ export function Support({ onBack }: Readonly<SupportProps>) {
                   </Alert>
 
                   <div className="space-y-3">
-                    <div className="flex items-center justify-between p-3 border border-gray-200 rounded-lg">
+                    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 p-3 border border-gray-200 rounded-lg">
                       <div className="flex items-center gap-3">
                         <div className="w-3 h-3 bg-green-500 rounded-full"></div>
                         <span className="font-medium text-gray-900">Job Search & Applications</span>
                       </div>
-                      <Badge className="bg-green-100 text-green-800">Operational</Badge>
+                      <Badge className="bg-green-100 text-green-800 self-start sm:self-auto">Operational</Badge>
                     </div>
 
-                    <div className="flex items-center justify-between p-3 border border-gray-200 rounded-lg">
+                    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 p-3 border border-gray-200 rounded-lg">
                       <div className="flex items-center gap-3">
                         <div className="w-3 h-3 bg-green-500 rounded-full"></div>
                         <span className="font-medium text-gray-900">Job Tracker</span>
                       </div>
-                      <Badge className="bg-green-100 text-green-800">Operational</Badge>
+                      <Badge className="bg-green-100 text-green-800 self-start sm:self-auto">Operational</Badge>
                     </div>
 
-                    <div className="flex items-center justify-between p-3 border border-gray-200 rounded-lg">
+                    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 p-3 border border-gray-200 rounded-lg">
                       <div className="flex items-center gap-3">
                         <div className="w-3 h-3 bg-green-500 rounded-full"></div>
                         <span className="font-medium text-gray-900">Recruiter Chat</span>
                       </div>
-                      <Badge className="bg-green-100 text-green-800">Operational</Badge>
+                      <Badge className="bg-green-100 text-green-800 self-start sm:self-auto">Operational</Badge>
                     </div>
 
-                    <div className="flex items-center justify-between p-3 border border-gray-200 rounded-lg">
+                    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 p-3 border border-gray-200 rounded-lg">
                       <div className="flex items-center gap-3">
                         <div className="w-3 h-3 bg-green-500 rounded-full"></div>
                         <span className="font-medium text-gray-900">Notifications</span>
                       </div>
-                      <Badge className="bg-green-100 text-green-800">Operational</Badge>
+                      <Badge className="bg-green-100 text-green-800 self-start sm:self-auto">Operational</Badge>
                     </div>
 
-                    <div className="flex items-center justify-between p-3 border border-gray-200 rounded-lg">
+                    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 p-3 border border-gray-200 rounded-lg">
                       <div className="flex items-center gap-3">
                         <div className="w-3 h-3 bg-green-500 rounded-full"></div>
                         <span className="font-medium text-gray-900">Queue Analytics</span>
                       </div>
-                      <Badge className="bg-green-100 text-green-800">Operational</Badge>
+                      <Badge className="bg-green-100 text-green-800 self-start sm:self-auto">Operational</Badge>
                     </div>
                   </div>
                 </div>
@@ -242,7 +242,7 @@ export function Support({ onBack }: Readonly<SupportProps>) {
               <CardContent>
                 <div className="space-y-4">
                   <div className="p-4 border-l-4 border-green-500 bg-green-50">
-                    <div className="flex items-center justify-between mb-2">
+                    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1 mb-2">
                       <h4 className="font-semibold text-green-900">System Maintenance Complete</h4>
                       <span className="text-sm text-green-700">2 hours ago</span>
                     </div>
@@ -252,7 +252,7 @@ export function Support({ onBack }: Readonly<SupportProps>) {
                   </div>
 
                   <div className="p-4 border-l-4 border-blue-500 bg-blue-50">
-                    <div className="flex items-center justify-between mb-2">
+                    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1 mb-2">
                       <h4 className="font-semibold text-blue-900">New Feature Release</h4>
                       <span className="text-sm text-blue-700">1 day ago</span>
                     </div>

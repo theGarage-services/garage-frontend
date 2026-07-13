@@ -1,5 +1,4 @@
 import { useEffect, useState } from 'react';
-import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Loader, CheckCircle, AlertCircle } from 'lucide-react';
 import { Alert, AlertDescription } from '../ui/alert';
 import { Button } from '../ui/button';
@@ -10,14 +9,12 @@ interface VerifyEmailLinkProps {
 }
 
 export function VerifyEmailLink({ token: propToken, onBack }: Readonly<VerifyEmailLinkProps>) {
-  const navigate = useNavigate();
-  const [searchParams] = useSearchParams();
   const [status, setStatus] = useState<'loading' | 'success' | 'error'>('loading');
   const [message, setMessage] = useState('Verifying your email...');
 
   useEffect(() => {
     // Use token from props if provided, otherwise fall back to URL search params
-    const token = propToken || searchParams.get('token');
+    const token = propToken || new URLSearchParams(globalThis.location.search).get('token');
 
     if (!token) {
       setStatus('error');
@@ -45,6 +42,7 @@ export function VerifyEmailLink({ token: propToken, onBack }: Readonly<VerifyEma
           setMessage(data.error || 'Failed to verify email. Token may have expired.');
         }
       } catch (error) {
+        console.error('Error verifying email:', error);
         setStatus('error');
         setMessage('An error occurred while verifying your email. Please try again.');
       }
@@ -55,7 +53,7 @@ export function VerifyEmailLink({ token: propToken, onBack }: Readonly<VerifyEma
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 flex items-center justify-center p-4">
-      <div className="bg-white rounded-lg shadow-lg p-8 max-w-md w-full text-center">
+      <div className="bg-white rounded-lg shadow-lg p-8 max-w-[95vw] sm:max-w-md w-full text-center">
         {status === 'loading' && (
           <>
             <Loader className="w-12 h-12 text-[#ff6b35] animate-spin mx-auto mb-4" />
@@ -71,7 +69,7 @@ export function VerifyEmailLink({ token: propToken, onBack }: Readonly<VerifyEma
             <p className="text-gray-600 mb-4">{message}</p>
             <p className="text-sm text-gray-500 mb-4">You can now continue with your registration.</p>
             <Button
-              onClick={onBack || (() => navigate('/'))}
+              onClick={onBack || (() => globalThis.location.href = '/')}
               className="w-full"
             >
               Continue to Sign Up
@@ -87,7 +85,7 @@ export function VerifyEmailLink({ token: propToken, onBack }: Readonly<VerifyEma
             </Alert>
             <div className="space-y-2">
               <Button
-                onClick={onBack || (() => navigate('/'))}
+                onClick={onBack || (() => globalThis.location.href = '/')}
                 variant="outline"
                 className="w-full"
               >

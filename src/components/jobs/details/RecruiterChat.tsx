@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useChat } from '../../../hooks/useChat';
 import { getConversationMessages } from '../../../api/chat';
 import { Card, CardContent } from '@/components/ui/card';
@@ -26,6 +26,9 @@ interface Recruiter {
 
 interface RecruiterChatProps {
   isPremium: boolean;
+  hasApplied?: boolean;
+  isApplied?: boolean;
+  considerationStatus?: string;
   applicationMethod?: 'manual' | 'quick-apply' | 'recruiter-consideration';
   recruiter?: Recruiter;
   user?: any;
@@ -34,6 +37,9 @@ interface RecruiterChatProps {
 
 export function RecruiterChat({
   isPremium,
+  hasApplied,
+  isApplied,
+  considerationStatus,
   applicationMethod,
   recruiter,
   user,
@@ -45,8 +51,12 @@ export function RecruiterChat({
   const [conversationId, setConversationId] = useState<number | null>(null);
   const { initChatFromJob, sendMessage: sendApiMessage } = useChat();
 
+  const isAppliedState = hasApplied || isApplied || considerationStatus === 'accepted';
+  const canChat = isPremium || applicationMethod === 'recruiter-consideration' || isAppliedState;
+  const isAutoApplied = applicationMethod === 'recruiter-consideration';
+
   // Helper to format API message to component message format
-  const formatMessage = (msg: any, currentUserId?: string): Message => ({
+  const formatMessage = useCallback((msg: any, currentUserId?: string): Message => ({
     id: msg.id,
     sender: msg.sender.id === currentUserId ? 'user' : 'recruiter',
     name: msg.sender.first_name || msg.sender.username,
@@ -54,11 +64,11 @@ export function RecruiterChat({
     content: msg.content,
     timestamp: new Date(msg.created_at).toLocaleTimeString(),
     type: 'message',
-  });
+  }), []);
 
   // Initialize chat when component mounts
   useEffect(() => {
-    if (!jobId || !isPremium) return;
+    if (!jobId || !canChat || !user) return;
 
     const initChat = async () => {
       const conversation = await initChatFromJob(jobId);
@@ -68,11 +78,11 @@ export function RecruiterChat({
     };
 
     initChat();
-  }, [jobId, isPremium, initChatFromJob, user?.id, formatMessage]);
+  }, [jobId, canChat, initChatFromJob, user?.id, formatMessage]);
 
   const handleSendMessage = async () => {
     if (!inputMessage.trim() || !conversationId) return;
-    
+
     try {
       await sendApiMessage({
         conversation: conversationId,
@@ -88,9 +98,6 @@ export function RecruiterChat({
       console.error('Failed to send message:', err);
     }
   };
-
-  const canChat = isPremium || applicationMethod === 'recruiter-consideration';
-  const isAutoApplied = applicationMethod === 'recruiter-consideration';
 
   const getCardStyles = () => {
     if (canChat) {
@@ -121,7 +128,7 @@ export function RecruiterChat({
         </Badge>
       </div>
       <CardContent className="p-6">
-        <div className="flex items-center gap-3 mb-4">
+        <div className="flex flex-wrap items-center gap-3 mb-4">
           <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${getIconStyles()}`}>
             <MessageCircle className="w-5 h-5 text-white" />
           </div>
@@ -211,7 +218,7 @@ export function RecruiterChat({
         {/* Message Input */}
         <div className="relative mb-4">
           <div
-            className={`border-2 rounded-lg px-4 py-3 flex items-center gap-3 backdrop-blur-sm ${
+            className={`border-2 rounded-lg px-4 py-3 flex flex-wrap items-center gap-3 backdrop-blur-sm ${
               canChat ? 'border-green-200 bg-white/80' : 'border-orange-200 bg-white/80'
             }`}
           >
@@ -220,7 +227,7 @@ export function RecruiterChat({
               placeholder={canChat ? 'Type a message...' : 'Type a message to the recruiter...'}
               value={inputMessage}
               onChange={(e) => setInputMessage(e.target.value)}
-              onKeyPress={(e) => e.key === 'Enter' && handleSendMessage()}
+              onKeyDown={(e) => e.key === 'Enter' && handleSendMessage()}
               className="flex-1 bg-transparent text-sm text-gray-700 placeholder-gray-400 outline-none"
               disabled={!canChat}
             />

@@ -4,21 +4,25 @@ import { Badge } from '../../ui/badge';
 
 interface ApplicationStatusCardProps {
   hasApplied: boolean;
+  considerationStatus?: string;
   applicationMethod?: 'manual' | 'quick-apply' | 'recruiter-consideration';
   isPremium: boolean;
 }
 
 export function ApplicationStatusCard({
   hasApplied,
+  considerationStatus,
   applicationMethod,
   isPremium
 }: Readonly<ApplicationStatusCardProps>) {
+  const isApplied = hasApplied || considerationStatus === 'accepted';
+
   return (
     <Card className="bg-white border border-gray-200 shadow-sm">
       <CardContent className="p-6">
         <h3 className="text-lg font-semibold text-gray-900 mb-4">Application Status</h3>
         <div className="space-y-3">
-          {hasApplied ? (
+          {isApplied ? (
             <div className="space-y-2">
               <div className="flex items-center gap-3 p-3 bg-green-50 rounded-lg">
                 <div className="w-2 h-2 bg-green-500 rounded-full" />

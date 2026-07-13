@@ -139,7 +139,7 @@ export function CoffeeChatRequest({ person, onSendRequest, onClose, onSuccess }:
 
   return (
     <Dialog open={true} onOpenChange={onClose}>
-      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+      <DialogContent className="max-w-[95vw] sm:max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-3">
             <div className="w-10 h-10 bg-gradient-to-r from-[#ff6b35] to-[#ff8c42] rounded-full flex items-center justify-center">
@@ -155,7 +155,7 @@ export function CoffeeChatRequest({ person, onSendRequest, onClose, onSuccess }:
         <div className="space-y-6">
           {/* Person Info */}
           <Card className="p-4 bg-gray-50">
-            <div className="flex items-center gap-4">
+            <div className="flex flex-col sm:flex-row sm:items-center gap-4">
               <Avatar className="w-12 h-12">
                 <AvatarFallback className="bg-[#ff6b35] text-white">
                   {person.name.split(' ').map(n => n[0]).join('')}
@@ -163,7 +163,7 @@ export function CoffeeChatRequest({ person, onSendRequest, onClose, onSuccess }:
               </Avatar>
               
               <div className="flex-1">
-                <div className="flex items-center gap-2 mb-1">
+                <div className="flex flex-wrap items-center gap-2 mb-1">
                   <h3 className="font-medium text-gray-900">{person.name}</h3>
                   {person.type === 'recruiter' ? (
                     <Badge className="bg-blue-100 text-blue-800 text-xs">Recruiter</Badge>
@@ -171,8 +171,8 @@ export function CoffeeChatRequest({ person, onSendRequest, onClose, onSuccess }:
                     <Crown className="w-4 h-4 text-yellow-500" />
                   )}
                 </div>
-                
-                <div className="flex items-center gap-3 text-sm text-gray-600">
+
+                <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-gray-600">
                   {person.title && (
                     <>
                       <span className="flex items-center gap-1">
@@ -195,7 +195,7 @@ export function CoffeeChatRequest({ person, onSendRequest, onClose, onSuccess }:
                   </span>
                 </div>
                 
-                <div className="flex items-center gap-4 mt-2 text-sm">
+                <div className="flex flex-wrap items-center gap-x-4 gap-y-1 mt-2 text-sm">
                   {person.type === 'recruiter' ? (
                     <span className="text-blue-600 font-medium">
                       {person.hires} recent hires
@@ -213,7 +213,7 @@ export function CoffeeChatRequest({ person, onSendRequest, onClose, onSuccess }:
           {/* Meeting Type */}
           <div>
             <Label className="mb-3 block">Meeting Type</Label>
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <Button
                 variant={requestData.meetingType === 'virtual' ? 'default' : 'outline'}
                 onClick={() => setRequestData(prev => ({ ...prev, meetingType: 'virtual' }))}
@@ -249,7 +249,7 @@ export function CoffeeChatRequest({ person, onSendRequest, onClose, onSuccess }:
           </div>
 
           {/* Date and Time */}
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <Label>Preferred Date</Label>
               <Input
@@ -370,7 +370,7 @@ export function CoffeeChatRequest({ person, onSendRequest, onClose, onSuccess }:
               rows={4}
               className="mt-1"
             />
-            <div className="flex justify-between items-center mt-1">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1 mt-1">
               <span className="text-xs text-gray-500">
                 {requestData.message.length}/500 characters
               </span>
@@ -399,16 +399,16 @@ export function CoffeeChatRequest({ person, onSendRequest, onClose, onSuccess }:
           )}
 
           {/* Action Buttons */}
-          <div className="flex gap-3 pt-4">
-            <Button 
-              variant="outline" 
-              onClick={onClose} 
+          <div className="flex flex-col sm:flex-row gap-3 pt-4">
+            <Button
+              variant="outline"
+              onClick={onClose}
               className="flex-1"
               disabled={isSubmitting}
             >
               Cancel
             </Button>
-            <Button 
+            <Button
               onClick={handleSendRequest}
               disabled={!requestData.message.trim() || !requestData.preferredDate || !requestData.preferredTime || isSubmitting || isSuccess}
               className="flex-1 bg-[#ff6b35] hover:bg-[#e55a2b] text-white"

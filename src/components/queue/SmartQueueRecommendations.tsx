@@ -91,7 +91,7 @@ export function SmartQueueRecommendations({
       <div className="bg-white w-full max-w-7xl h-[95vh] rounded-3xl shadow-2xl overflow-hidden flex flex-col">
         
         {/* Header */}
-        <div className="bg-gradient-to-r from-[#ff6b35] via-[#ff8c42] to-[#ff6b35] p-6 flex items-center justify-between">
+        <div className="bg-gradient-to-r from-[#ff6b35] via-[#ff8c42] to-[#ff6b35] p-6 flex flex-col lg:flex-row lg:items-center lg:justify-between gap-6">
           <div className="flex items-center gap-4">
             <div className="w-16 h-16 bg-white/20 rounded-2xl flex items-center justify-center backdrop-blur-sm">
               <Brain className="w-8 h-8 text-white" />
@@ -115,8 +115,8 @@ export function SmartQueueRecommendations({
         </div>
 
         {/* Category Navigation */}
-        <div className="border-b border-gray-200 px-8 bg-gray-50/50">
-          <div className="flex gap-8">
+        <div className="border-b border-gray-200 px-4 sm:px-8 bg-gray-50/50 overflow-x-auto">
+          <div className="flex gap-4 sm:gap-8 min-w-max">
             {categories.map((category) => {
               const Icon = category.icon;
               return (
@@ -175,16 +175,16 @@ export function SmartQueueRecommendations({
                 
                 return (
                   <Card key={rec.id} className="p-8 hover:shadow-2xl transition-all duration-300 border-2 border-gray-100 hover:border-orange-200">
-                    <div className="flex gap-8">
+                    <div className="flex flex-col lg:flex-row gap-8">
                       {/* Left Section - Basic Info */}
-                      <div className="flex-1">
-                        <div className="flex items-start gap-6 mb-6">
+                      <div className="flex-1 min-w-0">
+                        <div className="flex flex-col sm:flex-row items-start gap-6 mb-6">
                           <div className={`w-20 h-20 ${rec.color} rounded-3xl flex items-center justify-center shadow-2xl`}>
                             <IconComponent className="w-10 h-10 text-white" />
                           </div>
                           
-                          <div className="flex-1">
-                            <div className="flex items-center gap-4 mb-3">
+                          <div className="flex-1 min-w-0">
+                            <div className="flex flex-col sm:flex-row sm:items-center gap-4 mb-3">
                               <h3 className="text-2xl font-semibold text-gray-900">{rec.title}</h3>
                               <div className="flex items-center gap-2">
                                 <div className="w-16 h-16 bg-gradient-to-br from-green-500 to-emerald-600 rounded-full flex items-center justify-center">
@@ -196,7 +196,7 @@ export function SmartQueueRecommendations({
                             
                             <p className="text-gray-600 mb-4 text-lg">{rec.reason}</p>
                             
-                            <div className="flex items-center gap-6 mb-4">
+                            <div className="flex flex-wrap items-center gap-3 mb-4">
                               <Badge className={getDifficultyColor(rec.difficulty)}>
                                 {rec.difficulty} Difficulty
                               </Badge>
@@ -211,7 +211,7 @@ export function SmartQueueRecommendations({
                         </div>
 
                         {/* Stats Grid */}
-                        <div className="grid grid-cols-4 gap-4 mb-6">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4 mb-6">
                           <div className="text-center p-4 bg-blue-50 rounded-xl border border-blue-200">
                             <div className="text-xl font-bold text-blue-600">#{rec.currentRank}</div>
                             <div className="text-sm text-gray-600">Projected Rank</div>
@@ -232,7 +232,7 @@ export function SmartQueueRecommendations({
                       </div>
 
                       {/* Right Section - Details */}
-                      <div className="w-96 space-y-6">
+                      <div className="w-full lg:w-96 space-y-6">
                         {/* Advantages */}
                         <div>
                           <h4 className="font-semibold text-green-700 mb-3 flex items-center gap-2">
@@ -240,8 +240,8 @@ export function SmartQueueRecommendations({
                             Your Advantages
                           </h4>
                           <div className="space-y-2">
-                            {rec.advantages?.map((advantage: string, idx: number) => (
-                              <div key={idx} className="flex items-center gap-2 p-2 bg-green-50 rounded-lg">
+                            {rec.advantages?.map((advantage: string) => (
+                              <div key={advantage} className="flex items-center gap-2 p-2 bg-green-50 rounded-lg">
                                 <Star className="w-3 h-3 text-green-600" />
                                 <span className="text-sm text-green-800">{advantage}</span>
                               </div>
@@ -256,8 +256,8 @@ export function SmartQueueRecommendations({
                             Areas to Develop
                           </h4>
                           <div className="space-y-2">
-                            {rec.gaps?.map((gap: string, idx: number) => (
-                              <div key={idx} className="flex items-center gap-2 p-2 bg-orange-50 rounded-lg">
+                            {rec.gaps?.map((gap: string) => (
+                              <div key={gap} className="flex items-center gap-2 p-2 bg-orange-50 rounded-lg">
                                 <ArrowRight className="w-3 h-3 text-orange-600" />
                                 <span className="text-sm text-orange-800">{gap}</span>
                               </div>
@@ -269,8 +269,8 @@ export function SmartQueueRecommendations({
                         <div>
                           <h4 className="font-semibold text-blue-700 mb-3">Top Hiring Companies</h4>
                           <div className="flex flex-wrap gap-2">
-                            {rec.companies?.map((company: string, idx: number) => (
-                              <Badge key={idx} className="bg-blue-100 text-blue-800">
+                            {rec.companies?.map((company: string) => (
+                              <Badge key={company} className="bg-blue-100 text-blue-800">
                                 {company}
                               </Badge>
                             ))}
@@ -308,12 +308,12 @@ export function SmartQueueRecommendations({
                   <Brain className="w-8 h-8 text-blue-600" />
                   AI Career Intelligence
                 </h3>
-                <p className="text-gray-700 mb-6 max-w-3xl mx-auto">
+                <p className="text-gray-700 mb-6 max-w-[95vw] sm:max-w-3xl mx-auto">
                   Our AI analyzed 50,000+ career transitions, current market trends, and your unique profile 
                   to generate these personalized recommendations. Each suggestion is ranked based on match score, 
                   growth potential, and market demand.
                 </p>
-                <div className="grid grid-cols-3 gap-6">
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
                   <div className="text-center">
                     <div className="text-3xl font-bold text-blue-600 mb-2">94%</div>
                     <div className="text-sm text-gray-600">Average Match Score</div>

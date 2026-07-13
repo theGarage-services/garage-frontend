@@ -6,36 +6,29 @@ import { Card } from '../ui/card';
 import { Textarea } from '../ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
 import { Badge } from '../ui/badge';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '../ui/tabs';
-import { Switch } from '../ui/switch';
 import { 
   User, 
   Mail, 
   Phone, 
   MapPin, 
   Shield, 
-  Bell,
-  Eye,
-  EyeOff,
   Save, 
   X, 
   Edit2,
   CheckCircle,
-  Key,
-  Smartphone,
   Globe,
   Calendar,
   Crown,
-  Settings,
-  Lock,
   Building2,
-  AlertCircle
+  AlertCircle,
+  Camera
 } from 'lucide-react';
 import { Alert, AlertDescription } from '../ui/alert';
-import { Avatar, AvatarFallback } from '../ui/avatar';
-import { recruiterProfileService } from '@/api/recruiterProfile';
-import { notificationService } from '@/api/notifications';
-import { passwordResetService } from '@/api/passwordReset';
+import { Avatar, AvatarImage, AvatarFallback } from '../ui/avatar';
+import { recruiterProfileService, COMPANY_SIZES, buildProfileImageUrl } from '@/api/recruiterProfile';
+import { IndustrySelect, INDUSTRIES } from '../common/IndustrySelect';
+import { DepartmentSelect, DEPARTMENTS } from '../common/DepartmentSelect';
+import { ProfileImageUpload } from '../profile/ProfileImageUpload';
 
 interface RecruiterProfileProps {
   user: any;
@@ -72,7 +65,7 @@ interface ProfileFieldProps {
   value: string;
   onChange: (value: string) => void;
   icon?: React.ReactNode;
-  type?: 'text' | 'textarea' | 'select';
+  type?: 'text' | 'textarea' | 'select' | 'industry' | 'department';
   selectOptions?: { value: string; label: string }[];
 }
 
@@ -86,6 +79,23 @@ function ProfileField({
   type = 'text',
   selectOptions = []
 }: Readonly<ProfileFieldProps>) {
+  const displayValue = (() => {
+    if (!value) return null;
+    if (type === 'industry') {
+      const found = INDUSTRIES.find((opt) => opt.value === value);
+      return found?.label || value;
+    }
+    if (type === 'department') {
+      const found = DEPARTMENTS.find((opt) => opt.value === value);
+      return found?.label || value;
+    }
+    if (type === 'select' && selectOptions && selectOptions.length > 0) {
+      const found = selectOptions.find((opt) => opt.value === value);
+      return found?.label || value;
+    }
+    return value;
+  })();
+
   const renderEditingInput = () => {
     if (type === 'textarea') {
       return (
@@ -95,6 +105,24 @@ function ProfileField({
           onChange={(e) => onChange(e.target.value)}
           className="min-h-[120px]"
           maxLength={500}
+        />
+      );
+    }
+    if (type === 'industry') {
+      return (
+        <IndustrySelect
+          value={value}
+          onValueChange={onChange}
+          triggerClassName="h-12"
+        />
+      );
+    }
+    if (type === 'department') {
+      return (
+        <DepartmentSelect
+          value={value}
+          onValueChange={onChange}
+          triggerClassName="h-12"
         />
       );
     }
@@ -126,21 +154,126 @@ function ProfileField({
     <div className="space-y-2">
       <Label htmlFor={id}>{label}</Label>
       {isEditing ? renderEditingInput() : (
-        <div className="h-12 px-3 py-2 border border-gray-200 rounded-md bg-gray-50 flex items-center">
-          {icon && <span className="mr-2">{icon}</span>}
-          {value || 'Not specified'}
+        <div className="min-h-12 h-auto px-3 py-2 border border-gray-200 rounded-md bg-gray-50 flex items-center gap-2 min-w-0">
+          {icon && <span className="shrink-0">{icon}</span>}
+          <span className="break-words min-w-0">{displayValue || 'Not specified'}</span>
         </div>
       )}
     </div>
   );
 }
 
+interface ProfileHeaderCardProps {
+  profileData: any;
+  isEditing: boolean;
+  isLoading: boolean;
+  onEdit: () => void;
+  onCancel: () => void;
+  onSave: () => void;
+  onEditImage: () => void;
+}
+
+function ProfileHeaderCard({
+  profileData,
+  isEditing,
+  isLoading,
+  onEdit,
+  onCancel,
+  onSave,
+  onEditImage
+}: Readonly<ProfileHeaderCardProps>) {
+  return (
+    <Card className="p-6 sm:p-8 bg-white/80 backdrop-blur-sm border-2 border-orange-100 shadow-xl">
+      <div className="flex flex-col sm:flex-row items-start sm:items-center gap-6 sm:gap-8">
+        <div className="relative shrink-0 self-center sm:self-auto">
+          <div className="w-24 h-24 sm:w-32 sm:h-32 rounded-2xl overflow-hidden bg-gradient-to-br from-orange-400 to-orange-600 shadow-lg ring-4 ring-white">
+            {profileData.profileImage ? (
+              <img
+                src={profileData.profileImage}
+                alt="Profile"
+                className="w-full h-full object-cover"
+                crossOrigin="anonymous"
+              />
+            ) : (
+              <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-[#ff6b35] to-[#ff8c42] text-white text-4xl font-bold">
+                {(profileData.firstName?.[0] || '')}{(profileData.lastName?.[0] || '')}
+              </div>
+            )}
+          </div>
+          <button
+            onClick={onEditImage}
+            className="absolute bottom-2 right-2 w-10 h-10 bg-white rounded-full shadow-lg flex items-center justify-center hover:bg-gray-50 transition-colors border-2 border-orange-100"
+          >
+            <Camera className="w-4 h-4 text-[#ff6b35]" />
+          </button>
+        </div>
+
+        <div className="flex-1 min-w-0 w-full">
+          <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3 mb-2">
+            <div className="min-w-0">
+              <h1 className="text-2xl font-semibold text-gray-900 break-words">
+                {profileData.firstName} {profileData.lastName}
+              </h1>
+              <p className="text-lg text-gray-600 mt-1 break-words">
+                {profileData.title || profileData.company || 'Recruiter'}
+                {profileData.company && profileData.title !== profileData.company ? (
+                  <span className="text-[#ff6b35]"> @ {profileData.company}</span>
+                ) : null}
+              </p>
+              <div className="flex flex-wrap items-center gap-4 text-sm text-gray-500 mt-2">
+                {profileData.location && (
+                  <span className="flex items-center gap-1 min-w-0">
+                    <MapPin className="w-4 h-4 shrink-0" />
+                    <span className="break-words">{profileData.location}</span>
+                  </span>
+                )}
+                {profileData.timezone && (
+                  <span className="flex items-center gap-1 min-w-0">
+                    <Calendar className="w-4 h-4 shrink-0" />
+                    <span className="break-words">{profileData.timezone}</span>
+                  </span>
+                )}
+              </div>
+            </div>
+            <div className="flex flex-wrap items-center gap-2 self-start sm:self-auto">
+              {isEditing ? (
+                <div className="flex flex-wrap gap-2">
+                  <Button onClick={onCancel} variant="outline" size="sm">
+                    Cancel
+                  </Button>
+                  <Button onClick={onSave} disabled={isLoading} size="sm" className="bg-[#ff6b35] hover:bg-[#e55a2b]">
+                    {isLoading ? (
+                      <div className="flex items-center gap-2">
+                        <div className="animate-spin w-4 h-4 border-2 border-white border-t-transparent rounded-full" />
+                        Saving...
+                      </div>
+                    ) : (
+                      <>
+                        <Save className="w-4 h-4 mr-2" />
+                        Save
+                      </>
+                    )}
+                  </Button>
+                </div>
+              ) : (
+                <Button onClick={onEdit} variant="outline" className="flex items-center gap-2">
+                  <Edit2 className="w-4 h-4" />
+                  Edit Profile
+                </Button>
+              )}
+            </div>
+          </div>
+        </div>
+      </div>
+    </Card>
+  );
+}
+
 export function RecruiterProfile({ user, onBack, onNavigate }: Readonly<RecruiterProfileProps>) {
   const [isEditing, setIsEditing] = useState(false);
-  const [showPassword, setShowPassword] = useState(false);
-  const [currentTab, setCurrentTab] = useState('profile');
   const [updateSuccess, setUpdateSuccess] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [showImageUpload, setShowImageUpload] = useState(false);
 
   // Profile form data - matches backend RecruiterProfile fields
   const [profileData, setProfileData] = useState({
@@ -181,20 +314,14 @@ export function RecruiterProfile({ user, onBack, onNavigate }: Readonly<Recruite
         const profile = await recruiterProfileService.getProfile();
         if (profile) {
           const transformed = recruiterProfileService.transformProfileForFrontend(profile);
+          const fullImageUrl = buildProfileImageUrl(transformed.profileImage as string);
           setProfileData(prev => ({
             ...prev,
             ...transformed,
+            profileImage: fullImageUrl,
           }));
         }
 
-        const preferences = await notificationService.getPreferences();
-        if (preferences) {
-          const transformedPrefs = notificationService.transformDataForFrontend(preferences);
-          setNotificationData(prev => ({
-            ...prev,
-            ...transformedPrefs,
-          }));
-        }
       } catch (error) {
         console.error('Failed to load recruiter profile:', error);
         setFetchError('Failed to load profile data');
@@ -205,28 +332,6 @@ export function RecruiterProfile({ user, onBack, onNavigate }: Readonly<Recruite
 
     void loadProfile();
   }, []);
-
-  // Security settings
-  const [securityData, setSecurityData] = useState({
-    currentPassword: '',
-    newPassword: '',
-    confirmPassword: '',
-    twoFactorEnabled: false,
-    loginNotifications: true,
-    securityUpdates: true,
-  });
-
-  // Notification preferences
-  const [notificationData, setNotificationData] = useState({
-    emailNewApplications: true,
-    emailStatusUpdates: true,
-    emailWeeklyReport: true,
-    pushNewApplications: true,
-    pushInterviewReminders: true,
-    pushMessages: false,
-    smsImportantUpdates: false,
-    smsInterviewReminders: false,
-  });
 
   // User role and permissions info
   const userRole = user?.role || 'recruiter';
@@ -239,7 +344,12 @@ export function RecruiterProfile({ user, onBack, onNavigate }: Readonly<Recruite
     try {
       // Transform and send to backend
       const backendData = recruiterProfileService.transformDataForBackend(profileData);
-      await recruiterProfileService.updateProfile(backendData);
+      const updatedProfile = await recruiterProfileService.updateProfile(backendData);
+      if (updatedProfile) {
+        const transformed = recruiterProfileService.transformProfileForFrontend(updatedProfile);
+        const fullImageUrl = buildProfileImageUrl(transformed.profileImage as string);
+        setProfileData(prev => ({ ...prev, ...transformed, profileImage: fullImageUrl }));
+      }
       setIsEditing(false);
       setUpdateSuccess(true);
       setTimeout(() => setUpdateSuccess(false), 3000);
@@ -251,47 +361,26 @@ export function RecruiterProfile({ user, onBack, onNavigate }: Readonly<Recruite
     }
   };
 
-  const handleSecuritySave = async () => {
+  const handleImageUpload = async (file: File) => {
     setIsLoading(true);
+    setFetchError(null);
     try {
-      // Only call password change API if user filled in password fields
-      if (securityData.currentPassword && securityData.newPassword && securityData.confirmPassword) {
-        await passwordResetService.changePassword(
-          securityData.currentPassword,
-          securityData.newPassword,
-          securityData.confirmPassword
-        );
-      }
-
-      setSecurityData(prev => ({
-        ...prev,
-        currentPassword: '',
-        newPassword: '',
-        confirmPassword: ''
-      }));
+      const imageUrl = await recruiterProfileService.uploadProfileImage(file);
+      const fullImageUrl = buildProfileImageUrl(imageUrl);
+      setProfileData(prev => ({ ...prev, profileImage: fullImageUrl }));
       setUpdateSuccess(true);
       setTimeout(() => setUpdateSuccess(false), 3000);
     } catch (error: any) {
-      console.error('Error updating security settings:', error);
-      setFetchError(error.message || 'Failed to update security settings');
+      console.error('Error uploading profile image:', error);
+      setFetchError(error.message || 'Failed to upload profile image');
     } finally {
       setIsLoading(false);
     }
   };
 
-  const handleNotificationSave = async () => {
-    setIsLoading(true);
-    try {
-      const payload = notificationService.transformDataForBackend(notificationData);
-      await notificationService.updatePreferences(payload);
-      setUpdateSuccess(true);
-      setTimeout(() => setUpdateSuccess(false), 3000);
-    } catch (error) {
-      console.error('Error updating notifications:', error);
-    } finally {
-      setIsLoading(false);
-    }
-  };
+
+
+
 
   const handleCancel = async () => {
     // Reload original data from API to discard changes
@@ -300,9 +389,11 @@ export function RecruiterProfile({ user, onBack, onNavigate }: Readonly<Recruite
       const profile = await recruiterProfileService.getProfile();
       if (profile) {
         const transformed = recruiterProfileService.transformProfileForFrontend(profile);
+        const fullImageUrl = buildProfileImageUrl(transformed.profileImage as string);
         setProfileData(prev => ({
           ...prev,
           ...transformed,
+          profileImage: fullImageUrl,
         }));
       }
     } catch (error) {
@@ -318,25 +409,30 @@ export function RecruiterProfile({ user, onBack, onNavigate }: Readonly<Recruite
       {/* Header */}
       <div className="bg-white border-b border-gray-200 shadow-sm">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center justify-between h-16">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 h-auto min-h-16 py-2">
             <div className="flex items-center gap-4">
-              <Button variant="ghost" onClick={onBack} className="p-2">
+              <Button variant="ghost" onClick={onBack} className="p-2 shrink-0">
                 <X className="w-5 h-5" />
               </Button>
-              <div className="flex items-center gap-3">
-                <Avatar className="w-10 h-10">
-                  <AvatarFallback className="bg-gradient-to-r from-[#ff6b35] to-[#ff8c42] text-white">
-                    {(profileData.firstName?.[0] || '')}{(profileData.lastName?.[0] || '')}
-                  </AvatarFallback>
-                </Avatar>
-                <div>
-                  <h1 className="text-xl font-medium text-gray-900">
+              <div className="flex items-center gap-3 min-w-0">
+                <div className="relative shrink-0">
+                  <Avatar className="w-10 h-10">
+                    {profileData.profileImage ? (
+                      <AvatarImage src={profileData.profileImage} alt="Profile" />
+                    ) : null}
+                    <AvatarFallback className="bg-gradient-to-r from-[#ff6b35] to-[#ff8c42] text-white">
+                      {(profileData.firstName?.[0] || '')}{(profileData.lastName?.[0] || '')}
+                    </AvatarFallback>
+                  </Avatar>
+                </div>
+                <div className="min-w-0">
+                  <h1 className="text-xl font-medium text-gray-900 truncate">
                     {profileData.firstName} {profileData.lastName}
                   </h1>
-                  <div className="flex items-center gap-2">
+                  <div className="flex flex-wrap items-center gap-2">
                     {<RoleBadge role={userRole} />}
                     {institution && (
-                      <span className="text-sm text-gray-500">
+                      <span className="text-sm text-gray-500 truncate">
                         at {institution.institutionName}
                       </span>
                     )}
@@ -344,9 +440,9 @@ export function RecruiterProfile({ user, onBack, onNavigate }: Readonly<Recruite
                 </div>
               </div>
             </div>
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-3 self-start sm:self-auto">
               <div className="flex items-center gap-2 text-green-600">
-                <CheckCircle className="w-5 h-5" />
+                <CheckCircle className="w-5 h-5 shrink-0" />
                 <span className="text-sm font-medium">Verified Account</span>
               </div>
             </div>
@@ -379,58 +475,24 @@ export function RecruiterProfile({ user, onBack, onNavigate }: Readonly<Recruite
       )}
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-        <Tabs value={currentTab} onValueChange={setCurrentTab} className="space-y-6">
-          <TabsList className="grid w-full grid-cols-4">
-            <TabsTrigger value="profile" className="flex items-center gap-2">
-              <User className="w-4 h-4" />
-              Profile
-            </TabsTrigger>
-            <TabsTrigger value="security" className="flex items-center gap-2">
-              <Lock className="w-4 h-4" />
-              Security
-            </TabsTrigger>
-            <TabsTrigger value="notifications" className="flex items-center gap-2">
-              <Bell className="w-4 h-4" />
-              Notifications
-            </TabsTrigger>
-            <TabsTrigger value="account" className="flex items-center gap-2">
-              <Settings className="w-4 h-4" />
-              Account
-            </TabsTrigger>
-          </TabsList>
+        <div className="space-y-6">
 
-          {/* Profile Tab */}
-          <TabsContent value="profile" className="space-y-6">
+            <ProfileHeaderCard
+              profileData={profileData}
+              isEditing={isEditing}
+              isLoading={isLoading}
+              onEdit={() => setIsEditing(true)}
+              onCancel={handleCancel}
+              onSave={handleProfileSave}
+              onEditImage={() => setShowImageUpload(true)}
+            />
+
+            {/* Personal Information */}
             <Card className="p-6">
-              <div className="flex items-center justify-between mb-6">
-                <h2 className="text-lg font-medium text-gray-900">Personal Information</h2>
-                {isEditing ? (
-                  <div className="flex gap-2">
-                    <Button onClick={handleCancel} variant="outline" size="sm">
-                      Cancel
-                    </Button>
-                    <Button onClick={handleProfileSave} disabled={isLoading} size="sm" className="bg-[#ff6b35] hover:bg-[#e55a2b]">
-                      {isLoading ? (
-                        <div className="flex items-center gap-2">
-                          <div className="animate-spin w-4 h-4 border-2 border-white border-t-transparent rounded-full" />
-                          Saving...
-                        </div>
-                      ) : (
-                        <>
-                          <Save className="w-4 h-4 mr-2" />
-                          Save
-                        </>
-                      )}
-                    </Button>
-                  </div>
-                ) : (
-                  <Button onClick={() => setIsEditing(true)} variant="outline" className="flex items-center gap-2">
-                    <Edit2 className="w-4 h-4" />
-                    Edit
-                  </Button>
-                )}
-              </div>
-
+              <h2 className="text-lg font-medium text-gray-900 mb-6 flex items-center gap-2">
+                <User className="w-5 h-5 text-[#ff6b35]" />
+                Personal Information
+              </h2>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <ProfileField
                   label="First Name"
@@ -462,12 +524,40 @@ export function RecruiterProfile({ user, onBack, onNavigate }: Readonly<Recruite
                   onChange={(v) => setProfileData((prev) => ({ ...prev, phone: v }))}
                   icon={<Phone className="w-4 h-4 text-gray-500" />}
                 />
+              </div>
+            </Card>
+
+            {/* Company Information */}
+            <Card className="p-6">
+              <h2 className="text-lg font-medium text-gray-900 mb-6 flex items-center gap-2">
+                <Building2 className="w-5 h-5 text-[#ff6b35]" />
+                Company Information
+              </h2>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <ProfileField
-                  label="Job Title"
-                  id="title"
+                  label="Company Name"
+                  id="company"
                   isEditing={isEditing}
-                  value={profileData.title || profileData.company}
-                  onChange={(v) => setProfileData((prev) => ({ ...prev, title: v, company: v }))}
+                  value={profileData.company || profileData.title}
+                  onChange={(v) => setProfileData((prev) => ({ ...prev, company: v, title: v }))}
+                  icon={<Building2 className="w-4 h-4 text-gray-500" />}
+                />
+                <ProfileField
+                  label="Company Size"
+                  id="companySize"
+                  isEditing={isEditing}
+                  value={profileData.companySize}
+                  onChange={(v) => setProfileData((prev) => ({ ...prev, companySize: v }))}
+                  type="select"
+                  selectOptions={COMPANY_SIZES}
+                />
+                <ProfileField
+                  label="Industry"
+                  id="industry"
+                  isEditing={isEditing}
+                  value={profileData.industry}
+                  onChange={(v) => setProfileData((prev) => ({ ...prev, industry: v }))}
+                  type="industry"
                 />
                 <ProfileField
                   label="Department"
@@ -475,7 +565,18 @@ export function RecruiterProfile({ user, onBack, onNavigate }: Readonly<Recruite
                   isEditing={isEditing}
                   value={profileData.department}
                   onChange={(v) => setProfileData((prev) => ({ ...prev, department: v }))}
+                  type="department"
                 />
+              </div>
+            </Card>
+
+            {/* Location & Timezone */}
+            <Card className="p-6">
+              <h2 className="text-lg font-medium text-gray-900 mb-6 flex items-center gap-2">
+                <MapPin className="w-5 h-5 text-[#ff6b35]" />
+                Location & Timezone
+              </h2>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <ProfileField
                   label="Location"
                   id="location"
@@ -492,17 +593,101 @@ export function RecruiterProfile({ user, onBack, onNavigate }: Readonly<Recruite
                   onChange={(v) => setProfileData((prev) => ({ ...prev, timezone: v }))}
                   type="select"
                   selectOptions={[
+                    { value: 'Pacific/Midway', label: 'Midway (SST)' },
+                    { value: 'Pacific/Honolulu', label: 'Hawaii (HST)' },
+                    { value: 'America/Anchorage', label: 'Alaska (AKST/AKDT)' },
                     { value: 'America/Los_Angeles', label: 'Pacific Time (PST/PDT)' },
+                    { value: 'America/Vancouver', label: 'Vancouver (PST/PDT)' },
+                    { value: 'America/Tijuana', label: 'Tijuana (PST/PDT)' },
+                    { value: 'America/Phoenix', label: 'Arizona (MST)' },
                     { value: 'America/Denver', label: 'Mountain Time (MST/MDT)' },
+                    { value: 'America/Edmonton', label: 'Edmonton (MST/MDT)' },
+                    { value: 'America/Mazatlan', label: 'Mazatlan (MST/MDT)' },
                     { value: 'America/Chicago', label: 'Central Time (CST/CDT)' },
+                    { value: 'America/Winnipeg', label: 'Winnipeg (CST/CDT)' },
+                    { value: 'America/Mexico_City', label: 'Mexico City (CST/CDT)' },
+                    { value: 'America/Guatemala', label: 'Guatemala (CST)' },
                     { value: 'America/New_York', label: 'Eastern Time (EST/EDT)' },
+                    { value: 'America/Toronto', label: 'Toronto (EST/EDT)' },
+                    { value: 'America/Montreal', label: 'Montreal (EST/EDT)' },
+                    { value: 'America/Bogota', label: 'Bogota (COT)' },
+                    { value: 'America/Lima', label: 'Lima (PET)' },
+                    { value: 'America/Havana', label: 'Havana (CST/CDT)' },
+                    { value: 'America/Caracas', label: 'Caracas (VET)' },
+                    { value: 'America/Puerto_Rico', label: 'Puerto Rico (AST)' },
+                    { value: 'America/Santiago', label: 'Santiago (CLT/CLST)' },
+                    { value: 'America/Buenos_Aires', label: 'Buenos Aires (ART)' },
+                    { value: 'America/Sao_Paulo', label: 'Sao Paulo (BRT/BRST)' },
+                    { value: 'America/Montevideo', label: 'Montevideo (UYT)' },
+                    { value: 'Atlantic/Reykjavik', label: 'Reykjavik (GMT)' },
+                    { value: 'Europe/Dublin', label: 'Dublin (GMT/IST)' },
                     { value: 'Europe/London', label: 'London (GMT/BST)' },
+                    { value: 'Europe/Lisbon', label: 'Lisbon (WET/WEST)' },
+                    { value: 'Africa/Casablanca', label: 'Casablanca (WET)' },
+                    { value: 'Europe/Paris', label: 'Paris (CET/CEST)' },
                     { value: 'Europe/Berlin', label: 'Berlin (CET/CEST)' },
-                    { value: 'Asia/Tokyo', label: 'Tokyo (JST)' }
+                    { value: 'Europe/Amsterdam', label: 'Amsterdam (CET/CEST)' },
+                    { value: 'Europe/Rome', label: 'Rome (CET/CEST)' },
+                    { value: 'Europe/Madrid', label: 'Madrid (CET/CEST)' },
+                    { value: 'Europe/Stockholm', label: 'Stockholm (CET/CEST)' },
+                    { value: 'Europe/Vienna', label: 'Vienna (CET/CEST)' },
+                    { value: 'Europe/Warsaw', label: 'Warsaw (CET/CEST)' },
+                    { value: 'Europe/Zurich', label: 'Zurich (CET/CEST)' },
+                    { value: 'Africa/Lagos', label: 'Lagos (WAT)' },
+                    { value: 'Europe/Athens', label: 'Athens (EET/EEST)' },
+                    { value: 'Europe/Helsinki', label: 'Helsinki (EET/EEST)' },
+                    { value: 'Europe/Istanbul', label: 'Istanbul (TRT)' },
+                    { value: 'Africa/Cairo', label: 'Cairo (EET/EEST)' },
+                    { value: 'Africa/Johannesburg', label: 'Johannesburg (SAST)' },
+                    { value: 'Europe/Moscow', label: 'Moscow (MSK)' },
+                    { value: 'Europe/Kyiv', label: 'Kyiv (EET/EEST)' },
+                    { value: 'Asia/Jerusalem', label: 'Jerusalem (IST/IDT)' },
+                    { value: 'Asia/Riyadh', label: 'Riyadh (AST)' },
+                    { value: 'Asia/Kuwait', label: 'Kuwait (AST)' },
+                    { value: 'Asia/Baghdad', label: 'Baghdad (AST)' },
+                    { value: 'Asia/Dubai', label: 'Dubai (GST)' },
+                    { value: 'Asia/Tehran', label: 'Tehran (IRST/IRST)' },
+                    { value: 'Asia/Karachi', label: 'Karachi (PKT)' },
+                    { value: 'Asia/Tashkent', label: 'Tashkent (UZT)' },
+                    { value: 'Asia/Kolkata', label: 'India (IST)' },
+                    { value: 'Asia/Colombo', label: 'Colombo (IST)' },
+                    { value: 'Asia/Dhaka', label: 'Dhaka (BST)' },
+                    { value: 'Asia/Almaty', label: 'Almaty (ALMT)' },
+                    { value: 'Asia/Bangkok', label: 'Bangkok (ICT)' },
+                    { value: 'Asia/Jakarta', label: 'Jakarta (WIB)' },
+                    { value: 'Asia/Ho_Chi_Minh', label: 'Ho Chi Minh (ICT)' },
+                    { value: 'Asia/Singapore', label: 'Singapore (SGT)' },
+                    { value: 'Asia/Kuala_Lumpur', label: 'Kuala Lumpur (MYT)' },
+                    { value: 'Asia/Hong_Kong', label: 'Hong Kong (HKT)' },
+                    { value: 'Asia/Shanghai', label: 'Shanghai (CST)' },
+                    { value: 'Asia/Taipei', label: 'Taipei (CST)' },
+                    { value: 'Asia/Manila', label: 'Manila (PHT)' },
+                    { value: 'Australia/Perth', label: 'Perth (AWST)' },
+                    { value: 'Asia/Tokyo', label: 'Tokyo (JST)' },
+                    { value: 'Asia/Seoul', label: 'Seoul (KST)' },
+                    { value: 'Asia/Pyongyang', label: 'Pyongyang (KST)' },
+                    { value: 'Australia/Adelaide', label: 'Adelaide (ACST/ACDT)' },
+                    { value: 'Australia/Darwin', label: 'Darwin (ACST)' },
+                    { value: 'Australia/Brisbane', label: 'Brisbane (AEST)' },
+                    { value: 'Australia/Sydney', label: 'Sydney (AEST/AEDT)' },
+                    { value: 'Australia/Melbourne', label: 'Melbourne (AEST/AEDT)' },
+                    { value: 'Pacific/Guam', label: 'Guam (ChST)' },
+                    { value: 'Pacific/Auckland', label: 'Auckland (NZST/NZDT)' },
+                    { value: 'Pacific/Fiji', label: 'Fiji (FJT)' },
+                    { value: 'Pacific/Noumea', label: 'Noumea (NCT)' },
                   ]}
                   icon={<Calendar className="w-4 h-4 text-gray-500" />}
                 />
+              </div>
+            </Card>
 
+            {/* Online Presence */}
+            <Card className="p-6">
+              <h2 className="text-lg font-medium text-gray-900 mb-6 flex items-center gap-2">
+                <Globe className="w-5 h-5 text-[#ff6b35]" />
+                Online Presence
+              </h2>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <ProfileField
                   label="LinkedIn Profile"
                   id="linkedin"
@@ -520,17 +705,22 @@ export function RecruiterProfile({ user, onBack, onNavigate }: Readonly<Recruite
                   icon={profileData.website ? <Globe className="w-4 h-4 text-gray-500" /> : undefined}
                 />
               </div>
+            </Card>
 
-              <div className="mt-6">
-                <ProfileField
-                  label="Professional Bio"
-                  id="bio"
-                  isEditing={isEditing}
-                  value={profileData.bio}
-                  onChange={(v) => setProfileData((prev) => ({ ...prev, bio: v }))}
-                  type="textarea"
-                />
-              </div>
+            {/* Professional Bio */}
+            <Card className="p-6">
+              <h2 className="text-lg font-medium text-gray-900 mb-6 flex items-center gap-2">
+                <User className="w-5 h-5 text-[#ff6b35]" />
+                Professional Bio
+              </h2>
+              <ProfileField
+                label="Bio"
+                id="bio"
+                isEditing={isEditing}
+                value={profileData.bio}
+                onChange={(v) => setProfileData((prev) => ({ ...prev, bio: v }))}
+                type="textarea"
+              />
             </Card>
 
             {/* Institution Info Card */}
@@ -570,335 +760,16 @@ export function RecruiterProfile({ user, onBack, onNavigate }: Readonly<Recruite
                 </div>
               </Card>
             )}
-          </TabsContent>
-
-          {/* Security Tab */}
-          <TabsContent value="security" className="space-y-6">
-            <Card className="p-6">
-              <h2 className="text-lg font-medium text-gray-900 mb-6">Password & Security</h2>
-              
-              <div className="space-y-6">
-                {/* Change Password */}
-                <div className="space-y-4">
-                  <h3 className="font-medium text-gray-900">Change Password</h3>
-                  <div className="grid grid-cols-1 gap-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="currentPassword">Current Password</Label>
-                      <div className="relative">
-                        <Input
-                          id="currentPassword"
-                          type={showPassword ? "text" : "password"}
-                          value={securityData.currentPassword}
-                          onChange={(e) => setSecurityData(prev => ({ ...prev, currentPassword: e.target.value }))}
-                          className="h-12 pr-10"
-                        />
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="sm"
-                          className="absolute right-0 top-0 h-12 px-3"
-                          onClick={() => setShowPassword(!showPassword)}
-                        >
-                          {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                        </Button>
-                      </div>
-                    </div>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <div className="space-y-2">
-                        <Label htmlFor="newPassword">New Password</Label>
-                        <Input
-                          id="newPassword"
-                          type={showPassword ? "text" : "password"}
-                          value={securityData.newPassword}
-                          onChange={(e) => setSecurityData(prev => ({ ...prev, newPassword: e.target.value }))}
-                          className="h-12"
-                        />
-                      </div>
-                      <div className="space-y-2">
-                        <Label htmlFor="confirmPassword">Confirm New Password</Label>
-                        <Input
-                          id="confirmPassword"
-                          type={showPassword ? "text" : "password"}
-                          value={securityData.confirmPassword}
-                          onChange={(e) => setSecurityData(prev => ({ ...prev, confirmPassword: e.target.value }))}
-                          className="h-12"
-                        />
-                      </div>
-                    </div>
-                  </div>
-                  <Button onClick={handleSecuritySave} disabled={isLoading} className="bg-[#ff6b35] hover:bg-[#e55a2b]">
-                    {isLoading ? (
-                      <div className="flex items-center gap-2">
-                        <div className="animate-spin w-4 h-4 border-2 border-white border-t-transparent rounded-full" />
-                        Updating...
-                      </div>
-                    ) : (
-                      <>
-                        <Key className="w-4 h-4 mr-2" />
-                        Update Password
-                      </>
-                    )}
-                  </Button>
-                </div>
-
-                {/* Two-Factor Authentication */}
-                <div className="border-t pt-6">
-                  <div className="flex items-center justify-between mb-4">
-                    <div>
-                      <h3 className="font-medium text-gray-900">Two-Factor Authentication</h3>
-                      <p className="text-sm text-gray-500">Add an extra layer of security to your account</p>
-                    </div>
-                    <Switch
-                      checked={securityData.twoFactorEnabled}
-                      onCheckedChange={(checked: any) => setSecurityData(prev => ({ ...prev, twoFactorEnabled: checked }))}
-                    />
-                  </div>
-                  {securityData.twoFactorEnabled && (
-                    <div className="bg-blue-50 p-4 rounded-lg">
-                      <div className="flex items-center gap-3">
-                        <Smartphone className="w-5 h-5 text-blue-600" />
-                        <div>
-                          <p className="text-sm font-medium text-blue-900">Two-factor authentication is enabled</p>
-                          <p className="text-sm text-blue-700">Use your authenticator app to generate verification codes</p>
-                        </div>
-                      </div>
-                    </div>
-                  )}
-                </div>
-
-                {/* Security Notifications */}
-                <div className="border-t pt-6">
-                  <h3 className="font-medium text-gray-900 mb-4">Security Notifications</h3>
-                  <div className="space-y-4">
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <p className="font-medium text-gray-900">Login Notifications</p>
-                        <p className="text-sm text-gray-500">Get notified when someone logs into your account</p>
-                      </div>
-                      <Switch
-                        checked={securityData.loginNotifications}
-                        onCheckedChange={(checked: any) => setSecurityData(prev => ({ ...prev, loginNotifications: checked }))}
-                      />
-                    </div>
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <p className="font-medium text-gray-900">Security Updates</p>
-                        <p className="text-sm text-gray-500">Receive important security updates and alerts</p>
-                      </div>
-                      <Switch
-                        checked={securityData.securityUpdates}
-                        onCheckedChange={(checked: any) => setSecurityData(prev => ({ ...prev, securityUpdates: checked }))}
-                      />
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </Card>
-          </TabsContent>
-
-          {/* Notifications Tab */}
-          <TabsContent value="notifications" className="space-y-6">
-            <Card className="p-6">
-              <h2 className="text-lg font-medium text-gray-900 mb-6">Notification Preferences</h2>
-              
-              <div className="space-y-6">
-                {/* Email Notifications */}
-                <div>
-                  <h3 className="font-medium text-gray-900 mb-4 flex items-center gap-2">
-                    <Mail className="w-4 h-4" />
-                    Email Notifications
-                  </h3>
-                  <div className="space-y-4">
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <p className="font-medium text-gray-900">New Applications</p>
-                        <p className="text-sm text-gray-500">Get notified when candidates apply to your jobs</p>
-                      </div>
-                      <Switch
-                        checked={notificationData.emailNewApplications}
-                        onCheckedChange={(checked: any) => setNotificationData(prev => ({ ...prev, emailNewApplications: checked }))}
-                      />
-                    </div>
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <p className="font-medium text-gray-900">Status Updates</p>
-                        <p className="text-sm text-gray-500">Updates on candidate status changes and decisions</p>
-                      </div>
-                      <Switch
-                        checked={notificationData.emailStatusUpdates}
-                        onCheckedChange={(checked: any) => setNotificationData(prev => ({ ...prev, emailStatusUpdates: checked }))}
-                      />
-                    </div>
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <p className="font-medium text-gray-900">Weekly Report</p>
-                        <p className="text-sm text-gray-500">Weekly summary of your hiring activities</p>
-                      </div>
-                      <Switch
-                        checked={notificationData.emailWeeklyReport}
-                        onCheckedChange={(checked: any) => setNotificationData(prev => ({ ...prev, emailWeeklyReport: checked }))}
-                      />
-                    </div>
-                  </div>
-                </div>
-
-                {/* Push Notifications */}
-                <div className="border-t pt-6">
-                  <h3 className="font-medium text-gray-900 mb-4 flex items-center gap-2">
-                    <Bell className="w-4 h-4" />
-                    Push Notifications
-                  </h3>
-                  <div className="space-y-4">
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <p className="font-medium text-gray-900">New Applications</p>
-                        <p className="text-sm text-gray-500">Instant notifications for new candidate applications</p>
-                      </div>
-                      <Switch
-                        checked={notificationData.pushNewApplications}
-                        onCheckedChange={(checked: any) => setNotificationData(prev => ({ ...prev, pushNewApplications: checked }))}
-                      />
-                    </div>
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <p className="font-medium text-gray-900">Interview Reminders</p>
-                        <p className="text-sm text-gray-500">Reminders for upcoming interviews</p>
-                      </div>
-                      <Switch
-                        checked={notificationData.pushInterviewReminders}
-                        onCheckedChange={(checked: any) => setNotificationData(prev => ({ ...prev, pushInterviewReminders: checked }))}
-                      />
-                    </div>
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <p className="font-medium text-gray-900">Messages</p>
-                        <p className="text-sm text-gray-500">New messages from candidates and team members</p>
-                      </div>
-                      <Switch
-                        checked={notificationData.pushMessages}
-                        onCheckedChange={(checked: any) => setNotificationData(prev => ({ ...prev, pushMessages: checked }))}
-                      />
-                    </div>
-                  </div>
-                </div>
-
-                {/* SMS Notifications */}
-                <div className="border-t pt-6">
-                  <h3 className="font-medium text-gray-900 mb-4 flex items-center gap-2">
-                    <Smartphone className="w-4 h-4" />
-                    SMS Notifications
-                  </h3>
-                  <div className="space-y-4">
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <p className="font-medium text-gray-900">Important Updates</p>
-                        <p className="text-sm text-gray-500">Critical notifications about your account and jobs</p>
-                      </div>
-                      <Switch
-                        checked={notificationData.smsImportantUpdates}
-                        onCheckedChange={(checked: any) => setNotificationData(prev => ({ ...prev, smsImportantUpdates: checked }))}
-                      />
-                    </div>
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <p className="font-medium text-gray-900">Interview Reminders</p>
-                        <p className="text-sm text-gray-500">SMS reminders for scheduled interviews</p>
-                      </div>
-                      <Switch
-                        checked={notificationData.smsInterviewReminders}
-                        onCheckedChange={(checked: any) => setNotificationData(prev => ({ ...prev, smsInterviewReminders: checked }))}
-                      />
-                    </div>
-                  </div>
-                </div>
-
-                <div className="border-t pt-6">
-                  <Button onClick={handleNotificationSave} disabled={isLoading} className="bg-[#ff6b35] hover:bg-[#e55a2b]">
-                    {isLoading ? (
-                      <div className="flex items-center gap-2">
-                        <div className="animate-spin w-4 h-4 border-2 border-white border-t-transparent rounded-full" />
-                        Saving...
-                      </div>
-                    ) : (
-                      <>
-                        <Save className="w-4 h-4 mr-2" />
-                        Save Preferences
-                      </>
-                    )}
-                  </Button>
-                </div>
-              </div>
-            </Card>
-          </TabsContent>
-
-          {/* Account Tab */}
-          <TabsContent value="account" className="space-y-6">
-            <Card className="p-6">
-              <h2 className="text-lg font-medium text-gray-900 mb-6">Account Information</h2>
-              
-              <div className="space-y-6">
-                <div className="bg-gray-50 p-4 rounded-lg">
-                  <h3 className="font-medium text-gray-900 mb-2">Account Status</h3>
-                  <div className="flex items-center gap-2 mb-2">
-                    <CheckCircle className="w-5 h-5 text-green-600" />
-                    <span className="text-green-600 font-medium">Verified Account</span>
-                  </div>
-                  <p className="text-sm text-gray-600">
-                    Your account has been verified and you have full access to all recruiter features.
-                  </p>
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <div>
-                    <h3 className="font-medium text-gray-900 mb-2">Account Created</h3>
-                    <p className="text-sm text-gray-600">January 15, 2024</p>
-                  </div>
-                  <div>
-                    <h3 className="font-medium text-gray-900 mb-2">Last Login</h3>
-                    <p className="text-sm text-gray-600">Today at 2:45 PM</p>
-                  </div>
-                  <div>
-                    <h3 className="font-medium text-gray-900 mb-2">Account Type</h3>
-                    <p className="text-sm text-gray-600">Professional Recruiter</p>
-                  </div>
-                  <div>
-                    <h3 className="font-medium text-gray-900 mb-2">Data Region</h3>
-                    <p className="text-sm text-gray-600">United States</p>
-                  </div>
-                </div>
-
-                <div className="border-t pt-6">
-                  <h3 className="font-medium text-gray-900 mb-4 text-red-600">Danger Zone</h3>
-                  <div className="space-y-4">
-                    <div className="flex items-start justify-between p-4 border border-red-200 rounded-lg bg-red-50">
-                      <div>
-                        <h4 className="font-medium text-red-900">Deactivate Account</h4>
-                        <p className="text-sm text-red-700">
-                          Temporarily disable your account. You can reactivate it anytime.
-                        </p>
-                      </div>
-                      <Button variant="outline" className="border-red-300 text-red-700 hover:bg-red-100">
-                        Deactivate
-                      </Button>
-                    </div>
-                    <div className="flex items-start justify-between p-4 border border-red-200 rounded-lg bg-red-50">
-                      <div>
-                        <h4 className="font-medium text-red-900">Delete Account</h4>
-                        <p className="text-sm text-red-700">
-                          Permanently delete your account and all associated data. This cannot be undone.
-                        </p>
-                      </div>
-                      <Button variant="outline" className="border-red-300 text-red-700 hover:bg-red-100">
-                        Delete Account
-                      </Button>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </Card>
-          </TabsContent>
-        </Tabs>
+        </div>
       </div>
+      {/* Profile Image Upload Modal */}
+      {showImageUpload && (
+        <ProfileImageUpload
+          currentImage={profileData.profileImage}
+          onUpload={handleImageUpload}
+          onClose={() => setShowImageUpload(false)}
+        />
+      )}
     </div>
   );
 }

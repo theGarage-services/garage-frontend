@@ -1,8 +1,10 @@
+import { safeOpenWindow } from './safe-url';
+
 // Platform-specific utilities for web
 export const platformUtils = {
-  // Open URL in new tab
+  // Open URL in new tab (only http/https/mailto/tel schemes allowed)
   openURL: async (url: string) => {
-    window.open(url, '_blank');
+    safeOpenWindow(url);
   },
 
   // Make phone call (web - opens phone app)
@@ -36,6 +38,7 @@ export const platformUtils = {
           url: content.url,
         });
       } catch (error) {
+        console.error('Error sharing content:', error);
       }
     } else {
       // Fallback to copying to clipboard

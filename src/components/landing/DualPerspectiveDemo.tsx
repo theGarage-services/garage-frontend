@@ -190,7 +190,7 @@ export function DualPerspectiveDemo({ onBack, onNavigate, user, onLogout }: Read
           <h1 className="text-3xl font-medium text-gray-900 mb-2">
             Experience <span className="text-black">the</span><span className="text-[#ff6b35]">Garage</span> from Both Sides
           </h1>
-          <p className="text-gray-600 max-w-3xl mx-auto">
+          <p className="text-gray-600 max-w-[95vw] sm:max-w-3xl mx-auto">
             See how theGarage creates seamless connections between job seekers and recruiters through our dual-perspective platform. 
             Every interaction is designed to benefit both sides of the hiring process.
           </p>
@@ -220,9 +220,9 @@ export function DualPerspectiveDemo({ onBack, onNavigate, user, onLogout }: Read
               <h2 className="text-2xl font-medium mb-2">{currentScenario.title}</h2>
               <p className="text-white/90">Step {currentStep + 1} of {demoScenarios.length}</p>
               <div className="flex justify-center mt-4 gap-2">
-                {demoScenarios.map((_, index) => (
-                  <div 
-                    key={index}
+                {demoScenarios.map((scenario, index) => (
+                  <div
+                    key={scenario.title}
                     className={`w-3 h-3 rounded-full transition-all ${
                       index === currentStep ? 'bg-white' : 'bg-white/30'
                     }`}
@@ -247,7 +247,7 @@ export function DualPerspectiveDemo({ onBack, onNavigate, user, onLogout }: Read
 
                 <div className="space-y-4 mb-6">
                   {currentScenario.jobSeekerView.steps.map((step, index) => (
-                    <div key={index} className="flex items-start gap-3 p-3 bg-white/50 rounded-lg">
+                    <div key={step} className="flex items-start gap-3 p-3 bg-white/50 rounded-lg">
                       <div className="w-6 h-6 bg-blue-500 rounded-full flex items-center justify-center text-white text-sm font-medium mt-0.5">
                         {index + 1}
                       </div>
@@ -258,8 +258,8 @@ export function DualPerspectiveDemo({ onBack, onNavigate, user, onLogout }: Read
 
                 <div className="space-y-2">
                   <h4 className="font-medium text-gray-900 mb-3">Benefits:</h4>
-                  {currentScenario.jobSeekerView.benefits.map((benefit, index) => (
-                    <div key={index} className="flex items-center gap-2">
+                  {currentScenario.jobSeekerView.benefits.map((benefit) => (
+                    <div key={benefit} className="flex items-center gap-2">
                       <CheckCircle className="w-4 h-4 text-green-500" />
                       <span className="text-gray-700 text-sm">{benefit}</span>
                     </div>
@@ -281,7 +281,7 @@ export function DualPerspectiveDemo({ onBack, onNavigate, user, onLogout }: Read
 
                 <div className="space-y-4 mb-6">
                   {currentScenario.recruiterView.steps.map((step, index) => (
-                    <div key={index} className="flex items-start gap-3 p-3 bg-white/50 rounded-lg">
+                    <div key={step} className="flex items-start gap-3 p-3 bg-white/50 rounded-lg">
                       <div className="w-6 h-6 bg-[#ff6b35] rounded-full flex items-center justify-center text-white text-sm font-medium mt-0.5">
                         {index + 1}
                       </div>
@@ -292,8 +292,8 @@ export function DualPerspectiveDemo({ onBack, onNavigate, user, onLogout }: Read
 
                 <div className="space-y-2">
                   <h4 className="font-medium text-gray-900 mb-3">Benefits:</h4>
-                  {currentScenario.recruiterView.benefits.map((benefit, index) => (
-                    <div key={index} className="flex items-center gap-2">
+                  {currentScenario.recruiterView.benefits.map((benefit) => (
+                    <div key={benefit} className="flex items-center gap-2">
                       <Target className="w-4 h-4 text-[#ff6b35]" />
                       <span className="text-gray-700 text-sm">{benefit}</span>
                     </div>
@@ -403,7 +403,7 @@ export function DualPerspectiveDemo({ onBack, onNavigate, user, onLogout }: Read
         </Tabs>
 
         {/* Platform Stats */}
-        <div className="mt-12 grid grid-cols-2 md:grid-cols-4 gap-6">
+        <div className="mt-12 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-6">
           <div className="text-center p-6 bg-white rounded-xl border border-gray-200">
             <div className="text-3xl font-medium text-gray-900 mb-2">125K+</div>
             <div className="text-sm text-gray-600">Total Users</div>

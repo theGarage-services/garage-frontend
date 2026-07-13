@@ -32,7 +32,7 @@ export class ErrorBoundary extends Component<Props, State> {
 
       return (
         <div className="min-h-screen bg-gradient-to-br from-gray-50 to-orange-50 flex items-center justify-center">
-          <div className="text-center p-8 max-w-md">
+          <div className="text-center p-8 max-w-[95vw] sm:max-w-md">
             <h1 className="text-2xl font-bold mb-4">
               <span className="text-slate-900">the</span>
               <span className="text-[#ff6b35]">Garage</span>
