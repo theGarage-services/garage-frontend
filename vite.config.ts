@@ -91,28 +91,6 @@ export default defineConfig(({ mode }) => {
       target: 'esnext',
       outDir: 'docs',
       chunkSizeWarningLimit: 1000,
-      rollupOptions: {
-        output: {
-          manualChunks: (id) => {
-            // Radix UI components
-            if (id.includes('@radix-ui')) {
-              return 'radix-ui';
-            }
-            // UI utilities
-            if (id.includes('lucide-react') || id.includes('class-variance-authority') || id.includes('clsx') || id.includes('tailwind-merge')) {
-              return 'ui-utils';
-            }
-            // React core packages only (not dependencies)
-            if (/[\\/]node_modules[\\/](react|react-dom|react-router)[\\/]/.test(id)) {
-              return 'react-vendor';
-            }
-            // Other third-party libraries
-            if (id.includes('node_modules')) {
-              return 'vendor';
-            }
-          }
-        }
-      }
     },
 
     server: {
