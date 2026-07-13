@@ -6,7 +6,7 @@ import apiClient from './client';
 
 // Interview types
 export type InterviewType = 'phone' | 'video' | 'in-person';
-export type InterviewStage = 'phone-screening' | 'technical' | 'behavioral' | 'panel' | 'final';
+export type InterviewStage = 'initial-screening' | 'phone-screening' | 'technical' | 'behavioral' | 'panel' | 'final';
 export type InterviewStatus = 'scheduled' | 'confirmed' | 'pending' | 'completed' | 'cancelled' | 'no-show' | 'rescheduled';
 export type AvailabilityType = 'available' | 'busy' | 'preferred';
 
@@ -107,6 +107,8 @@ export interface CreateInterviewRequest {
 // Update interview request
 export interface UpdateInterviewRequest {
   title?: string;
+  interview_type?: InterviewType;
+  stage?: InterviewStage;
   scheduled_date?: string;
   scheduled_time?: string;
   duration_minutes?: number;
@@ -424,6 +426,19 @@ export async function getUpcomingInterviews(limit?: number): Promise<Interview[]
     return data.data || [];
   }
   throw new Error('Failed to fetch upcoming interviews');
+}
+
+/**
+ * Get all interviews for the current user (past + future) for calendar navigation
+ */
+export async function getMyInterviews(): Promise<Interview[]> {
+  const response = await apiClient.request('/interviews/');
+
+  if (response.ok) {
+    const data = await response.json();
+    return data.data || [];
+  }
+  throw new Error('Failed to fetch interviews');
 }
 
 /**

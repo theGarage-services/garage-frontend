@@ -96,7 +96,7 @@ export const PreferencesSetup: React.FC<PreferencesSetupProps> = ({
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-orange-50/30 to-slate-50 flex items-center justify-center p-4">
-      <div className="w-full max-w-4xl">
+      <div className="w-full max-w-[95vw] sm:max-w-4xl">
         {/* Header */}
         <div className="text-center mb-8">
           <div className="mb-4">
@@ -113,7 +113,7 @@ export const PreferencesSetup: React.FC<PreferencesSetupProps> = ({
           </p>
           
           {/* Info Banner */}
-          <div className="max-w-2xl mx-auto bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
+          <div className="max-w-[95vw] sm:max-w-2xl mx-auto bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
             <div className="flex items-start gap-3">
               <Info className="w-5 h-5 text-blue-600 mt-0.5 flex-shrink-0" />
               <div className="text-left">
@@ -135,7 +135,7 @@ export const PreferencesSetup: React.FC<PreferencesSetupProps> = ({
 
           {/* Error Display */}
           {error && (
-            <div className={`max-w-2xl mx-auto border rounded-lg p-4 mb-6 ${error.includes('successfully') ? 'border-green-200 bg-green-50' : 'border-red-200 bg-red-50'}`}>
+            <div className={`max-w-[95vw] sm:max-w-2xl mx-auto border rounded-lg p-4 mb-6 ${error.includes('successfully') ? 'border-green-200 bg-green-50' : 'border-red-200 bg-red-50'}`}>
               <div className="flex items-start gap-3">
                 {error.includes('successfully') ? (
                   <CheckCircle className="w-5 h-5 text-green-600 mt-0.5 flex-shrink-0" />
@@ -206,12 +206,12 @@ export const PreferencesSetup: React.FC<PreferencesSetupProps> = ({
           </div>
 
           {/* Action Buttons */}
-          <div className="flex items-center justify-between mt-8 pt-8 border-t border-slate-200">
+          <div className="flex flex-col-reverse sm:flex-row sm:items-center sm:justify-between gap-4 mt-8 pt-8 border-t border-slate-200">
             <div className="flex items-center gap-4">
               {onBack && (
                 <button
                   onClick={onBack}
-                  className="flex items-center gap-2 px-6 py-3 rounded-lg border-2 border-slate-300 text-slate-700 hover:bg-slate-50 hover:border-slate-400 transition-all"
+                  className="w-full sm:w-auto flex items-center justify-center gap-2 px-6 py-3 rounded-lg border-2 border-slate-300 text-slate-700 hover:bg-slate-50 hover:border-slate-400 transition-all"
                 >
                   <ArrowLeft className="w-4 h-4" />
                   Back to Profile
@@ -221,7 +221,7 @@ export const PreferencesSetup: React.FC<PreferencesSetupProps> = ({
             <button
               onClick={handleContinue}
               disabled={isLoading}
-              className="px-8 py-3 rounded-lg transition-all bg-[#ff6b35] text-white hover:bg-[#e55a2b] shadow-lg shadow-orange-500/30 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+              className="w-full sm:w-auto px-8 py-3 rounded-lg transition-all bg-[#ff6b35] text-white hover:bg-[#e55a2b] shadow-lg shadow-orange-500/30 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
             >
               {isLoading ? (
                 <>
@@ -294,8 +294,9 @@ const PreferenceSection: React.FC<PreferenceSectionProps> = ({
 
   return (
     <div className="space-y-3">
-      <div 
-        className="flex items-center justify-between cursor-pointer"
+      <button
+        type="button"
+        className="flex items-center justify-between w-full text-left cursor-pointer bg-transparent border-none p-0"
         onClick={() => setIsExpanded(!isExpanded)}
       >
         <div className="flex items-center gap-3">
@@ -307,10 +308,10 @@ const PreferenceSection: React.FC<PreferenceSectionProps> = ({
             <p className="text-sm text-slate-500">{description}</p>
           </div>
         </div>
-        <ChevronDown 
+        <ChevronDown
           className={`w-5 h-5 text-slate-400 transition-transform ${isExpanded ? 'rotate-180' : ''}`}
         />
-      </div>
+      </button>
 
       {isExpanded && (
         <div className="space-y-2 pl-1">

@@ -14,6 +14,7 @@ export interface User {
   role?: string;
   tier?: string;
   is_premium?: boolean;
+  avatar?: string;
 }
 
 export interface Conversation {
@@ -22,11 +23,12 @@ export interface Conversation {
   status: string;
   participants: User[];
   participant_details?: ConversationParticipant[];
-  job?: JobSummary;
+  job?: number;
+  job_details?: JobSummary;
   job_application?: number;
   title?: string;
   initiated_by?: string;
-  application_method?: 'manual' | 'auto';
+  application_method?: 'manual' | 'auto' | 'recruiter-consideration' | 'quick-apply';
   last_message?: Message;
   last_message_at?: string;
   last_message_preview?: string;
@@ -111,7 +113,7 @@ export interface ConsiderationRequest {
   id: number;
   recruiter: User;
   candidate: User;
-  job: JobSummary;
+  job: number;
   job_details?: JobSummary;
   message: string;
   status: string;
@@ -146,6 +148,14 @@ export interface ConversationStats {
   coffee_chat_requests_sent: number;
   coffee_chat_requests_received: number;
   pending_considerations: number;
+}
+
+export interface RecruiterStats {
+  response_rate: number;
+  avg_response_time: string;
+  success_rate: number;
+  interview_rate?: number;
+  total_hires?: number;
 }
 
 export interface CreateMessageRequest {
@@ -183,7 +193,15 @@ async function handleResponse<T>(response: Response): Promise<T> {
     throw new Error(error || `HTTP ${response.status}`);
   }
   const data = await response.json();
-  return data.data || data;
+  // Support { data: [...] } wrappers and DRF paginated { results: [...] }
+  const payload = Array.isArray(data)
+    ? data
+    : Array.isArray(data?.data)
+      ? data.data
+      : Array.isArray(data?.results)
+        ? data.results
+        : data;
+  return payload;
 }
 
 // Conversation APIs
@@ -248,6 +266,11 @@ export async function getConversationMessages(
 export async function getConversationStats(): Promise<ConversationStats> {
   const response = await apiClient.request('/chat/conversations/stats/');
   return handleResponse<ConversationStats>(response);
+}
+
+export async function fetchRecruiterStats(userId: number): Promise<RecruiterStats> {
+  const response = await apiClient.request(`/chat/conversations/recruiter_stats/?user_id=${userId}`);
+  return handleResponse<RecruiterStats>(response);
 }
 
 export async function getConversationsByJob(): Promise<
@@ -382,13 +405,22 @@ export async function createConsiderationRequest(data: CreateConsiderationReques
 
 export async function acceptConsideration(
   id: number,
-  responseMessage?: string
-): Promise<{ consideration: ConsiderationRequest; job_application?: { id: number; status: string } }> {
+  responseMessage?: string,
+  videoResponseIds?: number[]
+): Promise<{ success?: boolean; requires_video_prompts?: boolean; missing_prompt_ids?: number[]; consideration?: ConsiderationRequest; job_application?: { id: number; status: string }; error?: string }> {
+  const body: Record<string, any> = { response_message: responseMessage };
+  if (videoResponseIds) {
+    body.video_response_ids = videoResponseIds;
+  }
   const response = await apiClient.request(`/chat/consideration-requests/${id}/accept/`, {
     method: 'POST',
-    body: JSON.stringify({ response_message: responseMessage }),
+    body: JSON.stringify(body),
   });
-  return handleResponse(response);
+  const data = await response.json();
+  if (!response.ok && !data.requires_video_prompts) {
+    throw new Error(data.error || data.detail || data.message || `HTTP ${response.status}`);
+  }
+  return data;
 }
 
 export async function declineConsideration(id: number, responseMessage?: string): Promise<ConsiderationRequest> {

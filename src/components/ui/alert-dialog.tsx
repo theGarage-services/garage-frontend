@@ -29,7 +29,7 @@ function AlertDialogPortal({
 }
 
 const AlertDialogOverlay = React.forwardRef<
-  React.ElementRef<typeof AlertDialogPrimitive.Overlay>,
+  React.ComponentRef<typeof AlertDialogPrimitive.Overlay>,
   React.ComponentPropsWithoutRef<typeof AlertDialogPrimitive.Overlay>
 >(({ className, ...props }, ref) => (
   <AlertDialogPrimitive.Overlay
@@ -45,7 +45,7 @@ const AlertDialogOverlay = React.forwardRef<
 AlertDialogOverlay.displayName = AlertDialogPrimitive.Overlay.displayName;
 
 const AlertDialogContent = React.forwardRef<
-  React.ElementRef<typeof AlertDialogPrimitive.Content>,
+  React.ComponentRef<typeof AlertDialogPrimitive.Content>,
   React.ComponentPropsWithoutRef<typeof AlertDialogPrimitive.Content>
 >(({ className, ...props }, ref) => (
   <AlertDialogPortal>

@@ -164,10 +164,10 @@ export function ProfileTab({
   return (
     <div className="space-y-6">
       <Card className="p-6">
-        <div className="flex items-center justify-between mb-6">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
           <h2 className="text-lg font-medium text-gray-900">Institution Details</h2>
           {isEditing ? (
-            <div className="flex gap-2">
+            <div className="flex flex-wrap gap-2">
               <Button onClick={handleCancel} variant="outline" size="sm">
                 Cancel
               </Button>

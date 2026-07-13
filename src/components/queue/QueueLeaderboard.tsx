@@ -187,7 +187,7 @@ export function QueueLeaderboard({ onClose, queueTitle, userPosition, industry, 
     <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[60] flex items-center justify-center p-4">
       <div className="bg-white w-full max-w-6xl h-[90vh] rounded-3xl shadow-2xl overflow-hidden flex flex-col">
         {/* Header */}
-        <div className="bg-gradient-to-r from-purple-600 to-purple-700 p-6 flex items-center justify-between">
+        <div className="bg-gradient-to-r from-purple-600 to-purple-700 p-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div className="flex items-center gap-4">
             <div className="w-12 h-12 bg-white/20 rounded-xl flex items-center justify-center">
               <Award className="w-6 h-6 text-white" />
@@ -200,14 +200,14 @@ export function QueueLeaderboard({ onClose, queueTitle, userPosition, industry, 
               </div>
             </div>
           </div>
-          
-          <Button variant="outline" onClick={onClose} className="bg-white/10 border-white/20 text-white hover:bg-white/20">
+
+          <Button variant="outline" onClick={onClose} className="bg-white/10 border-white/20 text-white hover:bg-white/20 self-start sm:self-auto">
             <X className="w-5 h-5" />
           </Button>
         </div>
 
         {/* Content */}
-        <div className="flex-1 overflow-hidden flex">
+        <div className="flex-1 overflow-hidden flex flex-col lg:flex-row">
           {/* Leaderboard */}
           <div className="flex-1 overflow-y-auto p-6">
             {isLoading ? (
@@ -236,7 +236,7 @@ export function QueueLeaderboard({ onClose, queueTitle, userPosition, industry, 
                     setViewMode('profile');
                   }}
                 >
-                  <div className="flex items-center gap-4">
+                  <div className="flex flex-col sm:flex-row sm:items-center gap-4">
                     <div className="flex items-center gap-3">
                       {getRankIcon(candidate.position)}
                       <Avatar className="w-12 h-12">
@@ -245,15 +245,15 @@ export function QueueLeaderboard({ onClose, queueTitle, userPosition, industry, 
                       </Avatar>
                     </div>
 
-                    <div className="flex-1">
-                      <div className="flex items-center gap-3 mb-1">
+                    <div className="flex-1 min-w-0">
+                      <div className="flex flex-wrap items-center gap-3 mb-1">
                         <h3 className="font-medium text-gray-900">{candidate.name}</h3>
                         {candidate.isCurrentUser && (
                           <Badge className="bg-[#ff6b35] text-white">You</Badge>
                         )}
                         <div className="text-2xl font-medium text-gray-700">{candidate.score}</div>
                       </div>
-                      <div className="flex items-center gap-4 text-sm text-gray-600">
+                      <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-gray-600">
                         <span className="flex items-center gap-1">
                           <Briefcase className="w-3 h-3" />
                           {candidate.title} at {candidate.company}
@@ -266,9 +266,9 @@ export function QueueLeaderboard({ onClose, queueTitle, userPosition, industry, 
                       </div>
                     </div>
 
-                    <div className="flex items-center gap-4">
+                    <div className="flex items-center gap-4 self-start sm:self-auto">
                       {getTrendIcon(candidate.trend, candidate.positionChange)}
-                      <Button size="sm" variant="outline" className="ml-4">
+                      <Button size="sm" variant="outline" className="ml-0 sm:ml-4">
                         <Eye className="w-4 h-4 mr-2" />
                         View Profile
                       </Button>
@@ -292,13 +292,14 @@ export function QueueLeaderboard({ onClose, queueTitle, userPosition, industry, 
 
           {/* Candidate Profile Panel */}
           {selectedCandidate && viewMode === 'profile' && (
-            <div className="w-96 bg-gray-50 border-l border-gray-200 p-6 overflow-y-auto">
-              <div className="flex items-center justify-between mb-6">
+            <div className="w-full lg:w-96 bg-gray-50 border-l border-gray-200 p-6 overflow-y-auto">
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
                 <h3 className="text-lg font-medium text-gray-900">Profile Details</h3>
-                <Button 
-                  variant="outline" 
+                <Button
+                  variant="outline"
                   size="sm"
                   onClick={() => setViewMode('leaderboard')}
+                  className="self-start sm:self-auto"
                 >
                   Back
                 </Button>
@@ -326,8 +327,8 @@ export function QueueLeaderboard({ onClose, queueTitle, userPosition, industry, 
                 <div>
                   <h5 className="font-medium text-gray-900 mb-3">Technical Skills</h5>
                   <div className="flex flex-wrap gap-2">
-                    {selectedCandidate.skills?.map((skill, index) => (
-                      <Badge key={index} variant="outline" className="text-xs">
+                    {selectedCandidate.skills?.map((skill) => (
+                      <Badge key={skill} variant="outline" className="text-xs">
                         {skill}
                       </Badge>
                     )) || <span className="text-sm text-gray-500">No skills listed</span>}
@@ -338,8 +339,8 @@ export function QueueLeaderboard({ onClose, queueTitle, userPosition, industry, 
                 <div>
                   <h5 className="font-medium text-gray-900 mb-3">Key Strengths</h5>
                   <div className="space-y-2">
-                    {selectedCandidate.strengths?.map((strength, index) => (
-                      <div key={index} className="flex items-center gap-2">
+                    {selectedCandidate.strengths?.map((strength) => (
+                      <div key={strength} className="flex items-center gap-2">
                         <Star className="w-4 h-4 text-yellow-500" />
                         <span className="text-sm text-gray-700">{strength}</span>
                       </div>
@@ -351,8 +352,8 @@ export function QueueLeaderboard({ onClose, queueTitle, userPosition, industry, 
                 <div>
                   <h5 className="font-medium text-gray-900 mb-3">Certifications</h5>
                   <div className="space-y-2">
-                    {selectedCandidate.certifications?.map((cert, index) => (
-                      <div key={index} className="flex items-center gap-2">
+                    {selectedCandidate.certifications?.map((cert) => (
+                      <div key={cert} className="flex items-center gap-2">
                         <Award className="w-4 h-4 text-purple-600" />
                         <span className="text-sm text-gray-700">{cert}</span>
                       </div>
@@ -364,15 +365,15 @@ export function QueueLeaderboard({ onClose, queueTitle, userPosition, industry, 
                 <div className="bg-white rounded-lg p-4">
                   <h5 className="font-medium text-gray-900 mb-3">Performance Insights</h5>
                   <div className="space-y-3">
-                    <div className="flex justify-between items-center">
+                    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1">
                       <span className="text-sm text-gray-600">Overall Score</span>
                       <span className="font-medium text-gray-900">{selectedCandidate.score}/100</span>
                     </div>
-                    <div className="flex justify-between items-center">
+                    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1">
                       <span className="text-sm text-gray-600">Experience Level</span>
                       <span className="font-medium text-gray-900">{selectedCandidate.experience}</span>
                     </div>
-                    <div className="flex justify-between items-center">
+                    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1">
                       <span className="text-sm text-gray-600">Recent Trend</span>
                       <div className="flex items-center gap-1">
                         {getTrendIcon(selectedCandidate.trend, selectedCandidate.positionChange)}

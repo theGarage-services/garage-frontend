@@ -5,6 +5,15 @@ import type { JobPosting } from '../../api/jobManagement';
 import { jobManagementApi } from '../../api/jobManagement';
 import type { QueueCandidateLocal } from './types';
 
+/**
+ * Format a match score for display.
+ * Shows whole numbers without decimals (e.g. 92) and decimals when present (e.g. 87.5).
+ */
+export const formatMatchScore = (score: number | undefined | null): string => {
+  if (score == null || Number.isNaN(score)) return '0';
+  return Number.isInteger(score) ? String(score) : score.toFixed(1);
+};
+
 export const getStatusColor = (status: string) => {
   switch (status) {
     case 'active': return 'bg-green-100 text-green-800';
@@ -16,6 +25,13 @@ export const getStatusColor = (status: string) => {
   }
 };
 
+function normalizeToArray(value: any): any[] {
+  if (Array.isArray(value)) {
+    return value;
+  }
+  return value ? [value] : [];
+}
+
 export const transformJobPosting = (job: any): JobPosting => ({
   ...job,
   postedDate: job.postedDate || new Date().toISOString(),
@@ -26,8 +42,9 @@ export const transformJobPosting = (job: any): JobPosting => ({
   salary: job.salary || job.salary_display || '',
   experience: job.experience || job.experience_level_display || '',
   description: job.description || job.summary || '',
-  requirements: Array.isArray(job.requirements) ? job.requirements : (job.requirements ? [job.requirements] : []),
-  responsibilities: Array.isArray(job.responsibilities) ? job.responsibilities : (job.responsibilities ? [job.responsibilities] : []),
+  requirements: normalizeToArray(job.requirements),
+  responsibilities: normalizeToArray(job.responsibilities),
+  nice_to_have: normalizeToArray(job.nice_to_have),
   queue: job.queue || job.selected_queues || '',
 });
 
@@ -45,12 +62,15 @@ export const transformQueueCandidate = (c: any): QueueCandidateLocal => {
     skills: c.skills || [],
     currentCompany: c.current_company === undefined ? (c.currentCompany || 'Unknown') : c.current_company,
     applicationDate: c.joined_queue === undefined ? c.joinedQueue : c.joined_queue,
-    applicationStatus: c.application_status === undefined ? (c.applicationStatus || 'in-queue') : c.application_status,
+    applicationStatus: c.application_status === undefined ? (c.applicationStatus || 'available') : c.application_status,
     lastActivity: c.last_activity === undefined ? (c.lastActivity || new Date().toISOString()) : c.last_activity,
+    lastLogin: c.last_login === undefined ? (c.lastLogin || undefined) : c.last_login,
     joinedQueue: c.joined_queue === undefined ? c.joinedQueue : c.joined_queue,
     resume: `${c.name.toLowerCase().replace(/\s+/g, '-')}-resume.pdf`,
     aiRecommendation: c.ai_recommendation === undefined ? c.aiRecommendation : c.ai_recommendation,
     predicted_industry: c.predicted_industry,
+    considerationRequestId: c.consideration_request_id || c.considerationRequestId,
+    scoreBreakdown: c.score_breakdown === undefined ? c.scoreBreakdown : c.score_breakdown,
   };
   console.log('[transformQueueCandidate] Input:', c);
   console.log('[transformQueueCandidate] Output:', transformed);
@@ -59,6 +79,7 @@ export const transformQueueCandidate = (c: any): QueueCandidateLocal => {
 
 export const transformJobApplication = (app: any) => ({
   id: `manual-${app.id}`,
+  originalId: app.id,
   name: app.candidate.full_name || app.candidate.username,
   title: 'Applicant',
   location: 'Unknown',
@@ -80,7 +101,7 @@ export const createCandidatesData = (
   manuallyApplied: any[],
   jobIndustry?: string
 ) => {
-  const normalize = (ind?: string) => ind?.trim().toLowerCase().replace(/\s+/g, '-').replace(/_/g, '-') || '';
+  const normalize = (ind?: string) => ind?.trim().toLowerCase().replace(/\s+/g, '-').replaceAll('_', '-') || '';
   const normalizedJobIndustry = normalize(jobIndustry);
   
   const filteredQueue = [...queueCandidates].filter(c => {
@@ -148,6 +169,7 @@ export const cleanJobDataForUpdate = (job: any) => {
     salary_display,
     experience_level_display,
     employment_type_display,
+    vacancy_type_display,
     work_arrangement_display,
     education_level_display,
     status_display,
@@ -183,6 +205,11 @@ export const cleanJobDataForUpdate = (job: any) => {
     // Convert arrays to strings with line breaks
     requirements: Array.isArray(cleanedJob.requirements) ? cleanedJob.requirements.join('\n') : cleanedJob.requirements,
     responsibilities: Array.isArray(cleanedJob.responsibilities) ? cleanedJob.responsibilities.join('\n') : cleanedJob.responsibilities,
+    nice_to_have: Array.isArray(cleanedJob.nice_to_have) ? cleanedJob.nice_to_have.join('\n') : cleanedJob.nice_to_have,
+    // Video prompts are optional; skip empty ones before sending to the backend
+    prompts: (cleanedJob.prompts || [])
+      .filter((p: any) => (p.question_text || p.questionText || '').trim().length > 0)
+      .map((p: any, index: number) => ({ ...p, order: p.order || index + 1 })),
   };
 
   // Remove null values to avoid validation errors

@@ -44,7 +44,7 @@ export function JobStatusModal({ job, isPremium, onClose, onUpgrade }: Readonly<
   if (!isPremium) {
     return (
       <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-        <Card className="max-w-lg w-full p-8 relative animate-in fade-in zoom-in duration-200">
+        <Card className="max-w-[90vw] sm:max-w-[95vw] sm:max-w-lg w-full p-8 relative animate-in fade-in zoom-in duration-200">
           <button
             onClick={onClose}
             className="absolute top-4 right-4 p-2 hover:bg-gray-100 rounded-lg transition-colors"
@@ -131,7 +131,7 @@ export function JobStatusModal({ job, isPremium, onClose, onUpgrade }: Readonly<
   if (isLoading) {
     return (
       <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-        <Card className="max-w-lg w-full p-8 relative animate-in fade-in zoom-in duration-200">
+        <Card className="max-w-[90vw] sm:max-w-[95vw] sm:max-w-lg w-full p-8 relative animate-in fade-in zoom-in duration-200">
           <div className="text-center">
             <div className="animate-pulse text-gray-600">Loading hiring status...</div>
           </div>
@@ -144,7 +144,7 @@ export function JobStatusModal({ job, isPremium, onClose, onUpgrade }: Readonly<
   if (error) {
     return (
       <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-        <Card className="max-w-lg w-full p-8 relative animate-in fade-in zoom-in duration-200">
+        <Card className="max-w-[90vw] sm:max-w-[95vw] sm:max-w-lg w-full p-8 relative animate-in fade-in zoom-in duration-200">
           <button
             onClick={onClose}
             className="absolute top-4 right-4 p-2 hover:bg-gray-100 rounded-lg transition-colors"
@@ -166,7 +166,7 @@ export function JobStatusModal({ job, isPremium, onClose, onUpgrade }: Readonly<
   // Show detailed status for premium users
   return (
     <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-      <Card className="max-w-lg w-full p-8 relative animate-in fade-in zoom-in duration-200">
+      <Card className="max-w-[90vw] sm:max-w-[95vw] sm:max-w-lg w-full p-8 relative animate-in fade-in zoom-in duration-200">
         <button
           onClick={onClose}
           className="absolute top-4 right-4 p-2 hover:bg-gray-100 rounded-lg transition-colors"

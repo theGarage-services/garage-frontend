@@ -72,7 +72,7 @@ export interface TrackedJob {
   type: string;
   applicationMethod: 'manual' | 'quick-apply' | 'recruiter-consideration';
   dateApplied: string;
-  status: 'application-received' | 'not-considered' | 'under-consideration' | 'interview-stage' | 'rejected' | 'offer';
+  status: 'consider' | 'applied' | 'interviews' | 'offers' | 'hired' | 'rejected' | 'withdrawn';
   notes?: string;
   recruiterNotes?: string;
   logo?: string;

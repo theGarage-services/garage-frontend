@@ -610,7 +610,7 @@ export function AdminNotifications({ onNavigate, user, onLogout }: Readonly<Admi
 
         {/* Notifications Tabs */}
         <Tabs value={selectedTab} onValueChange={(value: any) => setSelectedTab(value)} className="w-full">
-          <div className="flex items-center justify-between mb-6 gap-4">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6 gap-4">
             <TabsList className="grid w-fit grid-cols-4 bg-white shadow-sm">
               <TabsTrigger 
                 value="approvals" 

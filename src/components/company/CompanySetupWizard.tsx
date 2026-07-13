@@ -232,7 +232,7 @@ export function CompanySetupWizard({ onComplete, onSkip, initialData }: Readonly
                   )}
                 </div>
 
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
                     <Label htmlFor="industry">Industry *</Label>
                     <Input
@@ -307,7 +307,7 @@ export function CompanySetupWizard({ onComplete, onSkip, initialData }: Readonly
               </div>
 
               <div className="space-y-4">
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
                     <Label htmlFor="legalName">Legal Company Name *</Label>
                     <Input
@@ -360,7 +360,7 @@ export function CompanySetupWizard({ onComplete, onSkip, initialData }: Readonly
                   {formData.incorporationDocs.length > 0 && (
                     <div className="mt-2 space-y-2">
                       {formData.incorporationDocs.map((file, index) => (
-                        <div key={index} className="flex items-center justify-between p-2 bg-gray-50 rounded">
+                        <div key={file.name} className="flex items-center justify-between p-2 bg-gray-50 rounded">
                           <div className="flex items-center gap-2">
                             <File className="w-4 h-4 text-gray-500" />
                             <span className="text-sm text-gray-700">{file.name}</span>
@@ -400,7 +400,7 @@ export function CompanySetupWizard({ onComplete, onSkip, initialData }: Readonly
                   {formData.complianceDocs.length > 0 && (
                     <div className="mt-2 space-y-2">
                       {formData.complianceDocs.map((file, index) => (
-                        <div key={index} className="flex items-center justify-between p-2 bg-gray-50 rounded">
+                        <div key={file.name} className="flex items-center justify-between p-2 bg-gray-50 rounded">
                           <div className="flex items-center gap-2">
                             <File className="w-4 h-4 text-gray-500" />
                             <span className="text-sm text-gray-700">{file.name}</span>
@@ -531,7 +531,7 @@ export function CompanySetupWizard({ onComplete, onSkip, initialData }: Readonly
                 </div>
 
                 {/* Brand Colors */}
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
                     <Label htmlFor="primaryColor">Primary Brand Color</Label>
                     <div className="flex gap-2 mt-2">
@@ -692,7 +692,7 @@ export function CompanySetupWizard({ onComplete, onSkip, initialData }: Readonly
                   {formData.policyDocs.length > 0 && (
                     <div className="mt-2 space-y-2">
                       {formData.policyDocs.map((file, index) => (
-                        <div key={index} className="flex items-center justify-between p-2 bg-gray-50 rounded">
+                        <div key={file.name} className="flex items-center justify-between p-2 bg-gray-50 rounded">
                           <div className="flex items-center gap-2">
                             <File className="w-4 h-4 text-gray-500" />
                             <span className="text-sm text-gray-700">{file.name}</span>

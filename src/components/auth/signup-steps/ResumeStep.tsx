@@ -92,7 +92,7 @@ export function ResumeStep({
             onChange={handleFileUpload}
             className="hidden"
           />
-          <label htmlFor="resume" className="cursor-pointer">
+          <label htmlFor="resume" className="cursor-pointer" aria-label="Upload resume">
             <div className="flex flex-col items-center gap-4">
               <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center">
                 <Upload className="w-8 h-8 text-gray-400" />
@@ -115,10 +115,10 @@ export function ResumeStep({
         {/* Uploaded File */}
         {formData.resumeFile && (
           <div className="bg-green-50 border border-green-200 rounded-lg p-4">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <File className="w-5 h-5 text-green-600" />
-                <div>
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+              <div className="flex items-center gap-3 min-w-0">
+                <File className="w-5 h-5 text-green-600 shrink-0" />
+                <div className="min-w-0">
                   <p className="font-medium text-green-800">{formData.resumeFile.name}</p>
                   <p className="text-sm text-green-600">
                     {(formData.resumeFile.size / 1024 / 1024).toFixed(2)} MB
@@ -129,6 +129,7 @@ export function ResumeStep({
                 variant="ghost"
                 size="sm"
                 onClick={handleRemoveFile}
+                className="self-start sm:self-auto"
               >
                 <X className="w-4 h-4" />
               </Button>
@@ -137,14 +138,14 @@ export function ResumeStep({
         )}
         
         {/* Navigation Buttons */}
-        <div className="flex justify-between pt-6 mt-6 border-t border-gray-200">
-          <Button variant="outline" onClick={onBack} className="px-6">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 pt-6 mt-6 border-t border-gray-200">
+          <Button variant="outline" onClick={onBack} className="px-6 w-full sm:w-auto">
             Back to Account
           </Button>
           <Button
             onClick={handleContinue}
             disabled={isParsing || !formData.resumeFile}
-            className="px-8 bg-gradient-to-r from-[#ff6b35] to-[#ff8c42] hover:from-[#e55a2b] hover:to-[#d4461f] text-white"
+            className="px-8 bg-gradient-to-r from-[#ff6b35] to-[#ff8c42] hover:from-[#e55a2b] hover:to-[#d4461f] text-white w-full sm:w-auto"
           >
             {isParsing ? (
               <div className="flex items-center gap-2">

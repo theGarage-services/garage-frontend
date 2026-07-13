@@ -9,6 +9,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, Dialog
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '../ui/dropdown-menu';
 import { Avatar, AvatarFallback } from '../ui/avatar';
 import { Alert, AlertDescription } from '../ui/alert';
+import { DepartmentSelect } from '../common/DepartmentSelect';
 import { sendWelcomeEmail, WelcomeEmailData } from '../landing/WelcomeEmailTemplate';
 import { AccessRestriction, useAccessControl } from '../common/AccessRestriction';
 import { 
@@ -220,7 +221,7 @@ export function TeamManagement({ user, institution, teamMembers, onUpdateTeamMem
       await sendWelcomeEmail(emailData);
       showSuccessMessage(`Welcome email resent to ${member.firstName} ${member.lastName}!`);
     } catch (error) {
-      // Error handling - could show toast notification in future
+      console.error('Error resending welcome email:', error);
     } finally {
       setIsLoading(false);
     }
@@ -313,14 +314,14 @@ export function TeamManagement({ user, institution, teamMembers, onUpdateTeamMem
 
           {/* Header */}
           <Card className="p-6">
-        <div className="flex items-center justify-between mb-6">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
           <div>
             <h2 className="text-lg font-medium text-gray-900">Team Management</h2>
             <p className="text-sm text-gray-600">
               Centralized team member management with roles, permissions, and access control
             </p>
           </div>
-          <div className="flex items-center gap-3">
+          <div className="flex flex-wrap items-center gap-3">
             {/* Advanced Access Management Button */}
             <AccessRestriction user={user} requiredRole="admin" showAlert={false}>
               {onNavigate && (
@@ -344,7 +345,7 @@ export function TeamManagement({ user, institution, teamMembers, onUpdateTeamMem
                     Create New Member
                   </Button>
                 </DialogTrigger>
-                <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+                <DialogContent className="max-w-[95vw] sm:max-w-2xl max-h-[90vh] overflow-y-auto">
                   <DialogHeader>
                     <DialogTitle>Create New Team Member</DialogTitle>
                     <DialogDescription>
@@ -355,7 +356,7 @@ export function TeamManagement({ user, institution, teamMembers, onUpdateTeamMem
 
                   <div className="space-y-4">
                     {/* Basic Information */}
-                    <div className="grid grid-cols-2 gap-4">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                       <div>
                         <Label htmlFor="firstName">First Name *</Label>
                         <Input
@@ -393,7 +394,7 @@ export function TeamManagement({ user, institution, teamMembers, onUpdateTeamMem
                       </p>
                     </div>
 
-                    <div className="grid grid-cols-2 gap-4">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                       <div>
                         <Label htmlFor="title">Job Title</Label>
                         <Input
@@ -406,17 +407,15 @@ export function TeamManagement({ user, institution, teamMembers, onUpdateTeamMem
                       </div>
                       <div>
                         <Label htmlFor="department">Department</Label>
-                        <Input
-                          id="department"
+                        <DepartmentSelect
                           value={newMemberData.department}
-                          onChange={(e) => setNewMemberData(prev => ({ ...prev, department: e.target.value }))}
-                          placeholder="Talent Acquisition"
-                          className="mt-1"
+                          onValueChange={(value: string) => setNewMemberData(prev => ({ ...prev, department: value }))}
+                          triggerClassName="mt-1 h-10"
                         />
                       </div>
                     </div>
 
-                    <div className="grid grid-cols-2 gap-4">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                       <div>
                         <Label htmlFor="phone">Phone (Optional)</Label>
                         <Input
@@ -448,7 +447,7 @@ export function TeamManagement({ user, institution, teamMembers, onUpdateTeamMem
                         </Badge>
                       </div>
                       
-                      <div className="grid grid-cols-2 gap-4">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                         <div>
                           <Label htmlFor="role">Role</Label>
                           <Select
@@ -595,8 +594,8 @@ export function TeamManagement({ user, institution, teamMembers, onUpdateTeamMem
         {/* Team Management Info */}
         <AccessRestriction user={user} requiredRole="admin" showAlert={false}>
           <Card className="p-4 bg-gradient-to-r from-orange-50 to-blue-50 border-orange-200 mb-6">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-3">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+              <div className="flex items-start gap-3">
                 <div className="w-10 h-10 bg-gradient-to-r from-[#ff6b35] to-blue-600 rounded-lg flex items-center justify-center">
                   <Crown className="w-5 h-5 text-white" />
                 </div>
@@ -611,7 +610,7 @@ export function TeamManagement({ user, institution, teamMembers, onUpdateTeamMem
                 <Button
                   onClick={() => onNavigate('access-management')}
                   variant="outline"
-                  className="border-blue-600 text-blue-600 hover:bg-blue-600 hover:text-white"
+                  className="border-blue-600 text-blue-600 hover:bg-blue-600 hover:text-white self-start sm:self-auto"
                 >
                   <Shield className="w-4 h-4 mr-2" />
                   Advanced Security
@@ -623,27 +622,29 @@ export function TeamManagement({ user, institution, teamMembers, onUpdateTeamMem
 
         {/* Team Members List */}
         <div className="space-y-4">
-          {filteredMembers.map((member, memberIndex) => (
-            <div 
-              key={`team-member-${member.id}-${memberIndex}`} 
-              className="flex items-center justify-between p-4 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors cursor-pointer group"
-              onClick={() => {
-                if (isAdmin && member.id !== user?.id) {
+          {filteredMembers.map((member) => (
+            <div
+              key={`team-member-${member.id}`}
+              className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4 p-4 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors group"
+            >
+              <button
+                type="button"
+                className="flex items-start sm:items-center gap-4 flex-1 text-left bg-transparent border-none p-0 cursor-pointer disabled:cursor-default disabled:opacity-100 min-w-0"
+                onClick={() => {
                   setSelectedMember(member);
                   setEditMemberData(member);
                   setShowEditMember(true);
-                }
-              }}
-            >
-              <div className="flex items-center gap-4 flex-1">
-                <Avatar className="w-12 h-12">
+                }}
+                disabled={!(isAdmin && member.id !== user?.id)}
+              >
+                <Avatar className="w-12 h-12 shrink-0">
                   <AvatarFallback className="bg-gradient-to-r from-[#ff6b35] to-[#ff8c42] text-white">
                     {member.firstName[0]}{member.lastName[0]}
                   </AvatarFallback>
                 </Avatar>
-                
-                <div className="flex-1">
-                  <div className="flex items-center gap-2 mb-1">
+
+                <div className="flex-1 min-w-0">
+                  <div className="flex flex-wrap items-center gap-2 mb-1">
                     <h3 className="font-medium text-gray-900">
                       {member.firstName} {member.lastName}
                     </h3>
@@ -660,7 +661,7 @@ export function TeamManagement({ user, institution, teamMembers, onUpdateTeamMem
                     )}
                   </div>
                   <p className="text-sm text-gray-600">{member.title}</p>
-                  <div className="flex items-center gap-3 mt-2">
+                  <div className="flex flex-wrap items-center gap-x-3 gap-y-1 mt-2">
                     <span className="text-sm text-gray-500">{member.email}</span>
                     {member.phone && (
                       <>
@@ -676,10 +677,10 @@ export function TeamManagement({ user, institution, teamMembers, onUpdateTeamMem
                     )}
                   </div>
                 </div>
-              </div>
-              
-              <div className="flex items-center gap-4">
-                <div className="flex flex-col items-end gap-2">
+              </button>
+
+              <div className="flex flex-col sm:flex-row sm:items-center gap-4 self-start lg:self-auto">
+                <div className="flex flex-col items-start sm:items-end gap-2">
                   <div className="flex items-center gap-2">
                     {getStatusBadge(member.status)}
                     {getAccessLevelBadge(member.accessLevel)}
@@ -688,10 +689,10 @@ export function TeamManagement({ user, institution, teamMembers, onUpdateTeamMem
                     Joined {new Date(member.joinedAt).toLocaleDateString()}
                   </span>
                 </div>
-                
+
                 <AccessRestriction user={user} requiredRole="admin" showAlert={false}>
                   {member.id !== user?.id && (
-                    <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
+                    <div className="flex items-center gap-2">
                       {member.status === 'pending' && (
                         <Button
                           size="sm"
@@ -843,7 +844,7 @@ export function TeamManagement({ user, institution, teamMembers, onUpdateTeamMem
       {/* Edit Member Dialog */}
       {showEditMember && selectedMember && (
         <Dialog open={showEditMember} onOpenChange={setShowEditMember}>
-          <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+          <DialogContent className="max-w-[95vw] sm:max-w-2xl max-h-[90vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle>Edit Team Member</DialogTitle>
               <DialogDescription>
@@ -853,7 +854,7 @@ export function TeamManagement({ user, institution, teamMembers, onUpdateTeamMem
 
             <div className="space-y-4">
               {/* Basic Information */}
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <Label htmlFor="editFirstName">First Name</Label>
                   <Input
@@ -885,7 +886,7 @@ export function TeamManagement({ user, institution, teamMembers, onUpdateTeamMem
                 />
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <Label htmlFor="editTitle">Job Title</Label>
                   <Input
@@ -897,16 +898,15 @@ export function TeamManagement({ user, institution, teamMembers, onUpdateTeamMem
                 </div>
                 <div>
                   <Label htmlFor="editDepartment">Department</Label>
-                  <Input
-                    id="editDepartment"
+                  <DepartmentSelect
                     value={editMemberData.department || ''}
-                    onChange={(e) => setEditMemberData(prev => ({ ...prev, department: e.target.value }))}
-                    className="mt-1"
+                    onValueChange={(value: string) => setEditMemberData(prev => ({ ...prev, department: value }))}
+                    triggerClassName="mt-1 h-10"
                   />
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <Label htmlFor="editPhone">Phone</Label>
                   <Input
@@ -931,7 +931,7 @@ export function TeamManagement({ user, institution, teamMembers, onUpdateTeamMem
               <div className="space-y-4 border-t pt-4">
                 <h4 className="font-medium text-gray-900">Role & Access</h4>
                 
-                <div className="grid grid-cols-3 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                   <div>
                     <Label htmlFor="editRole">Role</Label>
                     <Select

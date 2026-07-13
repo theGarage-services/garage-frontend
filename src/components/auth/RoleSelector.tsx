@@ -85,7 +85,7 @@ export function RoleSelector({ onRoleSelect, onBack }: Readonly<RoleSelectorProp
           <h1 className="text-4xl md:text-5xl mb-6 text-gray-900 leading-tight">
             Choose Your Path
           </h1>
-          <p className="text-xl text-gray-600 max-w-2xl mx-auto">
+          <p className="text-xl text-gray-600 max-w-[95vw] sm:max-w-2xl mx-auto">
             Whether you're looking for your next opportunity or searching for top talent, 
             theGarage has the tools to help you succeed.
           </p>
@@ -117,8 +117,8 @@ export function RoleSelector({ onRoleSelect, onBack }: Readonly<RoleSelectorProp
 
                 <div className="space-y-3">
                   <h4 className="font-medium text-gray-900 mb-3">Key Features:</h4>
-                  {role.features.map((feature, index) => (
-                    <div key={index} className="flex items-center gap-3">
+                  {role.features.map((feature) => (
+                    <div key={feature} className="flex items-center gap-3">
                       <div className="w-2 h-2 bg-[#ff6b35] rounded-full"></div>
                       <span className="text-gray-600">{feature}</span>
                     </div>

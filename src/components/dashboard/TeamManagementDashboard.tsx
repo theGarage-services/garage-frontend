@@ -129,7 +129,7 @@ export function TeamManagementDashboard({
         {/* Page Header */}
         <div className="bg-gradient-to-r from-purple-600 to-purple-700 text-white">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-            <div className="flex items-center justify-between">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
               <div className="flex items-center gap-4">
                 <div className="w-16 h-16 bg-white/20 backdrop-blur-sm rounded-xl flex items-center justify-center">
                   <Users className="w-8 h-8 text-white" />
@@ -141,7 +141,7 @@ export function TeamManagementDashboard({
               </div>
               <Button
                 onClick={onCreateTeam}
-                className="bg-white text-purple-600 hover:bg-purple-50"
+                className="bg-white text-purple-600 hover:bg-purple-50 self-start sm:self-auto"
               >
                 <Plus className="w-4 h-4 mr-2" />
                 Create New Team
@@ -276,7 +276,7 @@ export function TeamManagementDashboard({
                 </div>
 
                 {/* Metrics */}
-                <div className="grid grid-cols-2 gap-3 mb-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-4">
                   <div className="p-3 bg-gray-50 rounded-lg">
                     <div className="flex items-center gap-2 mb-1">
                       <Target className="w-4 h-4 text-blue-600" />
@@ -312,7 +312,7 @@ export function TeamManagementDashboard({
 
                 {/* Monthly Target Progress */}
                 <div className="mb-4 p-3 bg-gradient-to-r from-orange-50 to-yellow-50 rounded-lg border border-orange-200">
-                  <div className="flex items-center justify-between mb-2">
+                  <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1 mb-2">
                     <div className="flex items-center gap-2">
                       <Award className="w-4 h-4 text-orange-600" />
                       <span className="text-sm font-medium text-gray-900">Monthly Target</span>
@@ -334,7 +334,7 @@ export function TeamManagementDashboard({
                   <div className="text-sm font-medium text-gray-900 mb-2">Team Members</div>
                   <div className="space-y-2">
                     {team.members.slice(0, 3).map((member: { id: Key | null | undefined; name: string | number | boolean | ReactElement<any, string | JSXElementConstructor<any>> | Iterable<ReactNode> | null | undefined; activeJobs: string | number | boolean | ReactElement<any, string | JSXElementConstructor<any>> | Iterable<ReactNode> | ReactPortal | null | undefined; }) => (
-                      <div key={member.id} className="flex items-center justify-between p-2 bg-gray-50 rounded">
+                      <div key={member.id} className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1 p-2 bg-gray-50 rounded">
                         <div className="flex items-center gap-2">
                           <Avatar className="w-6 h-6">
                             <AvatarFallback className="bg-gray-300 text-gray-700 text-xs">
@@ -343,7 +343,7 @@ export function TeamManagementDashboard({
                           </Avatar>
                           <span className="text-sm text-gray-900">{member.name}</span>
                         </div>
-                        <Badge variant="outline" className="text-xs">
+                        <Badge variant="outline" className="text-xs self-start sm:self-auto">
                           {member.activeJobs} jobs
                         </Badge>
                       </div>

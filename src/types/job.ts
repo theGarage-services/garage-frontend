@@ -3,7 +3,7 @@ export interface JobApplication {
   id: string;
   title: string;
   company: string;
-  status: 'application-received' | 'not-considered' | 'under-consideration' | 'interview-stage' | 'rejected' | 'offer';
+  status: 'consider' | 'applied' | 'interviews' | 'offers' | 'hired' | 'rejected' | 'withdrawn';
   dateAdded: string;
   dateApplied: string;
   lastUpdated: string;

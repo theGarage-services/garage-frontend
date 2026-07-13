@@ -1,12 +1,11 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Button } from '../ui/button';
 import { Card } from '../ui/card';
 import { Progress } from '../ui/progress';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../ui/tabs';
-import { 
+import {
   ArrowLeft,
   BarChart3,
-  TrendingUp,
   Users,
   Briefcase,
   Target,
@@ -22,10 +21,11 @@ import {
   RefreshCw,
   Play,
   Pause,
-  ArrowUpRight,
-  ArrowDownRight
+  Loader2
 } from 'lucide-react';
 import { RecruiterProfileDropdown } from '../recruiter/RecruiterProfileDropdown';
+import { dashboardApi } from '../../api/dashboard';
+import { jobPostsApi } from '../../api/jobPosts';
 
 interface MetricsDashboardProps {
   onBack: () => void;
@@ -38,85 +38,163 @@ export function MetricsDashboard({ onBack, onNavigate, user, onLogout }: Readonl
   const [activeTab, setActiveTab] = useState('real-time');
   const [timeRange, setTimeRange] = useState('30d');
   const [isLive, setIsLive] = useState(true);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  // Real-time metrics
-  const realtimeMetrics = {
-    activeUsers: 3247,
-    onlineRecruiters: 456,
-    activeJobs: 8934,
-    pendingApplications: 2156,
-    scheduledInterviews: 89,
-    newSignups: 67,
-    messagesExchanged: 1423,
-    successfulMatches: 23
-  };
+  // Real-time metrics state
+  const [realtimeMetrics, setRealtimeMetrics] = useState({
+    activeUsers: 0,
+    onlineRecruiters: 0,
+    activeJobs: 0,
+    pendingApplications: 0,
+    scheduledInterviews: 0,
+    newSignups: 0,
+    messagesExchanged: 0,
+    successfulMatches: 0
+  });
 
-  // Performance metrics with trends
-  const performanceMetrics = [
+  // Performance metrics state
+  const [performanceMetrics, setPerformanceMetrics] = useState([
     {
       title: 'Application Success Rate',
-      value: '28.4%',
-      change: '+2.3%',
-      trend: 'up',
+      value: '0%',
       icon: Target,
       color: 'from-green-500 to-green-600',
       description: 'Job seekers getting hired'
     },
     {
       title: 'Average Time to Hire',
-      value: '16.2 days',
-      change: '-3.1 days',
-      trend: 'up',
+      value: '0 days',
       icon: Clock,
       color: 'from-blue-500 to-blue-600',
       description: 'From application to offer'
     },
     {
       title: 'Recruiter Efficiency',
-      value: '89.7%',
-      change: '+5.2%',
-      trend: 'up',
+      value: '0%',
       icon: Zap,
       color: 'from-purple-500 to-purple-600',
       description: 'Successful placements'
     },
     {
       title: 'Platform Satisfaction',
-      value: '4.8/5.0',
-      change: '+0.2',
-      trend: 'up',
+      value: '0/5.0',
       icon: Star,
       color: 'from-orange-500 to-orange-600',
       description: 'User ratings'
     }
-  ];
+  ]);
 
-  // Compact activity chart data
-  const activityData = [
-    { hour: '00', applications: 12, views: 89, messages: 23 },
-    { hour: '04', applications: 8, views: 45, messages: 12 },
-    { hour: '08', applications: 45, views: 234, messages: 78 },
-    { hour: '12', applications: 67, views: 456, messages: 123 },
-    { hour: '16', applications: 89, views: 567, messages: 156 },
-    { hour: '20', applications: 34, views: 234, messages: 67 }
-  ];
+  // Activity chart state
+  const [activityData, setActivityData] = useState([
+    { hour: '00', applications: 0, views: 0, messages: 0 },
+    { hour: '04', applications: 0, views: 0, messages: 0 },
+    { hour: '08', applications: 0, views: 0, messages: 0 },
+    { hour: '12', applications: 0, views: 0, messages: 0 },
+    { hour: '16', applications: 0, views: 0, messages: 0 },
+    { hour: '20', applications: 0, views: 0, messages: 0 }
+  ]);
 
-  // Queue performance data
-  const queueMetrics = [
-    { name: 'Software Engineering', candidates: 4567, fill_rate: 85, avg_time: 14, growth: 12 },
-    { name: 'Data Science', candidates: 2890, fill_rate: 78, avg_time: 18, growth: 23 },
-    { name: 'Product Management', candidates: 1934, fill_rate: 82, avg_time: 16, growth: 8 },
-    { name: 'Design', candidates: 1456, fill_rate: 91, avg_time: 12, growth: 15 },
-    { name: 'Marketing', candidates: 1234, fill_rate: 76, avg_time: 20, growth: 5 }
-  ];
+  // Queue metrics state
+  const [queueMetrics, setQueueMetrics] = useState<any[]>([]);
 
-  // Geographic performance (simplified)
-  const geographicMetrics = [
-    { region: 'Toronto', jobs: 15234, fill_rate: 87, color: 'bg-blue-500' },
-    { region: 'Vancouver', jobs: 8456, fill_rate: 83, color: 'bg-green-500' },
-    { region: 'Montreal', jobs: 6789, fill_rate: 79, color: 'bg-purple-500' },
-    { region: 'Calgary', jobs: 4567, fill_rate: 81, color: 'bg-orange-500' }
-  ];
+  // Geographic metrics state
+  const [geographicMetrics, setGeographicMetrics] = useState<any[]>([]);
+
+  const fetchData = async () => {
+    setIsLoading(true);
+    setError(null);
+    try {
+      const [platformRes, queueRes] = await Promise.all([
+        dashboardApi.getPlatformStats(),
+        jobPostsApi.getQueueStats()
+      ]);
+
+      if (platformRes.success && platformRes.data) {
+        const data = platformRes.data;
+
+        // Real-time
+        setRealtimeMetrics({
+          activeUsers: data.realtime.active_users,
+          onlineRecruiters: data.realtime.online_recruiters,
+          activeJobs: data.realtime.active_jobs,
+          pendingApplications: data.realtime.pending_applications,
+          scheduledInterviews: data.realtime.scheduled_interviews,
+          newSignups: data.realtime.new_signups,
+          messagesExchanged: data.realtime.messages_exchanged,
+          successfulMatches: data.realtime.successful_matches
+        });
+
+        // Performance
+        setPerformanceMetrics([
+          {
+            title: 'Application Success Rate',
+            value: `${data.performance.application_success_rate}%`,
+            icon: Target,
+            color: 'from-green-500 to-green-600',
+            description: 'Job seekers getting hired'
+          },
+          {
+            title: 'Average Time to Hire',
+            value: `${data.performance.avg_time_to_hire_days} days`,
+            icon: Clock,
+            color: 'from-blue-500 to-blue-600',
+            description: 'From application to offer'
+          },
+          {
+            title: 'Recruiter Efficiency',
+            value: `${data.performance.recruiter_efficiency}%`,
+            icon: Zap,
+            color: 'from-purple-500 to-purple-600',
+            description: 'Successful placements'
+          },
+          {
+            title: 'Platform Satisfaction',
+            value: `${data.performance.platform_satisfaction}/5.0`,
+            icon: Star,
+            color: 'from-orange-500 to-orange-600',
+            description: 'User ratings'
+          }
+        ]);
+
+        // Hourly activity
+        setActivityData(
+          data.hourly_activity.map((h) => ({
+            hour: h.hour,
+            applications: h.applications,
+            views: h.views,
+            messages: h.messages
+          }))
+        );
+
+        // Geographic
+        setGeographicMetrics(data.geographic);
+      } else {
+        setError(platformRes.error || 'Failed to load dashboard data');
+      }
+
+      // Queue stats
+      if (queueRes.success && queueRes.data) {
+        setQueueMetrics(
+          queueRes.data.map((q) => ({
+            name: q.name,
+            candidates: q.members,
+            fill_rate: Number.parseInt(q.response_rate?.replace('%', '') || '0', 10) || 70,
+            hiring_trend: q.hiring_trend
+          }))
+        );
+      }
+    } catch (err: any) {
+      console.error('Error fetching dashboard data:', err);
+      setError(err?.message || 'Failed to load dashboard data');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchData();
+  }, [timeRange]);
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 via-orange-50 to-gray-100">
@@ -169,31 +247,42 @@ export function MetricsDashboard({ onBack, onNavigate, user, onLogout }: Readonl
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Page Header */}
         <div className="mb-8">
-          <div className="flex items-center justify-between">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
             <div>
               <h1 className="text-3xl font-medium text-gray-900 mb-2">Platform Metrics</h1>
               <p className="text-gray-600">Real-time analytics and performance insights</p>
             </div>
-            <div className="flex items-center gap-2">
-              <Button variant="outline" size="sm">
+            <div className="flex flex-wrap items-center gap-2">
+              <Button variant="outline" size="sm" disabled={isLoading}>
                 <Download className="w-4 h-4 mr-2" />
                 Export
               </Button>
-              <Button variant="outline" size="sm">
+              <Button variant="outline" size="sm" disabled={isLoading}>
                 <Share2 className="w-4 h-4 mr-2" />
                 Share
               </Button>
-              <Button variant="outline" size="sm">
-                <RefreshCw className="w-4 h-4 mr-2" />
+              <Button variant="outline" size="sm" onClick={fetchData} disabled={isLoading}>
+                {isLoading ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <RefreshCw className="w-4 h-4 mr-2" />}
                 Refresh
               </Button>
             </div>
           </div>
         </div>
 
+        {error && (
+          <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg text-red-700">
+            {error}
+          </div>
+        )}
+
+        {isLoading ? (
+          <div className="flex items-center justify-center h-64">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#ff6b35]" />
+          </div>
+        ) : (
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-          <div className="flex items-center justify-between">
-            <TabsList className="grid w-fit grid-cols-4">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+            <TabsList className="grid w-full sm:w-fit grid-cols-2 sm:grid-cols-4">
               <TabsTrigger value="real-time" className="flex items-center gap-2">
                 <Activity className="w-4 h-4" />
                 Real-Time
@@ -229,7 +318,7 @@ export function MetricsDashboard({ onBack, onNavigate, user, onLogout }: Readonl
 
           <TabsContent value="real-time" className="space-y-6">
             {/* Real-time Activity Grid */}
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
               <Card className="p-4">
                 <div className="flex items-center justify-between">
                   <div>
@@ -283,8 +372,8 @@ export function MetricsDashboard({ onBack, onNavigate, user, onLogout }: Readonl
             <Card className="p-6">
               <h3 className="text-lg font-medium text-gray-900 mb-4">24-Hour Activity</h3>
               <div className="h-24 flex items-end justify-between gap-2">
-                {activityData.map((data, index) => (
-                  <div key={index} className="flex-1 flex flex-col items-center">
+                {activityData.map((data) => (
+                  <div key={data.hour} className="flex-1 flex flex-col items-center">
                     <div className="w-full flex gap-1 mb-2">
                       <div 
                         className="bg-blue-500 rounded-t flex-1"
@@ -306,7 +395,7 @@ export function MetricsDashboard({ onBack, onNavigate, user, onLogout }: Readonl
                   </div>
                 ))}
               </div>
-              <div className="grid grid-cols-3 gap-4 mt-4 text-sm">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mt-4 text-sm">
                 <div className="flex items-center gap-2 justify-center">
                   <div className="w-3 h-3 bg-blue-500 rounded"></div>
                   <span className="text-gray-600">Applications</span>
@@ -326,18 +415,13 @@ export function MetricsDashboard({ onBack, onNavigate, user, onLogout }: Readonl
           <TabsContent value="performance" className="space-y-6">
             {/* Performance Metrics */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-              {performanceMetrics.map((metric, index) => {
+              {performanceMetrics.map((metric) => {
                 const IconComponent = metric.icon;
-                const isPositive = metric.trend === 'up';
                 return (
-                  <Card key={index} className="p-6">
+                  <Card key={metric.title} className="p-6">
                     <div className="flex items-center justify-between mb-4">
                       <div className={`w-12 h-12 bg-gradient-to-r ${metric.color} rounded-xl flex items-center justify-center`}>
                         <IconComponent className="w-6 h-6 text-white" />
-                      </div>
-                      <div className={`flex items-center gap-1 ${isPositive ? 'text-green-600' : 'text-red-600'}`}>
-                        {isPositive ? <ArrowUpRight className="w-4 h-4" /> : <ArrowDownRight className="w-4 h-4" />}
-                        <span className="text-sm font-medium">{metric.change}</span>
                       </div>
                     </div>
                     <div className="text-2xl font-medium text-gray-900 mb-1">{metric.value}</div>
@@ -352,24 +436,20 @@ export function MetricsDashboard({ onBack, onNavigate, user, onLogout }: Readonl
           <TabsContent value="queues" className="space-y-6">
             {/* Queue Performance */}
             <div className="grid gap-4">
-              {queueMetrics.map((queue, index) => (
-                <Card key={index} className="p-6">
-                  <div className="flex items-center justify-between">
-                    <div className="flex-1">
-                      <div className="flex items-center justify-between mb-2">
+              {queueMetrics.map((queue) => (
+                <Card key={queue.name} className="p-6">
+                  <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                    <div className="flex-1 min-w-0">
+                      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 mb-2">
                         <h3 className="font-medium text-gray-900">{queue.name}</h3>
                         <div className="flex items-center gap-4 text-sm">
                           <span className="text-gray-600">{queue.candidates.toLocaleString()} candidates</span>
-                          <span className="text-gray-600">{queue.avg_time} days avg</span>
-                          <div className="flex items-center gap-1 text-green-600">
-                            <TrendingUp className="w-3 h-3" />
-                            <span>+{queue.growth}%</span>
-                          </div>
+                          <span className="text-gray-600">{queue.hiring_trend}</span>
                         </div>
                       </div>
                       <div className="flex items-center gap-4">
                         <div className="flex-1">
-                          <div className="flex justify-between text-sm mb-1">
+                          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1 text-sm mb-1">
                             <span className="text-gray-600">Fill Rate</span>
                             <span className="font-medium">{queue.fill_rate}%</span>
                           </div>
@@ -388,11 +468,11 @@ export function MetricsDashboard({ onBack, onNavigate, user, onLogout }: Readonl
             <Card className="p-6">
               <h3 className="text-lg font-medium text-gray-900 mb-6">Regional Performance</h3>
               <div className="space-y-4">
-                {geographicMetrics.map((region, index) => (
-                  <div key={index} className="space-y-2">
-                    <div className="flex justify-between items-center">
+                {geographicMetrics.map((region) => (
+                  <div key={region.region} className="space-y-2">
+                    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1">
                       <span className="font-medium text-gray-900">{region.region}</span>
-                      <div className="text-right">
+                      <div className="text-left sm:text-right">
                         <div className="font-medium text-gray-900">{region.fill_rate}% fill rate</div>
                         <div className="text-sm text-gray-600">{region.jobs.toLocaleString()} jobs</div>
                       </div>
@@ -409,6 +489,7 @@ export function MetricsDashboard({ onBack, onNavigate, user, onLogout }: Readonl
             </Card>
           </TabsContent>
         </Tabs>
+        )}
       </div>
     </div>
   );

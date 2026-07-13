@@ -298,7 +298,7 @@ export function EnterpriseAdminDashboard({ institution, user, onNavigate, onLogo
       {/* Page Title Section with Orange Gradient */}
       <div className="bg-gradient-to-r from-[#ff6b35] to-[#ff8c42] text-white">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-          <div className="flex items-center justify-between">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
             <div>
               <div className="flex items-center gap-3 mb-2">
                 <div className="w-12 h-12 bg-white/20 backdrop-blur-sm rounded-xl flex items-center justify-center">
@@ -310,7 +310,7 @@ export function EnterpriseAdminDashboard({ institution, user, onNavigate, onLogo
                 </div>
               </div>
             </div>
-            <div className="text-right">
+            <div className="text-left sm:text-right">
               <div className="text-sm text-orange-100 mb-1">Setup Completion</div>
               <div className="flex items-center gap-3">
                 <Progress value={completionPercent} className="w-40 h-2 bg-white/20" />
@@ -399,7 +399,7 @@ export function EnterpriseAdminDashboard({ institution, user, onNavigate, onLogo
         {/* Quick Actions - Test New Components */}
         <Card className="mb-8 p-6">
           <h2 className="text-lg font-medium text-gray-900 mb-4">🚀 Quick Actions</h2>
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
             <Button
               onClick={() => onNavigate('company-profile-setup')}
               variant="outline"
@@ -474,10 +474,10 @@ export function EnterpriseAdminDashboard({ institution, user, onNavigate, onLogo
                       <Icon className="w-6 h-6 text-white" />
                     </div>
                     <div className="flex-1 min-w-0">
-                      <div className="flex items-center justify-between mb-1">
+                      <div className="flex items-center justify-between gap-2 mb-1">
                         <h3 className="text-lg font-medium text-gray-900">{section.title}</h3>
                         <ChevronRight
-                          className={`w-5 h-5 text-gray-400 transition-transform ${
+                          className={`w-5 h-5 text-gray-400 transition-transform shrink-0 ${
                             isExpanded ? 'rotate-90' : ''
                           }`}
                         />
@@ -502,12 +502,12 @@ export function EnterpriseAdminDashboard({ institution, user, onNavigate, onLogo
                           onClick={item.action}
                           className="text-left p-4 bg-white rounded-lg border border-gray-200 hover:border-[#ff6b35] hover:shadow-md transition-all group"
                         >
-                          <div className="flex items-start justify-between mb-2">
+                          <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-2 mb-2">
                             <h4 className="font-medium text-gray-900 group-hover:text-[#ff6b35] transition-colors">
                               {item.title}
                             </h4>
                             {item.status && (
-                              <div className="flex-shrink-0 ml-2">
+                              <div className="flex-shrink-0 sm:ml-2 self-start sm:self-auto">
                                 {item.status === 'complete' ? (
                                   <CheckCircle2 className="w-5 h-5 text-green-500" />
                                 ) : item.status === 'pending' ? (

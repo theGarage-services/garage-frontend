@@ -1,6 +1,8 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator, DropdownMenuLabel } from '../ui/dropdown-menu';
 import { Avatar, AvatarFallback, AvatarImage } from '../ui/avatar';
+import { recruiterProfileService, buildProfileImageUrl } from '@/api/recruiterProfile';
+import { companyService } from '@/api/companies';
 import { 
   User, 
   Settings, 
@@ -28,12 +30,31 @@ export function RecruiterProfileDropdown({
   user
 }: Readonly<RecruiterProfileDropdownProps>) {
   const [open, setOpen] = useState(false);
+  const [profileCompany, setProfileCompany] = useState<string | null>(null);
+  const [profileImage, setProfileImage] = useState<string | undefined>(undefined);
+  const [companyLogo, setCompanyLogo] = useState<string | undefined>(undefined);
+
+  useEffect(() => {
+    recruiterProfileService.getProfile().then((profile) => {
+      if (profile?.recruiter_profile_data) {
+        setProfileCompany(profile.recruiter_profile_data.company_name);
+        const img = profile.recruiter_profile_data.profile_image;
+        if (img) setProfileImage(buildProfileImageUrl(img));
+      }
+    });
+
+    companyService.getMyCompany().then((company) => {
+      if (company?.logo) {
+        setCompanyLogo(buildProfileImageUrl(company.logo));
+      }
+    }).catch(() => {});
+  }, []);
   
   // Get user info with defaults
-  const userName = user ? `${user.firstName || 'John'} ${user.lastName || 'Smith'}` : 'John Smith';
-  const userEmail = user?.email || 'john.smith@company.com';
-  const userCompany = user?.company || 'Independent Recruiter';
-  const userInitials = userName.split(' ').map(n => n[0]).join('');
+  const userName = user ? `${user.firstName} ${user.lastName}` : '';
+  const userEmail = user?.email;
+  const userCompany = profileCompany ?? user?.company;
+  const userInitials = userName.split(' ').map((n: string) => n[0]).join('');
 
   const handleNavigation = (view: string) => {
     setOpen(false);
@@ -57,7 +78,7 @@ export function RecruiterProfileDropdown({
       <DropdownMenuTrigger asChild>
         <button className="flex items-center gap-2 h-9 px-2 hover:bg-orange-50 rounded-md transition-colors outline-none focus-visible:ring-2 focus-visible:ring-[#ff6b35] focus-visible:ring-offset-2">
           <Avatar className="w-7 h-7">
-            <AvatarImage src={user?.avatar} />
+            <AvatarImage src={profileImage} />
             <AvatarFallback className="bg-gradient-to-r from-[#ff6b35] to-[#ff8c42] text-white text-xs">
               {userInitials}
             </AvatarFallback>
@@ -69,12 +90,12 @@ export function RecruiterProfileDropdown({
         </button>
       </DropdownMenuTrigger>
       
-      <DropdownMenuContent align="end" className="w-80 p-2">
+      <DropdownMenuContent align="end" className="w-full sm:w-80 p-2">
         {/* User Info Header */}
         <DropdownMenuLabel className="p-3">
           <div className="flex items-center gap-3">
             <Avatar className="w-12 h-12">
-              <AvatarImage src={user?.avatar} />
+              <AvatarImage src={profileImage} />
               <AvatarFallback className="bg-gradient-to-r from-[#ff6b35] to-[#ff8c42] text-white">
                 {userInitials}
               </AvatarFallback>
@@ -90,14 +111,18 @@ export function RecruiterProfileDropdown({
         <DropdownMenuSeparator />
 
         {/* About theGarage */}
-        <DropdownMenuItem 
-          onClick={() => handleNavigation('landing')}
+        <DropdownMenuItem
+          onClick={() => handleNavigation('company-edit')}
           className="flex items-center gap-3 p-3 cursor-pointer hover:bg-orange-50 rounded-lg"
         >
-          <Building2 className="w-4 h-4 text-[#ff6b35]" />
+          {companyLogo ? (
+            <img src={companyLogo} alt="Company" className="w-8 h-8 rounded-lg object-cover" />
+          ) : (
+            <Building2 className="w-4 h-4 text-[#ff6b35]" />
+          )}
           <div className="flex-1">
             <span className="text-[#ff6b35] font-medium">My Company</span>
-            <p className="text-xs text-gray-500">About theGarage</p>
+            <p className="text-xs text-gray-500">About {userCompany}</p>
           </div>
         </DropdownMenuItem>
 

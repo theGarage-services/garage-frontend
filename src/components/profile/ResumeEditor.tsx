@@ -408,7 +408,7 @@ export function ResumeEditor({ onClose, onSave, initialData }: Readonly<ResumeEd
     <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
       <div className="bg-[#e2ddd9] w-full max-w-7xl h-[90vh] rounded-3xl shadow-2xl overflow-hidden flex flex-col">
         {/* Header */}
-        <div className="bg-[rgba(15,9,12,0.56)] backdrop-blur-[80px] px-8 py-6 flex items-center justify-between">
+        <div className="bg-[rgba(15,9,12,0.56)] backdrop-blur-[80px] px-8 py-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div className="flex items-center gap-4">
             <div className="flex items-center gap-3">
               <div className="w-8 h-8 bg-gradient-to-r from-[#ff6b35] to-[#ff8c42] rounded-lg flex items-center justify-center">
@@ -425,7 +425,7 @@ export function ResumeEditor({ onClose, onSave, initialData }: Readonly<ResumeEd
             <h2 className="text-xl text-white font-medium">Resume Editor</h2>
           </div>
           
-          <div className="flex items-center gap-3">
+          <div className="flex flex-wrap items-center gap-3">
             <Button variant="outline" className="bg-white/10 border-white/20 text-white hover:bg-white/20">
               <Upload className="w-4 h-4 mr-2" />
               Import
@@ -452,8 +452,9 @@ export function ResumeEditor({ onClose, onSave, initialData }: Readonly<ResumeEd
               
               {/* Contact Information & Summary */}
               <Card className="bg-white/80 backdrop-blur-sm border-0 rounded-[30px] overflow-hidden">
-                <div 
-                  className="flex items-center justify-between p-6 cursor-pointer hover:bg-gray-50/50 transition-colors"
+                <button
+                  type="button"
+                  className="w-full flex items-center justify-between p-6 cursor-pointer hover:bg-gray-50/50 transition-colors text-left"
                   onClick={() => toggleSection('contact')}
                 >
                   <h3 className="text-2xl font-medium text-[#061a48]">Contact Information & Summary</h3>
@@ -461,14 +462,15 @@ export function ResumeEditor({ onClose, onSave, initialData }: Readonly<ResumeEd
                     <ChevronUp className="w-6 h-6 text-gray-600" /> : 
                     <ChevronDown className="w-6 h-6 text-gray-600" />
                   }
-                </div>
+                </button>
                 
                 {expandedSections.contact && (
                   <div className="px-6 pb-6 space-y-4">
-                    <div className="grid grid-cols-2 gap-4">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">Full Name</label>
+                        <label htmlFor="contact-name" className="block text-sm font-medium text-gray-700 mb-1">Full Name</label>
                         <Input
+                          id="contact-name"
                           value={resumeData.contactInfo.name}
                           onChange={(e) => setResumeData(prev => ({
                             ...prev,
@@ -478,8 +480,9 @@ export function ResumeEditor({ onClose, onSave, initialData }: Readonly<ResumeEd
                         />
                       </div>
                       <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
+                        <label htmlFor="contact-email" className="block text-sm font-medium text-gray-700 mb-1">Email</label>
                         <Input
+                          id="contact-email"
                           value={resumeData.contactInfo.email}
                           onChange={(e) => setResumeData(prev => ({
                             ...prev,
@@ -489,8 +492,9 @@ export function ResumeEditor({ onClose, onSave, initialData }: Readonly<ResumeEd
                         />
                       </div>
                       <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">Phone</label>
+                        <label htmlFor="contact-phone" className="block text-sm font-medium text-gray-700 mb-1">Phone</label>
                         <Input
+                          id="contact-phone"
                           value={resumeData.contactInfo.phone}
                           onChange={(e) => setResumeData(prev => ({
                             ...prev,
@@ -500,8 +504,9 @@ export function ResumeEditor({ onClose, onSave, initialData }: Readonly<ResumeEd
                         />
                       </div>
                       <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">Location</label>
+                        <label htmlFor="contact-location" className="block text-sm font-medium text-gray-700 mb-1">Location</label>
                         <Input
+                          id="contact-location"
                           value={resumeData.contactInfo.location}
                           onChange={(e) => setResumeData(prev => ({
                             ...prev,
@@ -512,8 +517,9 @@ export function ResumeEditor({ onClose, onSave, initialData }: Readonly<ResumeEd
                       </div>
                     </div>
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Professional Summary</label>
+                      <label htmlFor="contact-summary" className="block text-sm font-medium text-gray-700 mb-1">Professional Summary</label>
                       <Textarea
+                        id="contact-summary"
                         value={resumeData.contactInfo.summary}
                         onChange={(e) => setResumeData(prev => ({
                           ...prev,
@@ -529,8 +535,9 @@ export function ResumeEditor({ onClose, onSave, initialData }: Readonly<ResumeEd
 
               {/* Work Experience */}
               <Card className="bg-white/80 backdrop-blur-sm border-0 rounded-[30px] overflow-hidden">
-                <div 
-                  className="flex items-center justify-between p-6 cursor-pointer hover:bg-gray-50/50 transition-colors"
+                <button
+                  type="button"
+                  className="w-full flex items-center justify-between p-6 cursor-pointer hover:bg-gray-50/50 transition-colors text-left"
                   onClick={() => toggleSection('experience')}
                 >
                   <h3 className="text-2xl font-medium text-[#061a48]">Work Experience</h3>
@@ -551,7 +558,7 @@ export function ResumeEditor({ onClose, onSave, initialData }: Readonly<ResumeEd
                       <ChevronDown className="w-6 h-6 text-gray-600" />
                     }
                   </div>
-                </div>
+                </button>
                 
                 {expandedSections.experience && (
                   <div className="px-6 pb-6 space-y-6">
@@ -560,7 +567,7 @@ export function ResumeEditor({ onClose, onSave, initialData }: Readonly<ResumeEd
                         <div className="absolute -left-2 top-0 w-4 h-4 bg-[#ff6b35] rounded-full"></div>
                         
                         <div className="bg-gray-50 rounded-xl p-4 space-y-4">
-                          <div className="flex items-center justify-between">
+                          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
                             <div className="flex items-center gap-3">
                               <Input
                                 value={exp.logo}
@@ -580,10 +587,11 @@ export function ResumeEditor({ onClose, onSave, initialData }: Readonly<ResumeEd
                             </Button>
                           </div>
                           
-                          <div className="grid grid-cols-2 gap-4">
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <div>
-                              <label className="block text-sm font-medium text-gray-700 mb-1">Company</label>
+                              <label htmlFor={`exp-company-${exp.id}`} className="block text-sm font-medium text-gray-700 mb-1">Company</label>
                               <Input
+                                id={`exp-company-${exp.id}`}
                                 value={exp.company}
                                 onChange={(e) => updateWorkExperience(exp.id, { company: e.target.value })}
                                 className="bg-white"
@@ -591,8 +599,9 @@ export function ResumeEditor({ onClose, onSave, initialData }: Readonly<ResumeEd
                               />
                             </div>
                             <div>
-                              <label className="block text-sm font-medium text-gray-700 mb-1">Position</label>
+                              <label htmlFor={`exp-position-${exp.id}`} className="block text-sm font-medium text-gray-700 mb-1">Position</label>
                               <Input
+                                id={`exp-position-${exp.id}`}
                                 value={exp.position}
                                 onChange={(e) => updateWorkExperience(exp.id, { position: e.target.value })}
                                 className="bg-white"
@@ -600,8 +609,9 @@ export function ResumeEditor({ onClose, onSave, initialData }: Readonly<ResumeEd
                               />
                             </div>
                             <div>
-                              <label className="block text-sm font-medium text-gray-700 mb-1">Location</label>
+                              <label htmlFor={`exp-location-${exp.id}`} className="block text-sm font-medium text-gray-700 mb-1">Location</label>
                               <Input
+                                id={`exp-location-${exp.id}`}
                                 value={exp.location}
                                 onChange={(e) => updateWorkExperience(exp.id, { location: e.target.value })}
                                 className="bg-white"
@@ -609,9 +619,10 @@ export function ResumeEditor({ onClose, onSave, initialData }: Readonly<ResumeEd
                               />
                             </div>
                             <div>
-                              <label className="block text-sm font-medium text-gray-700 mb-1">Duration</label>
-                              <div className="flex gap-2">
+                              <label htmlFor={`exp-start-${exp.id}`} className="block text-sm font-medium text-gray-700 mb-1">Duration</label>
+                              <div className="flex flex-col sm:flex-row gap-2">
                                 <Input
+                                  id={`exp-start-${exp.id}`}
                                   value={exp.startDate}
                                   onChange={(e) => updateWorkExperience(exp.id, { startDate: e.target.value })}
                                   className="bg-white flex-1"
@@ -619,6 +630,7 @@ export function ResumeEditor({ onClose, onSave, initialData }: Readonly<ResumeEd
                                 />
                                 <span className="flex items-center text-gray-500">to</span>
                                 <Input
+                                  id={`exp-end-${exp.id}`}
                                   value={exp.current ? 'Present' : exp.endDate}
                                   onChange={(e) => updateWorkExperience(exp.id, { endDate: e.target.value, current: e.target.value === 'Present' })}
                                   className="bg-white flex-1"
@@ -634,8 +646,9 @@ export function ResumeEditor({ onClose, onSave, initialData }: Readonly<ResumeEd
                           </div>
                           
                           <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-1">Description</label>
+                            <label htmlFor={`exp-description-${exp.id}`} className="block text-sm font-medium text-gray-700 mb-1">Description</label>
                             <Textarea
+                              id={`exp-description-${exp.id}`}
                               value={exp.description}
                               onChange={(e) => updateWorkExperience(exp.id, { description: e.target.value })}
                               className="bg-white min-h-[80px]"
@@ -651,8 +664,9 @@ export function ResumeEditor({ onClose, onSave, initialData }: Readonly<ResumeEd
 
               {/* Education */}
               <Card className="bg-white/80 backdrop-blur-sm border-0 rounded-[30px] overflow-hidden">
-                <div 
-                  className="flex items-center justify-between p-6 cursor-pointer hover:bg-gray-50/50 transition-colors"
+                <button
+                  type="button"
+                  className="w-full flex items-center justify-between p-6 cursor-pointer hover:bg-gray-50/50 transition-colors text-left"
                   onClick={() => toggleSection('education')}
                 >
                   <h3 className="text-2xl font-medium text-[#061a48]">Education</h3>
@@ -673,7 +687,7 @@ export function ResumeEditor({ onClose, onSave, initialData }: Readonly<ResumeEd
                       <ChevronDown className="w-6 h-6 text-gray-600" />
                     }
                   </div>
-                </div>
+                </button>
                 
                 {expandedSections.education && (
                   <div className="px-6 pb-6 space-y-6">
@@ -699,10 +713,11 @@ export function ResumeEditor({ onClose, onSave, initialData }: Readonly<ResumeEd
                               </Button>
                             </div>
                             
-                            <div className="grid grid-cols-2 gap-4">
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                               <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">Institution</label>
+                                <label htmlFor={`edu-institution-${edu.id}`} className="block text-sm font-medium text-gray-700 mb-1">Institution</label>
                                 <Input
+                                  id={`edu-institution-${edu.id}`}
                                   value={edu.institution}
                                   onChange={(e) => updateEducation(edu.id, { institution: e.target.value })}
                                   className="bg-white"
@@ -710,8 +725,9 @@ export function ResumeEditor({ onClose, onSave, initialData }: Readonly<ResumeEd
                                 />
                               </div>
                               <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">Degree</label>
+                                <label htmlFor={`edu-degree-${edu.id}`} className="block text-sm font-medium text-gray-700 mb-1">Degree</label>
                                 <Input
+                                  id={`edu-degree-${edu.id}`}
                                   value={edu.degree}
                                   onChange={(e) => updateEducation(edu.id, { degree: e.target.value })}
                                   className="bg-white"
@@ -719,8 +735,9 @@ export function ResumeEditor({ onClose, onSave, initialData }: Readonly<ResumeEd
                                 />
                               </div>
                               <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">Field of Study</label>
+                                <label htmlFor={`edu-field-${edu.id}`} className="block text-sm font-medium text-gray-700 mb-1">Field of Study</label>
                                 <Input
+                                  id={`edu-field-${edu.id}`}
                                   value={edu.field}
                                   onChange={(e) => updateEducation(edu.id, { field: e.target.value })}
                                   className="bg-white"
@@ -728,8 +745,9 @@ export function ResumeEditor({ onClose, onSave, initialData }: Readonly<ResumeEd
                                 />
                               </div>
                               <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">Location</label>
+                                <label htmlFor={`edu-location-${edu.id}`} className="block text-sm font-medium text-gray-700 mb-1">Location</label>
                                 <Input
+                                  id={`edu-location-${edu.id}`}
                                   value={edu.location}
                                   onChange={(e) => updateEducation(edu.id, { location: e.target.value })}
                                   className="bg-white"
@@ -737,8 +755,9 @@ export function ResumeEditor({ onClose, onSave, initialData }: Readonly<ResumeEd
                                 />
                               </div>
                               <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">Start Date</label>
+                                <label htmlFor={`edu-start-${edu.id}`} className="block text-sm font-medium text-gray-700 mb-1">Start Date</label>
                                 <Input
+                                  id={`edu-start-${edu.id}`}
                                   value={edu.startDate}
                                   onChange={(e) => updateEducation(edu.id, { startDate: e.target.value })}
                                   className="bg-white"
@@ -746,8 +765,9 @@ export function ResumeEditor({ onClose, onSave, initialData }: Readonly<ResumeEd
                                 />
                               </div>
                               <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">End Date</label>
+                                <label htmlFor={`edu-end-${edu.id}`} className="block text-sm font-medium text-gray-700 mb-1">End Date</label>
                                 <Input
+                                  id={`edu-end-${edu.id}`}
                                   value={edu.endDate}
                                   onChange={(e) => updateEducation(edu.id, { endDate: e.target.value })}
                                   className="bg-white"
@@ -755,8 +775,9 @@ export function ResumeEditor({ onClose, onSave, initialData }: Readonly<ResumeEd
                                 />
                               </div>
                               <div className="col-span-2">
-                                <label className="block text-sm font-medium text-gray-700 mb-1">GPA (Optional)</label>
+                                <label htmlFor={`edu-gpa-${edu.id}`} className="block text-sm font-medium text-gray-700 mb-1">GPA (Optional)</label>
                                 <Input
+                                  id={`edu-gpa-${edu.id}`}
                                   value={edu.gpa}
                                   onChange={(e) => updateEducation(edu.id, { gpa: e.target.value })}
                                   className="bg-white"
@@ -774,8 +795,9 @@ export function ResumeEditor({ onClose, onSave, initialData }: Readonly<ResumeEd
 
               {/* Certifications */}
               <Card className="bg-white/80 backdrop-blur-sm border-0 rounded-[30px] overflow-hidden">
-                <div 
-                  className="flex items-center justify-between p-6 cursor-pointer hover:bg-gray-50/50 transition-colors"
+                <button
+                  type="button"
+                  className="w-full flex items-center justify-between p-6 cursor-pointer hover:bg-gray-50/50 transition-colors text-left"
                   onClick={() => toggleSection('certifications')}
                 >
                   <h3 className="text-2xl font-medium text-[#061a48]">Certifications</h3>
@@ -796,7 +818,7 @@ export function ResumeEditor({ onClose, onSave, initialData }: Readonly<ResumeEd
                       <ChevronDown className="w-6 h-6 text-gray-600" />
                     }
                   </div>
-                </div>
+                </button>
                 
                 {expandedSections.certifications && (
                   <div className="px-6 pb-6 space-y-6">
@@ -822,10 +844,11 @@ export function ResumeEditor({ onClose, onSave, initialData }: Readonly<ResumeEd
                               </Button>
                             </div>
                             
-                            <div className="grid grid-cols-2 gap-4">
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                               <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">Certification Name</label>
+                                <label htmlFor={`cert-name-${cert.id}`} className="block text-sm font-medium text-gray-700 mb-1">Certification Name</label>
                                 <Input
+                                  id={`cert-name-${cert.id}`}
                                   value={cert.name}
                                   onChange={(e) => updateCertification(cert.id, { name: e.target.value })}
                                   className="bg-white"
@@ -833,8 +856,9 @@ export function ResumeEditor({ onClose, onSave, initialData }: Readonly<ResumeEd
                                 />
                               </div>
                               <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">Issuing Organization</label>
+                                <label htmlFor={`cert-issuer-${cert.id}`} className="block text-sm font-medium text-gray-700 mb-1">Issuing Organization</label>
                                 <Input
+                                  id={`cert-issuer-${cert.id}`}
                                   value={cert.issuer}
                                   onChange={(e) => updateCertification(cert.id, { issuer: e.target.value })}
                                   className="bg-white"
@@ -842,8 +866,9 @@ export function ResumeEditor({ onClose, onSave, initialData }: Readonly<ResumeEd
                                 />
                               </div>
                               <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">Issue Date</label>
+                                <label htmlFor={`cert-date-${cert.id}`} className="block text-sm font-medium text-gray-700 mb-1">Issue Date</label>
                                 <Input
+                                  id={`cert-date-${cert.id}`}
                                   value={cert.date}
                                   onChange={(e) => updateCertification(cert.id, { date: e.target.value })}
                                   className="bg-white"
@@ -851,8 +876,9 @@ export function ResumeEditor({ onClose, onSave, initialData }: Readonly<ResumeEd
                                 />
                               </div>
                               <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">Expiry Date (Optional)</label>
+                                <label htmlFor={`cert-expiry-${cert.id}`} className="block text-sm font-medium text-gray-700 mb-1">Expiry Date (Optional)</label>
                                 <Input
+                                  id={`cert-expiry-${cert.id}`}
                                   value={cert.expiryDate}
                                   onChange={(e) => updateCertification(cert.id, { expiryDate: e.target.value })}
                                   className="bg-white"
@@ -860,8 +886,9 @@ export function ResumeEditor({ onClose, onSave, initialData }: Readonly<ResumeEd
                                 />
                               </div>
                               <div className="col-span-2">
-                                <label className="block text-sm font-medium text-gray-700 mb-1">Credential ID (Optional)</label>
+                                <label htmlFor={`cert-credential-${cert.id}`} className="block text-sm font-medium text-gray-700 mb-1">Credential ID (Optional)</label>
                                 <Input
+                                  id={`cert-credential-${cert.id}`}
                                   value={cert.credentialId}
                                   onChange={(e) => updateCertification(cert.id, { credentialId: e.target.value })}
                                   className="bg-white"
@@ -879,8 +906,9 @@ export function ResumeEditor({ onClose, onSave, initialData }: Readonly<ResumeEd
 
               {/* Publications */}
               <Card className="bg-white/80 backdrop-blur-sm border-0 rounded-[30px] overflow-hidden">
-                <div 
-                  className="flex items-center justify-between p-6 cursor-pointer hover:bg-gray-50/50 transition-colors"
+                <button
+                  type="button"
+                  className="w-full flex items-center justify-between p-6 cursor-pointer hover:bg-gray-50/50 transition-colors text-left"
                   onClick={() => toggleSection('publications')}
                 >
                   <h3 className="text-2xl font-medium text-[#061a48]">Publications</h3>
@@ -901,7 +929,7 @@ export function ResumeEditor({ onClose, onSave, initialData }: Readonly<ResumeEd
                       <ChevronDown className="w-6 h-6 text-gray-600" />
                     }
                   </div>
-                </div>
+                </button>
                 
                 {expandedSections.publications && (
                   <div className="px-6 pb-6 space-y-6">
@@ -929,18 +957,20 @@ export function ResumeEditor({ onClose, onSave, initialData }: Readonly<ResumeEd
                             
                             <div className="grid grid-cols-1 gap-4">
                               <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">Title</label>
+                                <label htmlFor={`pub-title-${pub.id}`} className="block text-sm font-medium text-gray-700 mb-1">Title</label>
                                 <Input
+                                  id={`pub-title-${pub.id}`}
                                   value={pub.title}
                                   onChange={(e) => updatePublication(pub.id, { title: e.target.value })}
                                   className="bg-white"
                                   placeholder="Machine Learning Applications in Data Analysis"
                                 />
                               </div>
-                              <div className="grid grid-cols-2 gap-4">
+                              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                 <div>
-                                  <label className="block text-sm font-medium text-gray-700 mb-1">Journal/Conference</label>
+                                  <label htmlFor={`pub-journal-${pub.id}`} className="block text-sm font-medium text-gray-700 mb-1">Journal/Conference</label>
                                   <Input
+                                    id={`pub-journal-${pub.id}`}
                                     value={pub.journal}
                                     onChange={(e) => updatePublication(pub.id, { journal: e.target.value })}
                                     className="bg-white"
@@ -948,8 +978,9 @@ export function ResumeEditor({ onClose, onSave, initialData }: Readonly<ResumeEd
                                   />
                                 </div>
                                 <div>
-                                  <label className="block text-sm font-medium text-gray-700 mb-1">Publication Date</label>
+                                  <label htmlFor={`pub-date-${pub.id}`} className="block text-sm font-medium text-gray-700 mb-1">Publication Date</label>
                                   <Input
+                                    id={`pub-date-${pub.id}`}
                                     value={pub.date}
                                     onChange={(e) => updatePublication(pub.id, { date: e.target.value })}
                                     className="bg-white"
@@ -958,8 +989,9 @@ export function ResumeEditor({ onClose, onSave, initialData }: Readonly<ResumeEd
                                 </div>
                               </div>
                               <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">Authors</label>
+                                <label htmlFor={`pub-authors-${pub.id}`} className="block text-sm font-medium text-gray-700 mb-1">Authors</label>
                                 <Input
+                                  id={`pub-authors-${pub.id}`}
                                   value={pub.authors}
                                   onChange={(e) => updatePublication(pub.id, { authors: e.target.value })}
                                   className="bg-white"
@@ -967,8 +999,9 @@ export function ResumeEditor({ onClose, onSave, initialData }: Readonly<ResumeEd
                                 />
                               </div>
                               <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">DOI (Optional)</label>
+                                <label htmlFor={`pub-doi-${pub.id}`} className="block text-sm font-medium text-gray-700 mb-1">DOI (Optional)</label>
                                 <Input
+                                  id={`pub-doi-${pub.id}`}
                                   value={pub.doi}
                                   onChange={(e) => updatePublication(pub.id, { doi: e.target.value })}
                                   className="bg-white"
@@ -986,8 +1019,9 @@ export function ResumeEditor({ onClose, onSave, initialData }: Readonly<ResumeEd
 
               {/* Projects */}
               <Card className="bg-white/80 backdrop-blur-sm border-0 rounded-[30px] overflow-hidden">
-                <div 
-                  className="flex items-center justify-between p-6 cursor-pointer hover:bg-gray-50/50 transition-colors"
+                <button
+                  type="button"
+                  className="w-full flex items-center justify-between p-6 cursor-pointer hover:bg-gray-50/50 transition-colors text-left"
                   onClick={() => toggleSection('projects')}
                 >
                   <h3 className="text-2xl font-medium text-[#061a48]">Projects</h3>
@@ -1008,7 +1042,7 @@ export function ResumeEditor({ onClose, onSave, initialData }: Readonly<ResumeEd
                       <ChevronDown className="w-6 h-6 text-gray-600" />
                     }
                   </div>
-                </div>
+                </button>
                 
                 {expandedSections.projects && (
                   <div className="px-6 pb-6 space-y-6">
@@ -1036,8 +1070,9 @@ export function ResumeEditor({ onClose, onSave, initialData }: Readonly<ResumeEd
                             
                             <div className="grid grid-cols-1 gap-4">
                               <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">Project Name</label>
+                                <label htmlFor={`project-name-${project.id}`} className="block text-sm font-medium text-gray-700 mb-1">Project Name</label>
                                 <Input
+                                  id={`project-name-${project.id}`}
                                   value={project.name}
                                   onChange={(e) => updateProject(project.id, { name: e.target.value })}
                                   className="bg-white"
@@ -1045,8 +1080,9 @@ export function ResumeEditor({ onClose, onSave, initialData }: Readonly<ResumeEd
                                 />
                               </div>
                               <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">Description</label>
+                                <label htmlFor={`project-description-${project.id}`} className="block text-sm font-medium text-gray-700 mb-1">Description</label>
                                 <Textarea
+                                  id={`project-description-${project.id}`}
                                   value={project.description}
                                   onChange={(e) => updateProject(project.id, { description: e.target.value })}
                                   className="bg-white min-h-[80px]"
@@ -1054,18 +1090,20 @@ export function ResumeEditor({ onClose, onSave, initialData }: Readonly<ResumeEd
                                 />
                               </div>
                               <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">Technologies Used</label>
+                                <label htmlFor={`project-tech-${project.id}`} className="block text-sm font-medium text-gray-700 mb-1">Technologies Used</label>
                                 <Input
+                                  id={`project-tech-${project.id}`}
                                   value={project.technologies}
                                   onChange={(e) => updateProject(project.id, { technologies: e.target.value })}
                                   className="bg-white"
                                   placeholder="React, Node.js, MongoDB, D3.js"
                                 />
                               </div>
-                              <div className="grid grid-cols-2 gap-4">
+                              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                 <div>
-                                  <label className="block text-sm font-medium text-gray-700 mb-1">Start Date</label>
+                                  <label htmlFor={`project-start-${project.id}`} className="block text-sm font-medium text-gray-700 mb-1">Start Date</label>
                                   <Input
+                                    id={`project-start-${project.id}`}
                                     value={project.startDate}
                                     onChange={(e) => updateProject(project.id, { startDate: e.target.value })}
                                     className="bg-white"
@@ -1073,8 +1111,9 @@ export function ResumeEditor({ onClose, onSave, initialData }: Readonly<ResumeEd
                                   />
                                 </div>
                                 <div>
-                                  <label className="block text-sm font-medium text-gray-700 mb-1">End Date (Optional)</label>
+                                  <label htmlFor={`project-end-${project.id}`} className="block text-sm font-medium text-gray-700 mb-1">End Date (Optional)</label>
                                   <Input
+                                    id={`project-end-${project.id}`}
                                     value={project.endDate}
                                     onChange={(e) => updateProject(project.id, { endDate: e.target.value })}
                                     className="bg-white"
@@ -1083,8 +1122,9 @@ export function ResumeEditor({ onClose, onSave, initialData }: Readonly<ResumeEd
                                 </div>
                               </div>
                               <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">Project URL (Optional)</label>
+                                <label htmlFor={`project-url-${project.id}`} className="block text-sm font-medium text-gray-700 mb-1">Project URL (Optional)</label>
                                 <Input
+                                  id={`project-url-${project.id}`}
                                   value={project.url}
                                   onChange={(e) => updateProject(project.id, { url: e.target.value })}
                                   className="bg-white"
@@ -1102,8 +1142,9 @@ export function ResumeEditor({ onClose, onSave, initialData }: Readonly<ResumeEd
 
               {/* Volunteer Work */}
               <Card className="bg-white/80 backdrop-blur-sm border-0 rounded-[30px] overflow-hidden">
-                <div 
-                  className="flex items-center justify-between p-6 cursor-pointer hover:bg-gray-50/50 transition-colors"
+                <button
+                  type="button"
+                  className="w-full flex items-center justify-between p-6 cursor-pointer hover:bg-gray-50/50 transition-colors text-left"
                   onClick={() => toggleSection('volunteer')}
                 >
                   <h3 className="text-2xl font-medium text-[#061a48]">Volunteer Work</h3>
@@ -1124,7 +1165,7 @@ export function ResumeEditor({ onClose, onSave, initialData }: Readonly<ResumeEd
                       <ChevronDown className="w-6 h-6 text-gray-600" />
                     }
                   </div>
-                </div>
+                </button>
                 
                 {expandedSections.volunteer && (
                   <div className="px-6 pb-6 space-y-6">
@@ -1150,10 +1191,11 @@ export function ResumeEditor({ onClose, onSave, initialData }: Readonly<ResumeEd
                               </Button>
                             </div>
                             
-                            <div className="grid grid-cols-2 gap-4">
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                               <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">Organization</label>
+                                <label htmlFor={`volunteer-org-${volunteer.id}`} className="block text-sm font-medium text-gray-700 mb-1">Organization</label>
                                 <Input
+                                  id={`volunteer-org-${volunteer.id}`}
                                   value={volunteer.organization}
                                   onChange={(e) => updateVolunteerWork(volunteer.id, { organization: e.target.value })}
                                   className="bg-white"
@@ -1161,8 +1203,9 @@ export function ResumeEditor({ onClose, onSave, initialData }: Readonly<ResumeEd
                                 />
                               </div>
                               <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">Role</label>
+                                <label htmlFor={`volunteer-role-${volunteer.id}`} className="block text-sm font-medium text-gray-700 mb-1">Role</label>
                                 <Input
+                                  id={`volunteer-role-${volunteer.id}`}
                                   value={volunteer.role}
                                   onChange={(e) => updateVolunteerWork(volunteer.id, { role: e.target.value })}
                                   className="bg-white"
@@ -1170,8 +1213,9 @@ export function ResumeEditor({ onClose, onSave, initialData }: Readonly<ResumeEd
                                 />
                               </div>
                               <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">Start Date</label>
+                                <label htmlFor={`volunteer-start-${volunteer.id}`} className="block text-sm font-medium text-gray-700 mb-1">Start Date</label>
                                 <Input
+                                  id={`volunteer-start-${volunteer.id}`}
                                   value={volunteer.startDate}
                                   onChange={(e) => updateVolunteerWork(volunteer.id, { startDate: e.target.value })}
                                   className="bg-white"
@@ -1179,8 +1223,9 @@ export function ResumeEditor({ onClose, onSave, initialData }: Readonly<ResumeEd
                                 />
                               </div>
                               <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">End Date (Optional)</label>
+                                <label htmlFor={`volunteer-end-${volunteer.id}`} className="block text-sm font-medium text-gray-700 mb-1">End Date (Optional)</label>
                                 <Input
+                                  id={`volunteer-end-${volunteer.id}`}
                                   value={volunteer.endDate}
                                   onChange={(e) => updateVolunteerWork(volunteer.id, { endDate: e.target.value })}
                                   className="bg-white"
@@ -1188,8 +1233,9 @@ export function ResumeEditor({ onClose, onSave, initialData }: Readonly<ResumeEd
                                 />
                               </div>
                               <div className="col-span-2">
-                                <label className="block text-sm font-medium text-gray-700 mb-1">Location</label>
+                                <label htmlFor={`volunteer-location-${volunteer.id}`} className="block text-sm font-medium text-gray-700 mb-1">Location</label>
                                 <Input
+                                  id={`volunteer-location-${volunteer.id}`}
                                   value={volunteer.location}
                                   onChange={(e) => updateVolunteerWork(volunteer.id, { location: e.target.value })}
                                   className="bg-white"
@@ -1197,8 +1243,9 @@ export function ResumeEditor({ onClose, onSave, initialData }: Readonly<ResumeEd
                                 />
                               </div>
                               <div className="col-span-2">
-                                <label className="block text-sm font-medium text-gray-700 mb-1">Description</label>
+                                <label htmlFor={`volunteer-description-${volunteer.id}`} className="block text-sm font-medium text-gray-700 mb-1">Description</label>
                                 <Textarea
+                                  id={`volunteer-description-${volunteer.id}`}
                                   value={volunteer.description}
                                   onChange={(e) => updateVolunteerWork(volunteer.id, { description: e.target.value })}
                                   className="bg-white min-h-[80px]"
@@ -1216,8 +1263,9 @@ export function ResumeEditor({ onClose, onSave, initialData }: Readonly<ResumeEd
 
               {/* Skills */}
               <Card className="bg-white/80 backdrop-blur-sm border-0 rounded-[30px] overflow-hidden">
-                <div 
-                  className="flex items-center justify-between p-6 cursor-pointer hover:bg-gray-50/50 transition-colors"
+                <button
+                  type="button"
+                  className="w-full flex items-center justify-between p-6 cursor-pointer hover:bg-gray-50/50 transition-colors text-left"
                   onClick={() => toggleSection('skills')}
                 >
                   <h3 className="text-2xl font-medium text-[#061a48]">Skills</h3>
@@ -1238,7 +1286,7 @@ export function ResumeEditor({ onClose, onSave, initialData }: Readonly<ResumeEd
                       <ChevronDown className="w-6 h-6 text-gray-600" />
                     }
                   </div>
-                </div>
+                </button>
                 
                 {expandedSections.skills && (
                   <div className="px-6 pb-6 space-y-6">
@@ -1264,8 +1312,9 @@ export function ResumeEditor({ onClose, onSave, initialData }: Readonly<ResumeEd
                             
                             <div className="space-y-3">
                               <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">Skill Name</label>
+                                <label htmlFor={`skill-name-${skill.id}`} className="block text-sm font-medium text-gray-700 mb-1">Skill Name</label>
                                 <Input
+                                  id={`skill-name-${skill.id}`}
                                   value={skill.name}
                                   onChange={(e) => updateSkill(skill.id, { name: e.target.value })}
                                   className="bg-white"
@@ -1273,8 +1322,9 @@ export function ResumeEditor({ onClose, onSave, initialData }: Readonly<ResumeEd
                                 />
                               </div>
                               <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">Category</label>
+                                <label htmlFor={`skill-category-${skill.id}`} className="block text-sm font-medium text-gray-700 mb-1">Category</label>
                                 <select
+                                  id={`skill-category-${skill.id}`}
                                   value={skill.category}
                                   onChange={(e) => updateSkill(skill.id, { category: e.target.value })}
                                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#ff6b35] focus:border-transparent bg-white"
@@ -1289,9 +1339,10 @@ export function ResumeEditor({ onClose, onSave, initialData }: Readonly<ResumeEd
                                 </select>
                               </div>
                               <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">Proficiency Level</label>
+                                <label htmlFor={`skill-level-${skill.id}`} className="block text-sm font-medium text-gray-700 mb-1">Proficiency Level</label>
                                 <div className="space-y-2">
                                   <input
+                                    id={`skill-level-${skill.id}`}
                                     type="range"
                                     min="1"
                                     max="5"
@@ -1321,7 +1372,7 @@ export function ResumeEditor({ onClose, onSave, initialData }: Readonly<ResumeEd
           </div>
 
           {/* Right Sidebar - Import/Upload Panel */}
-          <div className="w-96 bg-white/50 backdrop-blur-sm border-l border-gray-200 p-6">
+          <div className="w-full sm:w-96 bg-white/50 backdrop-blur-sm border-l border-gray-200 p-6">
             <div className="bg-white/80 rounded-2xl p-6 shadow-lg">
               <h3 className="text-xl font-medium text-gray-900 mb-4">Upload/Import Resume</h3>
               

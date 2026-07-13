@@ -3,9 +3,22 @@ import { Button } from '../ui/button';
 import { Card } from '../ui/card';
 import { Badge } from '../ui/badge';
 import { Input } from '../ui/input';
+import { Label } from '../ui/label';
+import { Textarea } from '../ui/textarea';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../ui/tabs';
-import { CandidateCard } from './CandidateCard';
-import { KanbanColumn } from './KanbanColumn';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter
+} from '../ui/dialog';
+import { CandidateCard } from './results/CandidateCard';
+import { KanbanColumn } from './results/JobsKanban';
+import { ScheduleInterviewSheet } from '../calendar/ScheduleInterviewSheet';
+import { createConversation, sendMessage } from '../../api/chat';
+import { toast } from 'sonner';
 import {
   ArrowLeft,
   Search,
@@ -39,6 +52,7 @@ interface Candidate {
   matchScore: number;
   email: string;
   phone: string;
+  isSaved?: boolean;
 }
 
 export function JobResultsView({ job, onBack, onViewProfile }: Readonly<JobResultsViewProps>) {
@@ -48,6 +62,14 @@ export function JobResultsView({ job, onBack, onViewProfile }: Readonly<JobResul
   const [candidates, setCandidates] = useState<Candidate[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
+  const [interviewCandidate, setInterviewCandidate] = useState<Candidate | null>(null);
+  const [showInterviewSheet, setShowInterviewSheet] = useState(false);
+
+  const [messageCandidate, setMessageCandidate] = useState<Candidate | null>(null);
+  const [messageDialogOpen, setMessageDialogOpen] = useState(false);
+  const [messageText, setMessageText] = useState('');
+  const [isSendingMessage, setIsSendingMessage] = useState(false);
 
   // Fetch candidates from API
   useEffect(() => {
@@ -61,22 +83,31 @@ export function JobResultsView({ job, onBack, onViewProfile }: Readonly<JobResul
         const response = await jobPostsApi.getJobApplications(job.id);
 
         if (response.success && response.data) {
+          // Map backend JobApplication status to frontend Kanban status
+          const mapApplicationStatus = (backendStatus: string, _source: string): string => {
+            return backendStatus;
+          };
+
           // Transform API response to Candidate format
-          const transformedCandidates: Candidate[] = response.data.map((app: any) => ({
-            id: app.candidate_id || app.id,
-            name: app.candidate_name || app.name || 'Unknown',
-            title: app.candidate_title || app.title || 'Candidate',
-            location: app.location || 'Unknown',
-            experience: app.years_experience ? `${app.years_experience} years` : 'N/A',
-            avatar: app.profile_image || null,
-            status: app.status || 'application-submitted',
-            appliedDate: app.date_applied || app.dateApplied || new Date().toISOString(),
-            lastUpdated: app.last_updated || app.lastUpdated || new Date().toISOString(),
-            source: app.source || 'Direct Apply',
-            matchScore: app.match_score || app.matchScore || 0,
-            email: app.candidate_email || app.email || '',
-            phone: app.candidate_phone || app.phone || ''
-          }));
+          const transformedCandidates: Candidate[] = response.data.map((app: any) => {
+            const source = app.source || 'Direct Apply';
+            return {
+              id: app.candidate_id || app.id,
+              name: app.candidate_name || app.name || 'Unknown',
+              title: app.candidate_title || app.title || 'Candidate',
+              location: app.location || 'Unknown',
+              experience: app.years_experience ? `${app.years_experience} years` : 'N/A',
+              avatar: app.profile_image || null,
+              status: mapApplicationStatus(app.status, source),
+              appliedDate: app.date_applied || app.dateApplied || new Date().toISOString(),
+              lastUpdated: app.last_updated || app.lastUpdated || new Date().toISOString(),
+              source,
+              matchScore: app.match_score || app.matchScore || 0,
+              email: app.candidate_email || app.email || '',
+              phone: app.candidate_phone || app.phone || '',
+              isSaved: app.is_saved || app.isSaved || false,
+            };
+          });
           setCandidates(transformedCandidates);
         } else {
           setError('Failed to load candidates');
@@ -95,7 +126,7 @@ export function JobResultsView({ job, onBack, onViewProfile }: Readonly<JobResul
   // Loading state
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-gray-50 via-orange-50 to-gray-100 p-6">
+      <div className="min-h-screen bg-gradient-to-br from-gray-50 via-orange-50 to-gray-100 p-4 sm:p-6 lg:p-8">
         <div className="max-w-7xl mx-auto">
           <div className="flex items-center justify-center h-64">
             <div className="animate-pulse text-gray-600">Loading candidates...</div>
@@ -108,9 +139,9 @@ export function JobResultsView({ job, onBack, onViewProfile }: Readonly<JobResul
   // Error state
   if (error) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-gray-50 via-orange-50 to-gray-100 p-6">
+      <div className="min-h-screen bg-gradient-to-br from-gray-50 via-orange-50 to-gray-100 p-4 sm:p-6 lg:p-8">
         <div className="max-w-7xl mx-auto">
-          <Card className="p-12 text-center">
+          <Card className="p-8 sm:p-12 text-center">
             <h3 className="text-lg text-red-600 mb-2">Error Loading Candidates</h3>
             <p className="text-gray-600 mb-4">{error}</p>
             <Button onClick={onBack} variant="outline">
@@ -128,23 +159,20 @@ export function JobResultsView({ job, onBack, onViewProfile }: Readonly<JobResul
     let filtered;
 
     switch (tab) {
+      case 'consider':
+        filtered = candidates.filter(c => c.status === 'consider');
+        break;
       case 'applied':
-        filtered = candidates.filter(c => 
-          ['application-submitted', 'consideration-sent', 'consideration-accepted', 'pending-consideration', 'under-review'].includes(c.status)
-        );
+        filtered = candidates.filter(c => c.status === 'applied');
         break;
       case 'interviewing':
-        filtered = candidates.filter(c => 
-          ['phone-screening', 'technical-interview', 'final-interview', 'reference-check'].includes(c.status)
-        );
+        filtered = candidates.filter(c => c.status === 'interviews');
         break;
       case 'offers':
-        filtered = candidates.filter(c => 
-          ['offer-extended', 'offer-accepted', 'offer-rejected'].includes(c.status)
-        );
+        filtered = candidates.filter(c => c.status === 'offers');
         break;
       case 'hired':
-        filtered = candidates.filter(c => c.status === 'offer-accepted');
+        filtered = candidates.filter(c => c.status === 'hired');
         break;
       case 'not-considered':
         filtered = candidates.filter(c => c.status === 'rejected');
@@ -171,16 +199,11 @@ export function JobResultsView({ job, onBack, onViewProfile }: Readonly<JobResul
 
   // Calculate summary metrics
   const totalCandidates = candidates.length;
-  const appliedCount = candidates.filter(c => 
-    ['application-submitted', 'consideration-sent', 'consideration-accepted', 'pending-consideration', 'under-review'].includes(c.status)
-  ).length;
-  const interviewingCount = candidates.filter(c => 
-    ['phone-screening', 'technical-interview', 'final-interview', 'reference-check'].includes(c.status)
-  ).length;
-  const offersCount = candidates.filter(c => 
-    ['offer-extended', 'offer-accepted', 'offer-rejected'].includes(c.status)
-  ).length;
-  const hiredCount = candidates.filter(c => c.status === 'offer-accepted').length;
+  const considerCount = candidates.filter(c => c.status === 'consider').length;
+  const appliedCount = candidates.filter(c => c.status === 'applied').length;
+  const interviewingCount = candidates.filter(c => c.status === 'interviews').length;
+  const offersCount = candidates.filter(c => c.status === 'offers').length;
+  const hiredCount = candidates.filter(c => c.status === 'hired').length;
   const notConsideredCount = candidates.filter(c => c.status === 'rejected').length;
   const withdrawnCount = candidates.filter(c => c.status === 'withdrawn').length;
 
@@ -189,27 +212,16 @@ export function JobResultsView({ job, onBack, onViewProfile }: Readonly<JobResul
 
   const getStatusBadge = (status: string) => {
     switch (status) {
-      case 'application-submitted':
-      case 'under-review':
+      case 'consider':
+        return <Badge className="bg-yellow-100 text-yellow-800">Consider</Badge>;
+      case 'applied':
         return <Badge className="bg-blue-100 text-blue-800">Applied</Badge>;
-      case 'consideration-sent':
-        return <Badge className="bg-purple-100 text-purple-800">Invited</Badge>;
-      case 'consideration-accepted':
-        return <Badge className="bg-indigo-100 text-indigo-800">Accepted Invitation</Badge>;
-      case 'phone-screening':
-        return <Badge className="bg-cyan-100 text-cyan-800">Phone Screen</Badge>;
-      case 'technical-interview':
-        return <Badge className="bg-teal-100 text-teal-800">Technical Interview</Badge>;
-      case 'final-interview':
-        return <Badge className="bg-emerald-100 text-emerald-800">Final Interview</Badge>;
-      case 'reference-check':
-        return <Badge className="bg-lime-100 text-lime-800">Reference Check</Badge>;
-      case 'offer-extended':
-        return <Badge className="bg-orange-100 text-orange-800">Offer Pending</Badge>;
-      case 'offer-accepted':
-        return <Badge className="bg-green-100 text-green-800">Offer Accepted</Badge>;
-      case 'offer-rejected':
-        return <Badge className="bg-red-100 text-red-800">Offer Rejected</Badge>;
+      case 'interviews':
+        return <Badge className="bg-purple-100 text-purple-800">Interviews</Badge>;
+      case 'offers':
+        return <Badge className="bg-emerald-100 text-emerald-800">Offers</Badge>;
+      case 'hired':
+        return <Badge className="bg-green-100 text-green-800">Hired</Badge>;
       case 'rejected':
         return <Badge className="bg-red-100 text-red-800">Not Considered</Badge>;
       case 'withdrawn':
@@ -227,11 +239,55 @@ export function JobResultsView({ job, onBack, onViewProfile }: Readonly<JobResul
     return diffDays === 0 ? 'Today' : `${diffDays}d ago`;
   };
 
+  const handleScheduleInterview = (candidate: Candidate) => {
+    setInterviewCandidate(candidate);
+    setShowInterviewSheet(true);
+  };
+
+  const handleSendMessage = (candidate: Candidate) => {
+    setMessageCandidate(candidate);
+    setMessageText('');
+    setMessageDialogOpen(true);
+  };
+
+  const handleMessageSubmit = async () => {
+    if (!messageCandidate || !messageText.trim()) return;
+    if (!job?.id) {
+      toast.error('No job selected for this conversation');
+      return;
+    }
+
+    setIsSendingMessage(true);
+    try {
+      const conversation = await createConversation({
+        conversation_type: 'job',
+        participant_ids: [Number.parseInt(messageCandidate.id, 10)],
+        job: Number(job.id),
+      });
+
+      await sendMessage({
+        conversation: conversation.id,
+        content: messageText.trim(),
+        message_type: 'text',
+      });
+
+      toast.success(`Message sent to ${messageCandidate.name}`);
+      setMessageDialogOpen(false);
+      setMessageCandidate(null);
+      setMessageText('');
+    } catch (error: any) {
+      console.error('Error sending message:', error);
+      toast.error(error.message || 'Failed to send message');
+    } finally {
+      setIsSendingMessage(false);
+    }
+  };
+
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-50 via-orange-50 to-gray-100 p-6">
+    <div className="min-h-screen bg-gradient-to-br from-gray-50 via-orange-50 to-gray-100 p-4 sm:p-6 lg:p-8">
       <div className="max-w-7xl mx-auto">
         {/* Header */}
-        <div className="flex items-center justify-between mb-6">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
           <div>
             <Button 
               variant="outline" 
@@ -329,8 +385,9 @@ export function JobResultsView({ job, onBack, onViewProfile }: Readonly<JobResul
 
         {/* Tabs */}
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-          <TabsList className="grid w-full grid-cols-7 bg-white border border-gray-200">
+          <TabsList className="grid w-full grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 bg-white border border-gray-200">
             <TabsTrigger value="all">All ({totalCandidates})</TabsTrigger>
+            <TabsTrigger value="consider">Consider ({considerCount})</TabsTrigger>
             <TabsTrigger value="applied">Applied ({appliedCount})</TabsTrigger>
             <TabsTrigger value="interviewing">Interviewing ({interviewingCount})</TabsTrigger>
             <TabsTrigger value="offers">Offers ({offersCount})</TabsTrigger>
@@ -359,6 +416,10 @@ export function JobResultsView({ job, onBack, onViewProfile }: Readonly<JobResul
                       getStatusBadge={getStatusBadge}
                       getDaysAgo={getDaysAgo}
                       onViewProfile={onViewProfile}
+                      onSendMessage={handleSendMessage}
+                      onScheduleInterview={handleScheduleInterview}
+                      jobId={job?.id}
+                      initialIsSaved={candidate.isSaved}
                     />
                   ))
                 )}
@@ -368,35 +429,36 @@ export function JobResultsView({ job, onBack, onViewProfile }: Readonly<JobResul
               <div className="overflow-x-auto pb-4">
                 <div className="flex gap-4">
                   <KanbanColumn
+                    title="Consider"
+                    candidates={candidates.filter(c => c.status === 'consider')}
+                    count={considerCount}
+                    getStatusBadge={getStatusBadge}
+                    getDaysAgo={getDaysAgo}
+                  />
+                  <KanbanColumn
                     title="Applied"
-                    candidates={candidates.filter(c =>
-                      ['application-submitted', 'consideration-sent', 'consideration-accepted', 'pending-consideration', 'under-review'].includes(c.status)
-                    )}
+                    candidates={candidates.filter(c => c.status === 'applied')}
                     count={appliedCount}
                     getStatusBadge={getStatusBadge}
                     getDaysAgo={getDaysAgo}
                   />
                   <KanbanColumn
                     title="Interviewing"
-                    candidates={candidates.filter(c =>
-                      ['phone-screening', 'technical-interview', 'final-interview', 'reference-check'].includes(c.status)
-                    )}
+                    candidates={candidates.filter(c => c.status === 'interviews')}
                     count={interviewingCount}
                     getStatusBadge={getStatusBadge}
                     getDaysAgo={getDaysAgo}
                   />
                   <KanbanColumn
                     title="Offers"
-                    candidates={candidates.filter(c =>
-                      ['offer-extended', 'offer-accepted', 'offer-rejected'].includes(c.status)
-                    )}
+                    candidates={candidates.filter(c => c.status === 'offers')}
                     count={offersCount}
                     getStatusBadge={getStatusBadge}
                     getDaysAgo={getDaysAgo}
                   />
                   <KanbanColumn
                     title="Hired"
-                    candidates={candidates.filter(c => c.status === 'offer-accepted')}
+                    candidates={candidates.filter(c => c.status === 'hired')}
                     count={hiredCount}
                     getStatusBadge={getStatusBadge}
                     getDaysAgo={getDaysAgo}
@@ -421,6 +483,54 @@ export function JobResultsView({ job, onBack, onViewProfile }: Readonly<JobResul
           </TabsContent>
         </Tabs>
       </div>
+
+      {interviewCandidate && (
+        <ScheduleInterviewSheet
+          open={showInterviewSheet}
+          onOpenChange={setShowInterviewSheet}
+          candidate={{
+            ...interviewCandidate,
+            position: interviewCandidate.title
+          }}
+          jobId={job?.id}
+        />
+      )}
+
+      <Dialog open={messageDialogOpen} onOpenChange={setMessageDialogOpen}>
+        <DialogContent className="max-w-[95vw] sm:max-w-[95vw] sm:max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Message {messageCandidate?.name}</DialogTitle>
+            <DialogDescription>
+              Send a message to {messageCandidate?.name} about {job?.title}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <Label htmlFor="candidate-message">Message</Label>
+            <Textarea
+              id="candidate-message"
+              value={messageText}
+              onChange={(e) => setMessageText(e.target.value)}
+              placeholder="Type your message..."
+              rows={4}
+            />
+          </div>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setMessageDialogOpen(false)}
+              disabled={isSendingMessage}
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={handleMessageSubmit}
+              disabled={isSendingMessage || !messageText.trim()}
+            >
+              {isSendingMessage ? 'Sending...' : 'Send Message'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

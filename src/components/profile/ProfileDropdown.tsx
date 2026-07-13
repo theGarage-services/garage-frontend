@@ -1,7 +1,9 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator, DropdownMenuLabel } from '../ui/dropdown-menu';
 import { Avatar, AvatarFallback, AvatarImage } from '../ui/avatar';
 import { Badge } from '../ui/badge';
+import { candidateProfileService } from '@/api/candidateProfile';
+import { buildProfileImageUrl } from '@/api/recruiterProfile';
 import { User, Settings, HelpCircle, Bug, LogOut, Crown, Bell, CreditCard, Download, ChevronDown, Building2 } from 'lucide-react';
 
 interface ProfileDropdownProps {
@@ -13,15 +15,26 @@ interface ProfileDropdownProps {
   userAvatar?: string;
 }
 
-export function ProfileDropdown({ 
-  onNavigate, 
+export function ProfileDropdown({
+  onNavigate,
   onLogout,
-  isPremium = false, 
-  userName = "John Doe", 
+  isPremium = false,
+  userName = "John Doe",
   userEmail = "john.doe@example.com",
-  userAvatar 
+  userAvatar
 }: Readonly<ProfileDropdownProps>) {
   const [open, setOpen] = useState(false);
+  const [profileImage, setProfileImage] = useState<string | undefined>(userAvatar);
+
+  useEffect(() => {
+    if (userAvatar) return;
+    candidateProfileService.getProfile().then((profile) => {
+      const img = profile?.candidate_profile_data?.profile_image;
+      if (img) {
+        setProfileImage(buildProfileImageUrl(img));
+      }
+    }).catch(() => {});
+  }, [userAvatar]);
 
   const handleNavigation = (view: 'homepage' | 'job-tracker' | 'profile' | 'notifications' | 'settings' | 'support' | 'report-issue' | 'platform-overview' | 'metrics-dashboard' | 'landing') => {
     setOpen(false);
@@ -45,7 +58,7 @@ export function ProfileDropdown({
       <DropdownMenuTrigger asChild>
         <button className="flex items-center gap-2 h-9 px-2 hover:bg-orange-50 rounded-md transition-colors outline-none focus-visible:ring-2 focus-visible:ring-[#ff6b35] focus-visible:ring-offset-2">
           <Avatar className="w-7 h-7">
-            <AvatarImage src={userAvatar} />
+            <AvatarImage src={profileImage} />
             <AvatarFallback className="bg-gradient-to-r from-[#ff6b35] to-[#ff8c42] text-white text-xs">
               {userName.split(' ').map(n => n[0]).join('')}
             </AvatarFallback>
@@ -63,12 +76,12 @@ export function ProfileDropdown({
         </button>
       </DropdownMenuTrigger>
       
-      <DropdownMenuContent align="end" className="w-72 p-2">
+      <DropdownMenuContent align="end" className="w-full sm:w-72 p-2">
         {/* User Info Header */}
         <DropdownMenuLabel className="p-3">
           <div className="flex items-center gap-3">
             <Avatar className="w-12 h-12">
-              <AvatarImage src={userAvatar} />
+              <AvatarImage src={profileImage} />
               <AvatarFallback className="bg-gradient-to-r from-[#ff6b35] to-[#ff8c42] text-white">
                 {userName.split(' ').map(n => n[0]).join('')}
               </AvatarFallback>

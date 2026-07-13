@@ -13,7 +13,29 @@ import {
   Check,
   X,
   AlertCircle,
-  Brain
+  Brain,
+  Briefcase,
+  Wrench,
+  Stethoscope,
+  Plane,
+  Landmark,
+  Cpu,
+  Paintbrush,
+  GraduationCap,
+  Phone,
+  TrendingUp,
+  ChefHat,
+  HardHat,
+  Palette,
+  Megaphone,
+  DollarSign,
+  Dumbbell,
+  Users,
+  Shirt,
+  Wheat,
+  Car,
+  Gavel,
+  BadgeDollarSign
 } from 'lucide-react';
 import { queueService, type BucketPrediction as QueueServiceBucketPrediction } from '../../api/queueService';
 import { candidateProfileService } from '@/api/candidateProfile';
@@ -66,18 +88,87 @@ interface BucketManagerProps {
   user: any;
   onBucketSelect?: (bucket: BucketPrediction) => void;
   selectedBucketId?: string | null;
+  showSwap?: boolean;
 }
 
 // Helper to get industry icon by value
 const getIndustryIcon = (value: string): string => {
   // Normalize to lowercase and handle both formats (API returns uppercase)
-  const normalizedValue = value.toLowerCase().replace(/_/g, '-');
+  const normalizedValue = value.toLowerCase().replaceAll('_', '-');
   const icon = INDUSTRY_CHOICES.find(i => i.value === normalizedValue)?.icon || '📋';
   return icon;
 };
 
+const getIndustryLabel = (value: string): string => {
+  const normalizedValue = value.toLowerCase().replaceAll('_', '-');
+  return INDUSTRY_CHOICES.find(i => i.value === normalizedValue)?.label || value;
+};
 
-function BucketManager({ user, onBucketSelect, selectedBucketId }: Readonly<BucketManagerProps>) {
+const INDUSTRY_ICON_COMPONENTS: Record<string, React.ComponentType<any>> = {
+  'accountant': BadgeDollarSign,
+  'advocate': Gavel,
+  'agriculture': Wheat,
+  'apparel': Shirt,
+  'arts': Paintbrush,
+  'automobile': Car,
+  'aviation': Plane,
+  'banking': Landmark,
+  'bpo': Phone,
+  'business-development': TrendingUp,
+  'chef': ChefHat,
+  'construction': HardHat,
+  'consultant': Briefcase,
+  'designer': Palette,
+  'digital-marketing': Megaphone,
+  'education': GraduationCap,
+  'engineering': Wrench,
+  'finance': DollarSign,
+  'fitness': Dumbbell,
+  'healthcare': Stethoscope,
+  'hr': Users,
+  'information-technology': Cpu,
+  'public-relations': Megaphone,
+  'sales': TrendingUp,
+};
+
+const INDUSTRY_COLORS: Record<string, string> = {
+  'accountant': 'bg-gradient-to-br from-green-500 to-emerald-600',
+  'advocate': 'bg-gradient-to-br from-red-500 to-rose-600',
+  'agriculture': 'bg-gradient-to-br from-green-500 to-lime-600',
+  'apparel': 'bg-gradient-to-br from-pink-500 to-rose-500',
+  'arts': 'bg-gradient-to-br from-purple-500 to-violet-500',
+  'automobile': 'bg-gradient-to-br from-blue-500 to-indigo-600',
+  'aviation': 'bg-gradient-to-br from-sky-500 to-blue-600',
+  'banking': 'bg-gradient-to-br from-emerald-500 to-green-600',
+  'bpo': 'bg-gradient-to-br from-orange-500 to-amber-500',
+  'business-development': 'bg-gradient-to-br from-blue-500 to-cyan-600',
+  'chef': 'bg-gradient-to-br from-red-500 to-orange-500',
+  'construction': 'bg-gradient-to-br from-yellow-500 to-amber-600',
+  'consultant': 'bg-gradient-to-br from-slate-500 to-gray-600',
+  'designer': 'bg-gradient-to-br from-pink-500 to-fuchsia-500',
+  'digital-marketing': 'bg-gradient-to-br from-indigo-500 to-purple-500',
+  'education': 'bg-gradient-to-br from-yellow-500 to-orange-500',
+  'engineering': 'bg-gradient-to-br from-orange-500 to-red-500',
+  'finance': 'bg-gradient-to-br from-emerald-500 to-teal-600',
+  'fitness': 'bg-gradient-to-br from-green-500 to-teal-500',
+  'healthcare': 'bg-gradient-to-br from-teal-500 to-cyan-600',
+  'hr': 'bg-gradient-to-br from-indigo-500 to-blue-500',
+  'information-technology': 'bg-gradient-to-br from-blue-500 to-indigo-600',
+  'public-relations': 'bg-gradient-to-br from-violet-500 to-purple-500',
+  'sales': 'bg-gradient-to-br from-green-500 to-emerald-500',
+};
+
+export function getIndustryLucideIcon(value: string): React.ComponentType<any> {
+  const normalizedValue = value.toLowerCase().replaceAll('_', '-');
+  return INDUSTRY_ICON_COMPONENTS[normalizedValue] || Briefcase;
+}
+
+export function getIndustryColor(value: string): string {
+  const normalizedValue = value.toLowerCase().replaceAll('_', '-');
+  return INDUSTRY_COLORS[normalizedValue] || 'bg-gradient-to-br from-blue-500 to-indigo-600';
+}
+
+function BucketManager({ user, onBucketSelect, selectedBucketId, showSwap = true }: Readonly<BucketManagerProps>) {
   const isPremium = user?.isPremium || false;
   const [predictions, setPredictions] = useState<BucketPrediction[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -123,14 +214,6 @@ function BucketManager({ user, onBucketSelect, selectedBucketId }: Readonly<Buck
   // Determine visible buckets based on premium status
   const visibleBuckets = isPremium ? predictions : predictions.slice(0, 3);
   const hiddenBuckets = isPremium ? [] : predictions.slice(3);
-
-  const getIndustryLabel = (value: string) => {
-    return INDUSTRY_CHOICES.find(i => i.value === value)?.label || value;
-  };
-
-  const getIndustryIcon = (value: string) => {
-    return INDUSTRY_CHOICES.find(i => i.value === value)?.icon || '📋';
-  };
 
   const getConfidenceColor = (probability: number) => {
     if (probability >= 0.7) return 'bg-green-500';
@@ -232,7 +315,7 @@ function BucketManager({ user, onBucketSelect, selectedBucketId }: Readonly<Buck
               <Brain className="w-8 h-8 text-orange-500" />
             </div>
             <h4 className="font-medium text-gray-900 mb-2">No Bucket Predictions Available</h4>
-            <p className="text-sm text-gray-500 mb-4 max-w-md">
+            <p className="text-sm text-gray-500 mb-4 max-w-[95vw] sm:max-w-md">
               Complete your profile with work history, skills, and education to get AI-powered bucket predictions that match your qualifications.
             </p>
             <Button
@@ -304,7 +387,7 @@ function BucketManager({ user, onBucketSelect, selectedBucketId }: Readonly<Buck
 
               {/* Confidence Score */}
               <div className="space-y-1">
-                <div className="flex items-center justify-between text-xs">
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 text-xs">
                   <span className="text-gray-500">Industry Confidence</span>
                   <span className="font-medium text-gray-900">
                     {Math.round(bucket.industry_probability * 100)}%
@@ -319,7 +402,7 @@ function BucketManager({ user, onBucketSelect, selectedBucketId }: Readonly<Buck
               </div>
 
               <div className="space-y-1">
-                <div className="flex items-center justify-between text-xs">
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 text-xs">
                   <span className="text-gray-500">Level Confidence</span>
                   <span className="font-medium text-gray-900">
                     {Math.round(bucket.level_probability * 100)}%
@@ -368,7 +451,7 @@ function BucketManager({ user, onBucketSelect, selectedBucketId }: Readonly<Buck
       </div>
 
       {/* Premium: Swap Bucket Feature */}
-      {isPremium && (
+      {showSwap && isPremium && (
         <Card className="p-4 bg-gradient-to-r from-orange-50 to-orange-100/50 border-orange-200">
           <div className="flex items-start gap-4">
             <div className="w-10 h-10 bg-gradient-to-r from-[#ff6b35] to-[#ff8c42] rounded-lg flex items-center justify-center shadow-lg">
@@ -392,12 +475,12 @@ function BucketManager({ user, onBucketSelect, selectedBucketId }: Readonly<Buck
       )}
 
       {/* Swap Bucket Modal */}
-      {showSwapModal && isPremium && (
+      {showSwap && showSwapModal && isPremium && (
         <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <Card className="w-full max-w-2xl max-h-[80vh] overflow-hidden bg-white shadow-2xl">
+          <Card className="w-full max-w-[95vw] sm:max-w-2xl max-h-[80vh] overflow-hidden bg-white shadow-2xl">
             {/* Modal Header */}
             <div className="p-6 border-b border-gray-200 bg-gradient-to-r from-gray-50 to-orange-50">
-              <div className="flex items-center justify-between">
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
                 <div>
                   <h3 className="text-xl font-semibold text-gray-900">Swap Your Bucket</h3>
                   <p className="text-sm text-gray-600 mt-1">
@@ -417,7 +500,7 @@ function BucketManager({ user, onBucketSelect, selectedBucketId }: Readonly<Buck
 
             {/* Industry Grid */}
             <div className="p-6 overflow-y-auto max-h-[60vh]">
-              <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
                 {allIndustries.map((industry) => {
                   const isCurrentlySelected = predictions.some(
                     p => p.industry === industry.value && p.isSelected
@@ -486,4 +569,4 @@ function BucketManager({ user, onBucketSelect, selectedBucketId }: Readonly<Buck
 }
 
 // Export component and helpers
-export { BucketManager, INDUSTRY_CHOICES, getIndustryIcon };
+export { BucketManager, INDUSTRY_CHOICES, EXP_LEVEL_LABELS, getIndustryIcon, getIndustryLabel };

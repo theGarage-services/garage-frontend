@@ -3,6 +3,7 @@ import { Label } from '../../ui/label';
 import { Input } from '../../ui/input';
 import { Button } from '../../ui/button';
 import { AlertCircle, Upload, File, X } from 'lucide-react';
+import { DepartmentSelect } from '../../common/DepartmentSelect';
 
 interface FormData {
   recruiterTitle: string;
@@ -80,12 +81,10 @@ export function VerificationStep({ formData, errors, onChange }: Readonly<Verifi
       {/* Department */}
       <div className="space-y-2">
         <Label htmlFor="department">Department</Label>
-        <Input
-          id="department"
-          placeholder="e.g. Human Resources, Talent Acquisition"
+        <DepartmentSelect
           value={formData.department}
-          onChange={(e) => onChange('department', e.target.value)}
-          className={`h-12 border-2 ${errors.department ? 'border-red-300' : 'border-gray-200'}`}
+          onValueChange={(value: string) => onChange('department', value)}
+          triggerClassName={`h-12 border-2 ${errors.department ? 'border-red-300' : 'border-gray-200'}`}
         />
         <FieldError message={errors.department} />
       </div>
@@ -101,16 +100,16 @@ export function VerificationStep({ formData, errors, onChange }: Readonly<Verifi
             onChange={handleFileUpload}
             className="hidden"
           />
-          <label htmlFor="verification" className="cursor-pointer">
-            <div className="flex flex-col items-center gap-3">
-              <div className="w-12 h-12 bg-gray-100 rounded-full flex items-center justify-center">
-                <Upload className="w-6 h-6 text-gray-400" />
-              </div>
-              <div>
-                <p className="font-medium text-gray-900">Upload business license or registration</p>
-                <p className="text-sm text-gray-500">PDF, JPG, or PNG (max 10MB)</p>
-              </div>
-            </div>
+          <label
+            htmlFor="verification"
+            className="cursor-pointer flex flex-col items-center gap-3"
+            aria-label="Upload business license or registration (PDF, JPG, or PNG max 10MB)"
+          >
+            <span className="w-12 h-12 bg-gray-100 rounded-full flex items-center justify-center">
+              <Upload className="w-6 h-6 text-gray-400" />
+            </span>
+            <span className="font-medium text-gray-900">Upload business license or registration</span>
+            <span className="text-sm text-gray-500">PDF, JPG, or PNG (max 10MB)</span>
           </label>
         </div>
 
@@ -123,17 +122,17 @@ export function VerificationStep({ formData, errors, onChange }: Readonly<Verifi
 
         {formData.verificationDocument && (
           <div className="bg-green-50 border border-green-200 rounded-lg p-4">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <File className="w-5 h-5 text-green-600" />
-                <div>
-                  <p className="font-medium text-green-800">{formData.verificationDocument.name}</p>
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+              <div className="flex items-center gap-3 min-w-0">
+                <File className="w-5 h-5 text-green-600 shrink-0" />
+                <div className="min-w-0">
+                  <p className="font-medium text-green-800 truncate">{formData.verificationDocument.name}</p>
                   <p className="text-sm text-green-600">
                     {(formData.verificationDocument.size / 1024 / 1024).toFixed(2)} MB
                   </p>
                 </div>
               </div>
-              <Button variant="ghost" size="sm" onClick={handleRemoveFile}>
+              <Button variant="ghost" size="sm" onClick={handleRemoveFile} className="self-start sm:self-auto">
                 <X className="w-4 h-4" />
               </Button>
             </div>

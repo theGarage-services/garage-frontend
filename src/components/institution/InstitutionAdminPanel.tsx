@@ -5,6 +5,7 @@ import { Label } from '../ui/label';
 import { Card } from '../ui/card';
 import { Textarea } from '../ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
+import { DepartmentSelect } from '../common/DepartmentSelect';
 import { Badge } from '../ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogDescription } from '../ui/dialog';
 import { 
@@ -83,7 +84,7 @@ export function InstitutionAdminPanel({ institution, user, onBack }: Readonly<In
         email: inviteForm.email,
         role: inviteForm.role,
         department: inviteForm.department,
-        title: inviteForm.title,
+        job_title: inviteForm.title,
         permissions: {
           can_post_jobs: inviteForm.permissions.includes('post_jobs'),
           can_view_candidates: inviteForm.permissions.includes('interview'),
@@ -187,7 +188,7 @@ export function InstitutionAdminPanel({ institution, user, onBack }: Readonly<In
       {/* Header */}
       <div className="bg-white border-b border-gray-200 shadow-sm">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center justify-between h-16">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 py-4">
             <div className="flex items-center gap-4">
               <Button variant="ghost" onClick={onBack} className="p-2">
                 <ArrowLeft className="w-5 h-5" />
@@ -196,14 +197,14 @@ export function InstitutionAdminPanel({ institution, user, onBack }: Readonly<In
                 <div className="w-10 h-10 bg-gradient-to-r from-[#ff6b35] to-[#ff8c42] rounded-lg flex items-center justify-center">
                   <Settings className="w-6 h-6 text-white" />
                 </div>
-                <div>
+                <div className="min-w-0">
                   <h1 className="text-xl font-medium text-gray-900">Institution Admin</h1>
                   <p className="text-sm text-gray-500">{institution?.name || 'Institution Admin'}</p>
                 </div>
               </div>
             </div>
             
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-3 self-start sm:self-auto">
               <Badge className="bg-gradient-to-r from-purple-500 to-purple-600 text-white">
                 <Crown className="w-3 h-3 mr-1" />
                 Admin Access
@@ -253,16 +254,16 @@ export function InstitutionAdminPanel({ institution, user, onBack }: Readonly<In
 
           <div className="space-y-6">
             <Card className="p-6">
-              <div className="flex items-center justify-between mb-6">
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
                 <h2 className="text-lg font-medium text-gray-900">Team Members</h2>
                 <Dialog open={showInviteDialog} onOpenChange={setShowInviteDialog}>
                   <DialogTrigger asChild>
-                    <Button className="bg-[#ff6b35] hover:bg-[#e55a2b] flex items-center gap-2">
+                    <Button className="bg-[#ff6b35] hover:bg-[#e55a2b] flex items-center gap-2 self-start sm:self-auto">
                       <UserPlus className="w-4 h-4" />
                       Create Member
                     </Button>
                   </DialogTrigger>
-                  <DialogContent className="sm:max-w-[425px]">
+                  <DialogContent className="max-w-[95vw] sm:max-w-[425px]">
                     <DialogHeader>
                       <DialogTitle>Create New Team Member</DialogTitle>
                       <DialogDescription>
@@ -311,11 +312,10 @@ export function InstitutionAdminPanel({ institution, user, onBack }: Readonly<In
 
                       <div className="space-y-2">
                         <Label htmlFor="department">Department</Label>
-                        <Input
-                          id="department"
-                          placeholder="e.g. Human Resources"
+                        <DepartmentSelect
                           value={inviteForm.department}
-                          onChange={(e) => setInviteForm(prev => ({ ...prev, department: e.target.value }))}
+                          onValueChange={(value: string) => setInviteForm(prev => ({ ...prev, department: value }))}
+                          triggerClassName="h-10"
                         />
                       </div>
 
@@ -551,20 +551,20 @@ export function InstitutionAdminPanel({ institution, user, onBack }: Readonly<In
               <div className="space-y-4">
                 {filteredTeamMembers.map((member) => (
                   <div key={member.id} className="p-4 border border-gray-200 rounded-lg hover:bg-gray-50">
-                    <div className="flex items-start justify-between mb-3">
-                      <div className="flex items-center gap-4">
+                    <div className="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-4 mb-3">
+                      <div className="flex items-start gap-4 min-w-0">
                         <div className="w-12 h-12 bg-gradient-to-r from-blue-500 to-purple-600 rounded-full flex items-center justify-center text-white font-medium">
                           {member.user.first_name?.[0] || ''}{member.user.last_name?.[0] || member.user.email?.[0]?.toUpperCase() || ''}
                         </div>
-                        <div>
-                          <div className="flex items-center gap-2 mb-1">
+                        <div className="min-w-0">
+                          <div className="flex flex-wrap items-center gap-2 mb-1">
                             <h3 className="font-medium text-gray-900">
                               {member.user.first_name} {member.user.last_name || member.user.email?.split('@')[0]}
                             </h3>
                             {getRoleIcon(member.role)}
                             {getStatusBadge(member.status)}
                           </div>
-                          <p className="text-sm text-gray-600">{member.title}</p>
+                          <p className="text-sm text-gray-600">{member.job_title}</p>
                           <p className="text-sm text-gray-500">{member.user.email}</p>
                           <div className="flex items-center gap-4 text-xs text-gray-400 mt-1">
                             <span>Joined {new Date(member.joined_at).toLocaleDateString()}</span>
@@ -572,7 +572,7 @@ export function InstitutionAdminPanel({ institution, user, onBack }: Readonly<In
                         </div>
                       </div>
                       
-                      <div className="flex items-center gap-2">
+                      <div className="flex flex-wrap items-center gap-2 self-start lg:self-auto">
                         <Select 
                           value={member.role} 
                           onValueChange={(newRole: string) => handleUpdateMemberRole(member.id, newRole)}
@@ -601,7 +601,7 @@ export function InstitutionAdminPanel({ institution, user, onBack }: Readonly<In
                     </div>
 
                     {/* Permissions Display */}
-                    <div className="pl-16">
+                    <div className="pl-0 sm:pl-16">
                       <div className="flex items-center gap-2 mb-2">
                         <Shield className="w-3 h-3 text-gray-500" />
                         <span className="text-xs font-medium text-gray-700">Access Permissions:</span>

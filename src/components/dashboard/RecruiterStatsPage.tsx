@@ -102,6 +102,7 @@ export function RecruiterStatsPage({ onNavigate, onLogout, user }: Readonly<Recr
       }
     ],
     monthlyTrends: {
+      months: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun'],
       hires: [2, 3, 4, 2, 3, 4],
       interviews: [8, 12, 15, 11, 14, 18],
       candidates: [34, 42, 48, 39, 52, 58],
@@ -204,13 +205,13 @@ export function RecruiterStatsPage({ onNavigate, onLogout, user }: Readonly<Recr
       {/* Page Title & Controls Section */}
       <div className="pt-20 bg-gradient-to-r from-[#ff6b35] to-[#ff8c42] text-white pb-8 shadow-lg">
         <div className="max-w-7xl mx-auto px-8">
-          <div className="flex items-center justify-between">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
             <div>
               <h1 className="text-3xl font-semibold mb-2">My Performance Stats</h1>
               <p className="text-white/90">Track your recruiting metrics and KPIs</p>
             </div>
 
-            <div className="flex items-center gap-4">
+            <div className="flex items-center gap-4 self-start sm:self-auto">
               <Select value={selectedPeriod} onValueChange={(value: any) => setSelectedPeriod(value)}>
                 <SelectTrigger className="w-36 bg-white/10 border-white/20 text-white">
                   <SelectValue />
@@ -289,7 +290,7 @@ export function RecruiterStatsPage({ onNavigate, onLogout, user }: Readonly<Recr
 
         {/* Tabs for different views */}
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-          <TabsList className="grid w-full grid-cols-4 bg-white shadow-sm">
+          <TabsList className="grid w-full grid-cols-2 sm:grid-cols-4 bg-white shadow-sm">
             <TabsTrigger value="overview">Overview</TabsTrigger>
             <TabsTrigger value="kpis">KPIs</TabsTrigger>
             <TabsTrigger value="activities">Activities</TabsTrigger>
@@ -304,7 +305,7 @@ export function RecruiterStatsPage({ onNavigate, onLogout, user }: Readonly<Recr
                 <h3 className="text-lg font-medium text-gray-900 mb-6">Success Metrics</h3>
                 <div className="space-y-6">
                   <div>
-                    <div className="flex items-center justify-between mb-2">
+                    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1 mb-2">
                       <span className="text-sm text-gray-600">Success Rate</span>
                       <span className="text-sm font-medium text-gray-900">{stats.overview.successRate}%</span>
                     </div>
@@ -313,7 +314,7 @@ export function RecruiterStatsPage({ onNavigate, onLogout, user }: Readonly<Recr
                   </div>
 
                   <div>
-                    <div className="flex items-center justify-between mb-2">
+                    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1 mb-2">
                       <span className="text-sm text-gray-600">Response Rate</span>
                       <span className="text-sm font-medium text-gray-900">{stats.overview.responseRate}%</span>
                     </div>
@@ -322,7 +323,7 @@ export function RecruiterStatsPage({ onNavigate, onLogout, user }: Readonly<Recr
                   </div>
 
                   <div>
-                    <div className="flex items-center justify-between mb-2">
+                    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1 mb-2">
                       <span className="text-sm text-gray-600">Offer Acceptance Rate</span>
                       <span className="text-sm font-medium text-gray-900">{stats.overview.offerAcceptanceRate}%</span>
                     </div>
@@ -331,15 +332,15 @@ export function RecruiterStatsPage({ onNavigate, onLogout, user }: Readonly<Recr
                   </div>
 
                   <div className="pt-4 border-t border-gray-200">
-                    <div className="flex items-center justify-between mb-2">
+                    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1 mb-2">
                       <span className="text-sm text-gray-600">Candidate Satisfaction</span>
                       <div className="flex items-center gap-2">
                         <span className="text-sm font-medium text-gray-900">{stats.overview.candidateSatisfaction}/5</span>
                         <div className="flex items-center">
-                          {[...Array(5)].map((_, i) => (
-                            <Star 
-                              key={i} 
-                              className={`w-4 h-4 ${i < Math.floor(stats.overview.candidateSatisfaction) ? 'text-yellow-400 fill-current' : 'text-gray-300'}`} 
+                          {[1, 2, 3, 4, 5].map((star) => (
+                            <Star
+                              key={star}
+                              className={`w-4 h-4 ${star <= Math.floor(stats.overview.candidateSatisfaction) ? 'text-yellow-400 fill-current' : 'text-gray-300'}`}
                             />
                           ))}
                         </div>
@@ -354,7 +355,7 @@ export function RecruiterStatsPage({ onNavigate, onLogout, user }: Readonly<Recr
                 <h3 className="text-lg font-medium text-gray-900 mb-6">Monthly Trends</h3>
                 <div className="space-y-6">
                   <div>
-                    <div className="flex items-center justify-between mb-3">
+                    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1 mb-3">
                       <span className="text-sm text-gray-600">Hires Trend</span>
                       <div className="flex items-center gap-1">
                         <TrendingUp className="w-4 h-4 text-green-600" />
@@ -362,18 +363,18 @@ export function RecruiterStatsPage({ onNavigate, onLogout, user }: Readonly<Recr
                       </div>
                     </div>
                     <div className="h-24 bg-gray-50 rounded-lg flex items-end justify-between px-3 py-3">
-                      {stats.monthlyTrends.hires.map((hires, index) => (
-                        <div 
-                          key={index}
+                      {stats.monthlyTrends.months.map((month, index) => (
+                        <div
+                          key={month}
                           className="bg-gradient-to-t from-green-500 to-green-400 rounded-sm w-10"
-                          style={{ height: `${(hires / Math.max(...stats.monthlyTrends.hires)) * 100}%` }}
+                          style={{ height: `${(stats.monthlyTrends.hires[index] / Math.max(...stats.monthlyTrends.hires)) * 100}%` }}
                         />
                       ))}
                     </div>
                   </div>
 
                   <div>
-                    <div className="flex items-center justify-between mb-3">
+                    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1 mb-3">
                       <span className="text-sm text-gray-600">Interviews Trend</span>
                       <div className="flex items-center gap-1">
                         <TrendingUp className="w-4 h-4 text-blue-600" />
@@ -381,11 +382,11 @@ export function RecruiterStatsPage({ onNavigate, onLogout, user }: Readonly<Recr
                       </div>
                     </div>
                     <div className="h-24 bg-gray-50 rounded-lg flex items-end justify-between px-3 py-3">
-                      {stats.monthlyTrends.interviews.map((interviews, index) => (
-                        <div 
-                          key={index}
+                      {stats.monthlyTrends.months.map((month, index) => (
+                        <div
+                          key={month}
                           className="bg-gradient-to-t from-blue-500 to-blue-400 rounded-sm w-10"
-                          style={{ height: `${(interviews / Math.max(...stats.monthlyTrends.interviews)) * 100}%` }}
+                          style={{ height: `${(stats.monthlyTrends.interviews[index] / Math.max(...stats.monthlyTrends.interviews)) * 100}%` }}
                         />
                       ))}
                     </div>
@@ -399,28 +400,28 @@ export function RecruiterStatsPage({ onNavigate, onLogout, user }: Readonly<Recr
               <h3 className="text-lg font-medium text-gray-900 mb-4">Recent Successful Hires</h3>
               <div className="grid gap-4">
                 {stats.recentHires.map((hire) => (
-                  <div key={hire.id} className="flex items-center justify-between p-4 bg-gradient-to-r from-gray-50 to-orange-50 rounded-xl border border-orange-100">
-                    <div className="flex items-center gap-4">
-                      <Avatar className="w-12 h-12">
+                  <div key={hire.id} className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 p-4 bg-gradient-to-r from-gray-50 to-orange-50 rounded-xl border border-orange-100">
+                    <div className="flex items-start sm:items-center gap-4 min-w-0">
+                      <Avatar className="w-12 h-12 shrink-0">
                         <AvatarFallback className="bg-gradient-to-r from-[#ff6b35] to-[#ff8c42] text-white">
                           {hire.name.split(' ').map(n => n[0]).join('')}
                         </AvatarFallback>
                       </Avatar>
-                      <div>
+                      <div className="min-w-0">
                         <h4 className="font-medium text-gray-900">{hire.name}</h4>
                         <p className="text-sm text-gray-600">{hire.position}</p>
-                        <div className="flex items-center gap-3 mt-1">
+                        <div className="flex flex-wrap items-center gap-x-3 gap-y-1 mt-1">
                           <span className="text-xs text-gray-500">{hire.timeToHire} days to hire</span>
                           <span className="text-xs text-gray-400">•</span>
                           <span className="text-xs text-gray-500">Source: {hire.source}</span>
                         </div>
                       </div>
                     </div>
-                    <div className="flex items-center gap-2">
-                      {[...Array(5)].map((_, i) => (
-                        <Star 
-                          key={i} 
-                          className={`w-4 h-4 ${i < hire.satisfaction ? 'text-yellow-400 fill-current' : 'text-gray-300'}`} 
+                    <div className="flex items-center gap-2 self-start sm:self-auto">
+                      {[1, 2, 3, 4, 5].map((star) => (
+                        <Star
+                          key={`${hire.name}-${star}`}
+                          className={`w-4 h-4 ${star <= hire.satisfaction ? 'text-yellow-400 fill-current' : 'text-gray-300'}`}
                         />
                       ))}
                     </div>
@@ -433,10 +434,10 @@ export function RecruiterStatsPage({ onNavigate, onLogout, user }: Readonly<Recr
           {/* KPIs Tab */}
           <TabsContent value="kpis" className="space-y-6">
             <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {stats.kpis.map((kpi, index) => {
+              {stats.kpis.map((kpi) => {
                 const IconComponent = kpi.icon;
                 return (
-                  <Card key={index} className="p-6 hover:shadow-xl transition-all duration-300">
+                  <Card key={kpi.title} className="p-6 hover:shadow-xl transition-all duration-300">
                     <div className="flex items-start justify-between mb-4">
                       <div className={`w-12 h-12 bg-gradient-to-r ${kpi.color} rounded-xl flex items-center justify-center shadow-lg`}>
                         <IconComponent className="w-6 h-6 text-white" />
@@ -470,7 +471,7 @@ export function RecruiterStatsPage({ onNavigate, onLogout, user }: Readonly<Recr
             <div className="grid lg:grid-cols-3 gap-6">
               {/* Coffee Chats */}
               <Card className="p-6 bg-gradient-to-br from-amber-50 to-orange-50 border-amber-200">
-                <div className="flex items-center justify-between mb-4">
+                <div className="flex items-center justify-between gap-3 mb-4">
                   <div className="w-12 h-12 bg-gradient-to-r from-amber-500 to-orange-500 rounded-xl flex items-center justify-center shadow-lg">
                     <Coffee className="w-6 h-6 text-white" />
                   </div>
@@ -480,22 +481,22 @@ export function RecruiterStatsPage({ onNavigate, onLogout, user }: Readonly<Recr
                 </div>
                 <h3 className="text-lg font-medium text-gray-900 mb-4">Coffee Chats</h3>
                 <div className="space-y-3">
-                  <div className="flex items-center justify-between">
+                  <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1">
                     <span className="text-sm text-gray-600">Total Conducted</span>
                     <span className="text-lg font-semibold text-gray-900">{stats.activities.coffeeChats.total}</span>
                   </div>
-                  <div className="flex items-center justify-between">
+                  <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1">
                     <span className="text-sm text-gray-600">Avg Duration</span>
                     <span className="text-sm font-medium text-gray-900">{stats.activities.coffeeChats.avgDuration}</span>
                   </div>
-                  <div className="flex items-center justify-between">
+                  <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1">
                     <span className="text-sm text-gray-600">Conversion Rate</span>
                     <span className="text-sm font-medium text-green-600">{stats.activities.coffeeChats.conversionRate}%</span>
                   </div>
                   <div className="pt-3 border-t border-amber-200">
                     <span className="text-xs text-gray-500 block mb-2">Top Locations</span>
                     {stats.activities.coffeeChats.topLocations.map((location, i) => (
-                      <Badge key={i} variant="outline" className="mr-1 mb-1 text-xs">
+                      <Badge key={`${location}-${i}`} variant="outline" className="mr-1 mb-1 text-xs">
                         {location}
                       </Badge>
                     ))}
@@ -505,7 +506,7 @@ export function RecruiterStatsPage({ onNavigate, onLogout, user }: Readonly<Recr
 
               {/* Phone Screens */}
               <Card className="p-6 bg-gradient-to-br from-blue-50 to-indigo-50 border-blue-200">
-                <div className="flex items-center justify-between mb-4">
+                <div className="flex items-center justify-between gap-3 mb-4">
                   <div className="w-12 h-12 bg-gradient-to-r from-blue-500 to-indigo-500 rounded-xl flex items-center justify-center shadow-lg">
                     <Phone className="w-6 h-6 text-white" />
                   </div>
@@ -515,20 +516,20 @@ export function RecruiterStatsPage({ onNavigate, onLogout, user }: Readonly<Recr
                 </div>
                 <h3 className="text-lg font-medium text-gray-900 mb-4">Phone Screens</h3>
                 <div className="space-y-3">
-                  <div className="flex items-center justify-between">
+                  <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1">
                     <span className="text-sm text-gray-600">Total Conducted</span>
                     <span className="text-lg font-semibold text-gray-900">{stats.activities.phoneScreens.total}</span>
                   </div>
-                  <div className="flex items-center justify-between">
+                  <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1">
                     <span className="text-sm text-gray-600">Avg Duration</span>
                     <span className="text-sm font-medium text-gray-900">{stats.activities.phoneScreens.avgDuration}</span>
                   </div>
-                  <div className="flex items-center justify-between">
+                  <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1">
                     <span className="text-sm text-gray-600">Pass Rate</span>
                     <span className="text-sm font-medium text-green-600">{stats.activities.phoneScreens.passRate}%</span>
                   </div>
                   <div className="pt-3 border-t border-blue-200">
-                    <div className="flex items-center justify-between">
+                    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1">
                       <span className="text-xs text-gray-500">Conversion to Interview</span>
                       <span className="text-xs font-medium text-blue-600">{stats.activities.phoneScreens.conversionRate}%</span>
                     </div>
@@ -538,7 +539,7 @@ export function RecruiterStatsPage({ onNavigate, onLogout, user }: Readonly<Recr
 
               {/* Video Interviews */}
               <Card className="p-6 bg-gradient-to-br from-purple-50 to-pink-50 border-purple-200">
-                <div className="flex items-center justify-between mb-4">
+                <div className="flex items-center justify-between gap-3 mb-4">
                   <div className="w-12 h-12 bg-gradient-to-r from-purple-500 to-pink-500 rounded-xl flex items-center justify-center shadow-lg">
                     <Video className="w-6 h-6 text-white" />
                   </div>
@@ -548,23 +549,22 @@ export function RecruiterStatsPage({ onNavigate, onLogout, user }: Readonly<Recr
                 </div>
                 <h3 className="text-lg font-medium text-gray-900 mb-4">Video Interviews</h3>
                 <div className="space-y-3">
-                  <div className="flex items-center justify-between">
+                  <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1">
                     <span className="text-sm text-gray-600">Total Conducted</span>
                     <span className="text-lg font-semibold text-gray-900">{stats.activities.videoInterviews.total}</span>
                   </div>
-                  <div className="flex items-center justify-between">
+                  <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1">
                     <span className="text-sm text-gray-600">Avg Duration</span>
                     <span className="text-sm font-medium text-gray-900">{stats.activities.videoInterviews.avgDuration}</span>
                   </div>
-                  <div className="flex items-center justify-between">
+                  <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1">
                     <span className="text-sm text-gray-600">Feedback Score</span>
                     <div className="flex items-center gap-1">
-                      <span className="text-sm font-medium text-gray-900">{stats.activities.videoInterviews.feedback}/5</span>
                       <Star className="w-4 h-4 text-yellow-400 fill-current" />
                     </div>
                   </div>
                   <div className="pt-3 border-t border-purple-200">
-                    <div className="flex items-center justify-between">
+                    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1">
                       <span className="text-xs text-gray-500">Conversion to Offer</span>
                       <span className="text-xs font-medium text-purple-600">{stats.activities.videoInterviews.conversionRate}%</span>
                     </div>
@@ -576,7 +576,7 @@ export function RecruiterStatsPage({ onNavigate, onLogout, user }: Readonly<Recr
             {/* Activity Breakdown Chart */}
             <Card className="p-6">
               <h3 className="text-lg font-medium text-gray-900 mb-6">Activity Distribution (Last 30 Days)</h3>
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-6">
                 <div className="text-center">
                   <div className="w-20 h-20 mx-auto mb-3 bg-gradient-to-br from-amber-100 to-orange-100 rounded-full flex items-center justify-center">
                     <Coffee className="w-8 h-8 text-amber-600" />
@@ -616,14 +616,13 @@ export function RecruiterStatsPage({ onNavigate, onLogout, user }: Readonly<Recr
               <div className="space-y-4">
                 {stats.topPerformingJobs.map((job) => (
                   <div key={job.id} className="p-4 bg-gradient-to-r from-gray-50 to-orange-50 rounded-xl border border-orange-100">
-                    <div className="flex items-center justify-between mb-3">
+                    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 mb-3">
                       <h4 className="font-medium text-gray-900">{job.title}</h4>
-                      <div className="flex items-center gap-1">
-                        <Star className="w-4 h-4 text-yellow-400 fill-current" />
+                      <div className="flex items-center gap-1 self-start sm:self-auto">
                         <span className="text-sm font-medium text-gray-900">{job.quality}</span>
                       </div>
                     </div>
-                    <div className="grid grid-cols-5 gap-4 text-sm">
+                    <div className="grid grid-cols-1 sm:grid-cols-5 gap-4 text-sm">
                       <div className="text-center p-2 bg-white rounded-lg">
                         <div className="font-medium text-gray-900">{job.applications}</div>
                         <div className="text-xs text-gray-500">Applications</div>

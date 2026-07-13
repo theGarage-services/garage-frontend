@@ -83,7 +83,7 @@ export function IndividualMemberDashboard({ onNavigate, onLogout, user }: Readon
             }
           ]);
 
-          setRecentJobs(recent_jobs);
+          setRecentJobs(recent_jobs.filter((job) => job.status === 'published'));
           setError(null);
         } else {
           setError(response.error || 'Failed to load dashboard data');
@@ -102,7 +102,7 @@ export function IndividualMemberDashboard({ onNavigate, onLogout, user }: Readon
   // Loading state
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-gray-50 via-orange-50 to-gray-100">
+      <div className="min-h-screen bg-gradient-to-br from-gray-50 via-orange-50 to-gray-100 pt-16">
         <AppHeader
           userRole="recruiter"
           user={user}
@@ -110,7 +110,7 @@ export function IndividualMemberDashboard({ onNavigate, onLogout, user }: Readon
           onNavigate={onNavigate}
           onLogout={onLogout}
         />
-        <div className="flex items-center justify-center h-[calc(100vh-64px)]">
+        <div className="flex items-center justify-center min-h-[calc(100vh-64px)]">
           <Loader2 className="w-8 h-8 animate-spin text-[#ff6b35]" />
         </div>
       </div>
@@ -120,7 +120,7 @@ export function IndividualMemberDashboard({ onNavigate, onLogout, user }: Readon
   // Error state
   if (error && stats.length === 0) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-gray-50 via-orange-50 to-gray-100">
+      <div className="min-h-screen bg-gradient-to-br from-gray-50 via-orange-50 to-gray-100 pt-16">
         <AppHeader
           userRole="recruiter"
           user={user}
@@ -148,7 +148,7 @@ export function IndividualMemberDashboard({ onNavigate, onLogout, user }: Readon
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-50 via-orange-50 to-gray-100">
+    <div className="min-h-screen bg-gradient-to-br from-gray-50 via-orange-50 to-gray-100 pt-16">
       <AppHeader
         userRole="recruiter"
         user={user}
@@ -231,7 +231,7 @@ export function IndividualMemberDashboard({ onNavigate, onLogout, user }: Readon
             </Card>
 
             <Card className="group p-6 bg-gradient-to-br from-purple-500 to-purple-600 text-white hover:shadow-2xl hover:scale-105 transition-all duration-300 cursor-pointer relative overflow-hidden"
-                  onClick={() => onNavigate('recruiter-stats')}>
+                  onClick={() => onNavigate('metrics-dashboard')}>
               <div className="absolute top-0 right-0 w-20 h-20 bg-white/10 rounded-full -mr-10 -mt-10"></div>
               <div className="relative z-10">
                 <div className="flex items-center justify-between mb-4">
@@ -242,7 +242,7 @@ export function IndividualMemberDashboard({ onNavigate, onLogout, user }: Readon
                 </div>
                 <h3 className="text-lg font-semibold mb-2">My Stats</h3>
                 <p className="text-sm opacity-90 leading-relaxed">
-                  View your performance metrics, KPIs, and recruiting insights
+                  View platform-wide metrics, performance KPIs, and recruiting insights
                 </p>
               </div>
             </Card>
@@ -252,12 +252,12 @@ export function IndividualMemberDashboard({ onNavigate, onLogout, user }: Readon
           <div className="grid lg:grid-cols-2 gap-8">
             {/* Recent Job Postings */}
             <Card className="p-6">
-              <div className="flex items-center justify-between mb-6">
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
                 <div>
                   <h3 className="text-lg text-gray-900 mb-1">Recent Job Postings</h3>
                   <p className="text-sm text-gray-600">Your most recent job postings and their analytics</p>
                 </div>
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2 self-start sm:self-auto">
                   <div className="w-2 h-2 bg-[#ff6b35] rounded-full animate-pulse"></div>
                   <Badge variant="secondary" className="bg-orange-100 text-orange-700">
                     <TrendingUp className="w-3 h-3 mr-1" />
@@ -270,19 +270,19 @@ export function IndividualMemberDashboard({ onNavigate, onLogout, user }: Readon
                 <div className="space-y-4">
                   {recentJobs.map((job) => (
                     <div key={job.id} className="p-4 bg-gradient-to-r from-gray-50 to-orange-50 rounded-xl hover:shadow-lg hover:scale-[1.02] transition-all duration-300 cursor-pointer border border-orange-100">
-                      <div className="flex items-start justify-between mb-3">
-                        <div>
+                      <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3 mb-3">
+                        <div className="min-w-0">
                           <div className="font-medium text-gray-900">{job.title}</div>
                           <div className="text-sm text-gray-600">{job.department} • {job.location}</div>
                           <div className="text-xs text-gray-500 mt-1">Posted {job.posted_date}</div>
                         </div>
-                        <div className="text-right">
+                        <div className="text-left sm:text-right">
                           <div className="text-lg font-medium text-[#ff6b35]">{job.views}</div>
                           <div className="text-xs text-gray-500">views</div>
                         </div>
                       </div>
 
-                      <div className="grid grid-cols-3 gap-4 text-sm mb-3">
+                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 text-sm mb-3">
                         <div className="text-center p-2 bg-white rounded-lg">
                           <div className="font-medium text-gray-900">{job.applications}</div>
                           <div className="text-xs text-gray-500">Applications</div>
@@ -297,16 +297,20 @@ export function IndividualMemberDashboard({ onNavigate, onLogout, user }: Readon
                         </div>
                       </div>
 
-                      <div className="flex items-center justify-between">
+                      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
                         <Badge
                           variant="secondary"
-                          className={`text-xs ${
+                          className={`text-xs self-start sm:self-auto ${
                             job.status === 'published' ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-700'
                           }`}
                         >
                           {job.status === 'published' ? 'Active' : job.status}
                         </Badge>
-                        <Button size="sm" className="bg-[#ff6b35] hover:bg-[#e55a2b] text-white">
+                        <Button
+                          size="sm"
+                          className="bg-[#ff6b35] hover:bg-[#e55a2b] text-white self-start sm:self-auto"
+                          onClick={() => onNavigate(`/recruiter/jobs?job_id=${job.id}`)}
+                        >
                           <Eye className="w-3 h-3 mr-1" />
                           View Details
                         </Button>

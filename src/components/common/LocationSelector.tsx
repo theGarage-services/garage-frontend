@@ -67,13 +67,13 @@ export function LocationSelector({
         <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
           {/* Country Selector */}
           <div className="space-y-2">
-            <label className="text-sm text-gray-600">Country</label>
+            <label htmlFor="location-country" className="text-sm text-gray-600">Country</label>
             <Select value={selectedCountry} onValueChange={(value: SetStateAction<string>) => {
               setSelectedCountry(value);
               setSelectedState('');
               setSelectedCity('');
             }}>
-              <SelectTrigger className="w-full">
+              <SelectTrigger id="location-country" className="w-full">
                 <SelectValue placeholder="Select country" />
               </SelectTrigger>
               <SelectContent className="bg-white border border-gray-200 shadow-lg z-50 max-h-60 overflow-auto">
@@ -88,18 +88,18 @@ export function LocationSelector({
 
           {/* State/Province Selector */}
           <div className="space-y-2">
-            <label className="text-sm text-gray-600">
+            <label htmlFor="location-state" className="text-sm text-gray-600">
               {selectedCountry === 'USA' ? 'State' : 'Province'}
             </label>
-            <Select 
-              value={selectedState} 
+            <Select
+              value={selectedState}
               onValueChange={(value: SetStateAction<string>) => {
                 setSelectedState(value);
                 setSelectedCity('');
               }}
               disabled={!selectedCountry}
             >
-              <SelectTrigger className="w-full">
+              <SelectTrigger id="location-state" className="w-full">
                 <SelectValue placeholder={selectedCountry ? `Select ${selectedCountry === 'USA' ? 'state' : 'province'}` : 'Select country first'} />
               </SelectTrigger>
               <SelectContent className="bg-white border border-gray-200 shadow-lg z-50 max-h-60 overflow-auto">
@@ -114,13 +114,13 @@ export function LocationSelector({
 
           {/* City Selector */}
           <div className="space-y-2">
-            <label className="text-sm text-gray-600">City</label>
-            <Select 
-              value={selectedCity} 
+            <label htmlFor="location-city" className="text-sm text-gray-600">City</label>
+            <Select
+              value={selectedCity}
               onValueChange={setSelectedCity}
               disabled={!selectedState}
             >
-              <SelectTrigger className="w-full">
+              <SelectTrigger id="location-city" className="w-full">
                 <SelectValue placeholder={selectedState ? 'Select city' : 'Select state first'} />
               </SelectTrigger>
               <SelectContent className="bg-white border border-gray-200 shadow-lg z-50 max-h-60 overflow-auto">
@@ -149,7 +149,7 @@ export function LocationSelector({
       {/* Special Options: Remote & No Preference */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
         {includeRemote && (
-          <div className="flex items-center justify-between p-4 border-2 border-dashed border-gray-300 rounded-lg">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 p-4 border-2 border-dashed border-gray-300 rounded-lg">
             <div className="flex items-center gap-3">
               <MapPin className="w-5 h-5 text-purple-600" />
               <div>
@@ -162,14 +162,14 @@ export function LocationSelector({
               onClick={handleToggleRemote}
               variant={isRemoteSelected ? 'default' : 'outline'}
               size="sm"
-              className={isRemoteSelected ? 'bg-purple-600 hover:bg-purple-700 text-white' : ''}
+              className={isRemoteSelected ? 'bg-purple-600 hover:bg-purple-700 text-white self-start sm:self-auto' : 'self-start sm:self-auto'}
             >
               {isRemoteSelected ? 'Selected' : 'Add'}
             </Button>
           </div>
         )}
-        
-        <div className="flex items-center justify-between p-4 border-2 border-dashed border-gray-300 rounded-lg">
+
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 p-4 border-2 border-dashed border-gray-300 rounded-lg">
           <div className="flex items-center gap-3">
             <MapPin className="w-5 h-5 text-gray-600" />
             <div>
@@ -182,7 +182,7 @@ export function LocationSelector({
             onClick={() => onLocationsChange(['No Preference'])}
             variant={selectedLocations.includes('No Preference') ? 'default' : 'outline'}
             size="sm"
-            className={selectedLocations.includes('No Preference') ? 'bg-gray-600 hover:bg-gray-700 text-white' : ''}
+            className={selectedLocations.includes('No Preference') ? 'bg-gray-600 hover:bg-gray-700 text-white self-start sm:self-auto' : 'self-start sm:self-auto'}
           >
             {selectedLocations.includes('No Preference') ? 'Selected' : 'Select'}
           </Button>

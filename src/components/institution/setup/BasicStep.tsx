@@ -2,6 +2,7 @@ import { Label } from '../../ui/label';
 import { Input } from '../../ui/input';
 import { Textarea } from '../../ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../../ui/select';
+import { IndustrySelect } from '../../common/IndustrySelect';
 import { AlertCircle } from 'lucide-react';
 
 interface FormData {
@@ -77,40 +78,11 @@ export function BasicStep({ formData, errors, onChange }: Readonly<BasicStepProp
       {/* Industry */}
       <div className="space-y-2">
         <Label>Industry</Label>
-        <Select
+        <IndustrySelect
           value={formData.industry}
-          onValueChange={(value) => onChange('industry', value)}
-        >
-          <SelectTrigger className={`h-12 border-2 ${errors.industry ? 'border-red-300' : 'border-gray-200'}`}>
-            <SelectValue placeholder="Select industry" />
-          </SelectTrigger>
-          <SelectContent className="bg-white border border-gray-200 shadow-lg z-50 max-h-60 overflow-auto">
-            <SelectItem value="accountant">Accountant</SelectItem>
-            <SelectItem value="advocate">Advocate</SelectItem>
-            <SelectItem value="agriculture">Agriculture</SelectItem>
-            <SelectItem value="apparel">Apparel</SelectItem>
-            <SelectItem value="arts">Arts</SelectItem>
-            <SelectItem value="automobile">Automobile</SelectItem>
-            <SelectItem value="aviation">Aviation</SelectItem>
-            <SelectItem value="banking">Banking</SelectItem>
-            <SelectItem value="bpo">Business Process Outsourcing</SelectItem>
-            <SelectItem value="business-development">Business Development</SelectItem>
-            <SelectItem value="chef">Chef</SelectItem>
-            <SelectItem value="construction">Construction</SelectItem>
-            <SelectItem value="consultant">Consultant</SelectItem>
-            <SelectItem value="designer">Designer</SelectItem>
-            <SelectItem value="digital-marketing">Digital Marketing</SelectItem>
-            <SelectItem value="education">Education</SelectItem>
-            <SelectItem value="engineering">Engineering</SelectItem>
-            <SelectItem value="finance">Finance</SelectItem>
-            <SelectItem value="fitness">Fitness</SelectItem>
-            <SelectItem value="healthcare">Healthcare</SelectItem>
-            <SelectItem value="hr">Human Resources</SelectItem>
-            <SelectItem value="information-technology">Information Technology</SelectItem>
-            <SelectItem value="public-relations">Public Relations</SelectItem>
-            <SelectItem value="sales">Sales</SelectItem>
-          </SelectContent>
-        </Select>
+          onValueChange={(value: string) => onChange('industry', value)}
+          triggerClassName={`h-12 border-2 ${errors.industry ? 'border-red-300' : 'border-gray-200'}`}
+        />
         <FieldError message={errors.industry} />
       </div>
 

@@ -1,5 +1,4 @@
 import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { Button } from '../ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '../ui/card';
@@ -9,7 +8,6 @@ import { Search, HelpCircle, Zap, Users, Lightbulb, Target, Menu, X } from 'luci
 import { Footer } from '../layout/Footer';
 
 export function FAQ() {
-  const navigate = useNavigate();
   const [searchQuery, setSearchQuery] = useState('');
   const [isMenuOpen, setIsMenuOpen] = useState(false);
 
@@ -94,17 +92,23 @@ export function FAQ() {
             {/* Desktop Navigation */}
             <div className="hidden md:flex items-center gap-8">
               <button 
-                onClick={() => navigate('/')}
+                onClick={() => globalThis.location.href = '/'}
                 className="text-[#9E9B98] hover:text-[#1A1A1A] transition-colors"
               >
                 Home
               </button>
               <button 
-                onClick={() => navigate('/about')}
+                onClick={() => globalThis.location.href = '/about'}
                 className="text-[#9E9B98] hover:text-[#1A1A1A] transition-colors"
               >
                 About
               </button>
+              <Button 
+                onClick={() => globalThis.location.href = '/auth/role-select?role=job-seeker&intent=login'}
+                className="bg-gradient-to-r from-[#FF6000] to-[#FF8533] hover:from-[#FF7A1F] hover:to-[#FF9D4D] text-white"
+              >
+                Sign In
+              </Button>
             </div>
 
             {/* Mobile menu button */}
@@ -123,7 +127,7 @@ export function FAQ() {
                 <button 
                   onClick={() => {
                     setIsMenuOpen(false);
-                    navigate('/');
+                    globalThis.location.href = '/';
                   }}
                   className="text-[#9E9B98] hover:text-[#1A1A1A] transition-colors text-left"
                 >
@@ -132,12 +136,21 @@ export function FAQ() {
                 <button 
                   onClick={() => {
                     setIsMenuOpen(false);
-                    navigate('/about');
+                    globalThis.location.href = '/about';
                   }}
                   className="text-[#9E9B98] hover:text-[#1A1A1A] transition-colors text-left"
                 >
                   About
                 </button>
+                <Button 
+                  onClick={() => {
+                    setIsMenuOpen(false);
+                    globalThis.location.href = '/auth/role-select?role=job-seeker&intent=login';
+                  }}
+                  className="bg-gradient-to-r from-[#FF6000] to-[#FF8533] hover:from-[#FF7A1F] hover:to-[#FF9D4D] text-white"
+                >
+                  Sign In
+                </Button>
               </div>
             </div>
           )}

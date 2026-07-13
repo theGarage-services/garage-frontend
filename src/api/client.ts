@@ -5,77 +5,56 @@ const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
 
 class ApiClient {
   baseURL: any;
-  accessToken: string | null;
-  refreshToken: string | null;
+  // Tokens are stored in httpOnly Secure SameSite cookies by the backend.
+  // The frontend no longer keeps them in sessionStorage or memory.
   constructor() {
     this.baseURL = API_BASE_URL;
-    this.accessToken = sessionStorage.getItem('access_token');
-    this.refreshToken = sessionStorage.getItem('refresh_token');
   }
 
-  // Store tokens
-  setTokens(accessToken: string | null, refreshToken: string | null) {
-    this.accessToken = accessToken;
-    this.refreshToken = refreshToken;
-    if (accessToken) {
-      sessionStorage.setItem('access_token', accessToken);
-    } else {
-      sessionStorage.removeItem('access_token');
+  // Mark the frontend auth state as logged in. This is only a UX convenience
+  // flag; the real credential lives in the httpOnly cookie.
+  private setAuthState(authenticated: boolean) {
+    try {
+      if (authenticated) {
+        sessionStorage.setItem('auth_state', '1');
+      } else {
+        sessionStorage.removeItem('auth_state');
+      }
+    } catch {
+      // ignore storage errors
     }
-    if (refreshToken) {
-      sessionStorage.setItem('refresh_token', refreshToken);
-    } else {
-      sessionStorage.removeItem('refresh_token');
-    }
-  }
-
-  // Clear tokens
-  clearTokens() {
-    this.accessToken = null;
-    this.refreshToken = null;
-    sessionStorage.removeItem('access_token');
-    sessionStorage.removeItem('refresh_token');
   }
 
   // Make authenticated requests
   async request(endpoint: string, options: RequestInit & { skipAuth?: boolean } = {}) {
     const url = `${this.baseURL}${endpoint}`;
-    
+
     // Only set default Content-Type if not FormData and not already set
     const defaultHeaders: Record<string, string> = {};
     if (!(options.body instanceof FormData)) {
       defaultHeaders['Content-Type'] = 'application/json';
     }
-    
+
     const headers: Record<string, string> = {
       ...defaultHeaders,
       ...options.headers as Record<string, string>,
     };
 
-    // Add authorization header if token exists and caller didn't opt out
-    const skipAuth = (options as any).skipAuth === true;
-    if (this.accessToken && !skipAuth) {
-      headers.Authorization = `Bearer ${this.accessToken}`;
-    }
-
     const config: RequestInit = {
       ...options,
       headers,
+      credentials: 'include',
     };
 
     const response = await fetch(url, config);
 
     // Handle 401 Unauthorized - try to refresh token (but NOT for auth endpoints)
-    if (response.status === 401 && this.refreshToken && !endpoint.includes('/auth/')) {
+    if (response.status === 401 && !endpoint.includes('/auth/')) {
       const refreshed = await this.refreshAccessToken();
       if (refreshed) {
-        const retryHeaders: Record<string, string> = {
-          ...headers,
-          Authorization: `Bearer ${this.accessToken}`,
-        };
         const retryConfig: RequestInit = {
           ...config,
-          headers: retryHeaders,
+          headers,
         };
         return fetch(url, retryConfig);
       }
@@ -84,7 +63,7 @@ class ApiClient {
     return response;
   }
 
-  // Refresh access token
+  // Refresh access token using the httpOnly refresh cookie
   async refreshAccessToken() {
     try {
       const response = await fetch(`${this.baseURL}/auth/token/refresh/`, {
@@ -92,49 +71,48 @@ class ApiClient {
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({
-          refresh: this.refreshToken,
-        }),
+        credentials: 'include',
       });
 
       if (response.ok) {
-        const data = await response.json();
-        this.accessToken = data.access;
-        sessionStorage.setItem('access_token', data.access);
+        this.setAuthState(true);
         return true;
       } else {
-        this.clearTokens();
+        this.setAuthState(false);
         return false;
       }
     } catch (error) {
-      this.clearTokens();
+      console.error('Token refresh failed:', error);
+      this.setAuthState(false);
       return false;
     }
   }
 
   // Authentication methods
-  async login(email: string, password: string, _role?: string) {
+  async login(email: string, password: string, role?: string) {
     const url = `${this.baseURL}/auth/login/`;
-    
+
     const response = await fetch(url, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify({ email, password }),
+      body: JSON.stringify({ email, password, role }),
+      credentials: 'include',
     });
 
     if (response.ok) {
       const data = await response.json();
-      this.setTokens(data.access, data.refresh);
+      if (!data.mfa_required) {
+        this.setAuthState(true);
+      }
       return data;
     } else {
-      // Parse error safely: use a clone to attempt JSON parse, fall back to text
-      try {
-        const clone = response.clone();
-        const errorJson = await clone.json();
+      const contentType = response.headers.get('content-type');
+      if (contentType?.includes('application/json')) {
+        const errorJson = await response.json();
         throw new Error(JSON.stringify(errorJson));
-      } catch (error_) {
+      } else {
         const text = await response.text();
         throw new Error(text || `HTTP ${response.status}`);
       }
@@ -172,12 +150,30 @@ class ApiClient {
         if (typeof obj.message === 'string') {
           return new Error(obj.message);
         }
-        const errorMessages = Object.entries(obj).map(([key, value]) => {
-          if (Array.isArray(value)) {
-            return `${key}: ${value.join(', ')}`;
+        const formatErrorValue = (value: unknown): string => {
+          switch (typeof value) {
+            case 'string':
+              return value;
+            case 'number':
+            case 'bigint':
+            case 'boolean':
+              return String(value);
+            case 'undefined':
+              return 'undefined';
+            case 'object':
+              if (value === null) return 'null';
+              if (Array.isArray(value)) return value.join(', ');
+              return JSON.stringify(value);
+            case 'function':
+            case 'symbol':
+              return '[unserializable]';
+            default:
+              return '[unknown]';
           }
-          return `${key}: ${value}`;
-        });
+        };
+        const errorMessages = Object.entries(obj).map(
+          ([key, value]) => `${key}: ${formatErrorValue(value)}`
+        );
         return new Error(errorMessages.join('; '));
       }
     }
@@ -200,17 +196,33 @@ class ApiClient {
 
     if (response.ok) {
       const data = await response.json();
-      // Auto-login: store tokens if returned by backend
-      if (data.access && data.refresh) {
-        this.setTokens(data.access, data.refresh);
-      }
+      // Backend issues tokens as httpOnly cookies on successful registration.
+      this.setAuthState(true);
       return data;
     }
     throw await this.parseErrorResponse(response);
   }
 
   async logout() {
-    this.clearTokens();
+    try {
+      await fetch(`${this.baseURL}/auth/logout/`, {
+        method: 'POST',
+        credentials: 'include',
+      });
+    } catch (error) {
+      console.error('Logout request failed:', error);
+    } finally {
+      this.setAuthState(false);
+    }
+  }
+
+  isAuthenticated(): boolean {
+    // This is a UX convenience flag only; the real token is in the httpOnly cookie.
+    try {
+      return sessionStorage.getItem('auth_state') === '1';
+    } catch {
+      return false;
+    }
   }
 
   // User profile methods

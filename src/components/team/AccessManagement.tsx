@@ -8,6 +8,7 @@ import { Badge } from '../ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../ui/tabs';
 import { Switch } from '../ui/switch';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '../ui/dialog';
+import { DepartmentSelect } from '../common/DepartmentSelect';
 import { 
   Shield, 
   Users, 
@@ -268,7 +269,7 @@ export function AccessManagement({ user, institution, onBack }: Readonly<AccessM
       {/* Header */}
       <div className="bg-white border-b border-gray-200 shadow-sm">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center justify-between h-16">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 py-4">
             <div className="flex items-center gap-4">
               <Button variant="ghost" onClick={onBack} className="p-2">
                 <X className="w-5 h-5" />
@@ -277,7 +278,7 @@ export function AccessManagement({ user, institution, onBack }: Readonly<AccessM
                 <div className="w-10 h-10 bg-gradient-to-r from-[#ff6b35] to-[#ff8c42] rounded-lg flex items-center justify-center">
                   <Shield className="w-6 h-6 text-white" />
                 </div>
-                <div>
+                <div className="min-w-0">
                   <h1 className="text-xl font-medium text-gray-900">Access Management</h1>
                   <p className="text-sm text-gray-500">
                     Manage team members and permissions for {institution?.institutionName || defaultInstitution.institutionName}
@@ -285,7 +286,7 @@ export function AccessManagement({ user, institution, onBack }: Readonly<AccessM
                 </div>
               </div>
             </div>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 self-start sm:self-auto">
               <Badge className="bg-yellow-100 text-yellow-800 border-yellow-200">
                 <Crown className="w-3 h-3 mr-1" />
                 Admin Access
@@ -309,7 +310,7 @@ export function AccessManagement({ user, institution, onBack }: Readonly<AccessM
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-          <TabsList className="grid w-full grid-cols-3">
+          <TabsList className="grid w-full grid-cols-1 sm:grid-cols-3">
             <TabsTrigger value="team" className="flex items-center gap-2">
               <Users className="w-4 h-4" />
               Team Members ({teamMembers.length})
@@ -327,16 +328,16 @@ export function AccessManagement({ user, institution, onBack }: Readonly<AccessM
           {/* Team Members Tab */}
           <TabsContent value="team" className="space-y-6">
             <Card className="p-6">
-              <div className="flex items-center justify-between mb-6">
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
                 <h2 className="text-lg font-medium text-gray-900">Team Members</h2>
                 <Dialog open={isInviteDialogOpen} onOpenChange={setIsInviteDialogOpen}>
                   <DialogTrigger asChild>
-                    <Button className="bg-[#ff6b35] hover:bg-[#e55a2b] flex items-center gap-2">
+                    <Button className="bg-[#ff6b35] hover:bg-[#e55a2b] flex items-center gap-2 self-start sm:self-auto">
                       <UserPlus className="w-4 h-4" />
                       Invite Member
                     </Button>
                   </DialogTrigger>
-                  <DialogContent className="sm:max-w-md">
+                  <DialogContent className="max-w-[95vw] sm:max-w-md">
                     <DialogHeader>
                       <DialogTitle>Invite Team Member</DialogTitle>
                       <DialogDescription>
@@ -344,7 +345,7 @@ export function AccessManagement({ user, institution, onBack }: Readonly<AccessM
                       </DialogDescription>
                     </DialogHeader>
                     <div className="space-y-4">
-                      <div className="grid grid-cols-2 gap-4">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                         <div className="space-y-2">
                           <Label htmlFor="firstName">First Name</Label>
                           <Input
@@ -372,7 +373,7 @@ export function AccessManagement({ user, institution, onBack }: Readonly<AccessM
                           placeholder="teammate@company.com"
                         />
                       </div>
-                      <div className="grid grid-cols-2 gap-4">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                         <div className="space-y-2">
                           <Label htmlFor="role">Role</Label>
                           <Select value={inviteData.role} onValueChange={(value: any) => setInviteData(prev => ({ ...prev, role: value }))}>
@@ -387,11 +388,10 @@ export function AccessManagement({ user, institution, onBack }: Readonly<AccessM
                         </div>
                         <div className="space-y-2">
                           <Label htmlFor="department">Department</Label>
-                          <Input
-                            id="department"
+                          <DepartmentSelect
                             value={inviteData.department}
-                            onChange={(e) => setInviteData(prev => ({ ...prev, department: e.target.value }))}
-                            placeholder="Human Resources"
+                            onValueChange={(value: string) => setInviteData(prev => ({ ...prev, department: value }))}
+                            triggerClassName="h-10"
                           />
                         </div>
                       </div>
@@ -438,7 +438,7 @@ export function AccessManagement({ user, institution, onBack }: Readonly<AccessM
               </div>
 
               {/* Search and Filter */}
-              <div className="flex gap-4 mb-6">
+              <div className="flex flex-col sm:flex-row gap-4 mb-6">
                 <div className="flex-1 relative">
                   <Search className="w-4 h-4 absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
                   <Input
@@ -449,7 +449,7 @@ export function AccessManagement({ user, institution, onBack }: Readonly<AccessM
                   />
                 </div>
                 <Select value={filterRole} onValueChange={setFilterRole}>
-                  <SelectTrigger className="w-40">
+                  <SelectTrigger className="w-full sm:w-40">
                     <Filter className="w-4 h-4 mr-2" />
                     <SelectValue />
                   </SelectTrigger>
@@ -465,15 +465,15 @@ export function AccessManagement({ user, institution, onBack }: Readonly<AccessM
               <div className="space-y-4">
                 {filteredMembers.map((member) => (
                   <div key={member.id} className="p-4 border border-gray-200 rounded-lg hover:shadow-md transition-all duration-300">
-                    <div className="flex items-start justify-between">
-                      <div className="flex items-center gap-4">
-                        <Avatar className="w-12 h-12">
+                    <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
+                      <div className="flex items-start gap-4 min-w-0">
+                        <Avatar className="w-12 h-12 shrink-0">
                           <AvatarFallback className="bg-gradient-to-r from-blue-500 to-purple-600 text-white">
                             {member.firstName[0]}{member.lastName[0]}
                           </AvatarFallback>
                         </Avatar>
-                        <div className="flex-1">
-                          <div className="flex items-center gap-3 mb-1">
+                        <div className="flex-1 min-w-0">
+                          <div className="flex flex-wrap items-center gap-3 mb-1">
                             <h3 className="font-medium text-gray-900">
                               {member.firstName} {member.lastName}
                             </h3>
@@ -487,7 +487,7 @@ export function AccessManagement({ user, institution, onBack }: Readonly<AccessM
                           </div>
                           <p className="text-sm text-gray-600">{member.title}</p>
                           <p className="text-sm text-gray-500">{member.email}</p>
-                          <div className="flex items-center gap-4 mt-2 text-xs text-gray-500">
+                          <div className="flex flex-wrap items-center gap-x-4 gap-y-1 mt-2 text-xs text-gray-500">
                             <span>Joined {new Date(member.joinedAt).toLocaleDateString()}</span>
                             {member.lastActive && (
                               <>
@@ -500,7 +500,7 @@ export function AccessManagement({ user, institution, onBack }: Readonly<AccessM
                           </div>
                         </div>
                       </div>
-                      <div className="flex items-center gap-3">
+                      <div className="flex items-center gap-3 self-start sm:self-auto">
                         {getStatusBadge(member.status)}
                         {!member.isCreator && isCurrentUserAdmin && (
                           <DropdownMenu>
@@ -559,12 +559,12 @@ export function AccessManagement({ user, institution, onBack }: Readonly<AccessM
           {/* Pending Invites Tab */}
           <TabsContent value="invites" className="space-y-6">
             <Card className="p-6">
-              <div className="flex items-center justify-between mb-6">
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
                 <h2 className="text-lg font-medium text-gray-900">Pending Invitations</h2>
-                <Button 
+                <Button
                   variant="outline"
                   onClick={() => setIsInviteDialogOpen(true)}
-                  className="border-[#ff6b35] text-[#ff6b35] hover:bg-[#ff6b35] hover:text-white"
+                  className="border-[#ff6b35] text-[#ff6b35] hover:bg-[#ff6b35] hover:text-white self-start sm:self-auto"
                 >
                   <UserPlus className="w-4 h-4 mr-2" />
                   Send New Invite
@@ -574,20 +574,20 @@ export function AccessManagement({ user, institution, onBack }: Readonly<AccessM
               <div className="space-y-4">
                 {pendingInvites.map((invite) => (
                   <div key={invite.id} className="p-4 border border-gray-200 rounded-lg">
-                    <div className="flex items-start justify-between">
-                      <div className="flex items-center gap-4">
+                    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                      <div className="flex items-start gap-4 min-w-0">
                         <div className="w-12 h-12 bg-gradient-to-r from-orange-500 to-red-500 rounded-full flex items-center justify-center text-white font-medium">
                           {invite.firstName[0]}{invite.lastName[0]}
                         </div>
-                        <div>
-                          <div className="flex items-center gap-3 mb-1">
+                        <div className="min-w-0">
+                          <div className="flex flex-wrap items-center gap-3 mb-1">
                             <h3 className="font-medium text-gray-900">
                               {invite.firstName} {invite.lastName}
                             </h3>
                             {getRoleIcon(invite.role)}
                           </div>
                           <p className="text-sm text-gray-600">{invite.email}</p>
-                          <div className="flex items-center gap-4 mt-2 text-xs text-gray-500">
+                          <div className="flex flex-wrap items-center gap-x-4 gap-y-1 mt-2 text-xs text-gray-500">
                             <span>Invited {new Date(invite.invitedAt).toLocaleDateString()}</span>
                             <span>•</span>
                             <span>Expires {new Date(invite.expiresAt).toLocaleDateString()}</span>
@@ -596,7 +596,7 @@ export function AccessManagement({ user, institution, onBack }: Readonly<AccessM
                           </div>
                         </div>
                       </div>
-                      <div className="flex items-center gap-3">
+                      <div className="flex items-center gap-3 self-start sm:self-auto">
                         <Badge className="bg-yellow-100 text-yellow-800">
                           <Clock className="w-3 h-3 mr-1" />
                           Pending
@@ -622,7 +622,7 @@ export function AccessManagement({ user, institution, onBack }: Readonly<AccessM
                                 Copy Invite Link
                               </DropdownMenuItem>
                               <DropdownMenuSeparator />
-                              <DropdownMenuItem 
+                              <DropdownMenuItem
                                 onClick={() => handleCancelInvite(invite.id)}
                                 className="text-red-600"
                               >
@@ -737,7 +737,7 @@ export function AccessManagement({ user, institution, onBack }: Readonly<AccessM
               <h2 className="text-lg font-medium text-gray-900 mb-6">Access Control Settings</h2>
               
               <div className="space-y-6">
-                <div className="flex items-center justify-between">
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
                   <div>
                     <h3 className="font-medium text-gray-900">Require Admin Approval</h3>
                     <p className="text-sm text-gray-500">New team members must be approved by an admin before gaining access</p>
@@ -745,7 +745,7 @@ export function AccessManagement({ user, institution, onBack }: Readonly<AccessM
                   <Switch defaultChecked />
                 </div>
 
-                <div className="flex items-center justify-between">
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
                   <div>
                     <h3 className="font-medium text-gray-900">Allow Team Invitations</h3>
                     <p className="text-sm text-gray-500">Allow non-admin team members to invite new members</p>
@@ -753,7 +753,7 @@ export function AccessManagement({ user, institution, onBack }: Readonly<AccessM
                   <Switch />
                 </div>
 
-                <div className="flex items-center justify-between">
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
                   <div>
                     <h3 className="font-medium text-gray-900">Two-Factor Authentication</h3>
                     <p className="text-sm text-gray-500">Require 2FA for all team members</p>
@@ -761,13 +761,13 @@ export function AccessManagement({ user, institution, onBack }: Readonly<AccessM
                   <Switch />
                 </div>
 
-                <div className="flex items-center justify-between">
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
                   <div>
                     <h3 className="font-medium text-gray-900">Session Timeout</h3>
                     <p className="text-sm text-gray-500">Automatically log out inactive users after a set time</p>
                   </div>
                   <Select defaultValue="8hours">
-                    <SelectTrigger className="w-32">
+                    <SelectTrigger className="w-full sm:w-32">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>

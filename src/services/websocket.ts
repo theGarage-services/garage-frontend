@@ -27,9 +27,10 @@ export function useWebSocket(options: UseWebSocketOptions = {}) {
 
   const connect = useCallback(() => {
     try {
-      const token = sessionStorage.getItem('access_token');
-      const wsUrl = `${WS_BASE_URL}/chat/?token=${token}`;
-      
+      // Tokens are in httpOnly cookies; omitting the query param keeps the
+      // access token out of browser history and proxy logs.
+      const wsUrl = `${WS_BASE_URL}/chat/`;
+
       wsRef.current = new WebSocket(wsUrl);
 
       wsRef.current.onopen = () => {
@@ -165,9 +166,9 @@ class WebSocketService {
 
   connect() {
     try {
-      const token = sessionStorage.getItem('access_token');
-      const wsUrl = `${WS_BASE_URL}/chat/?token=${token}`;
-      
+      // Tokens are sent via httpOnly cookie; do not include them in the URL.
+      const wsUrl = `${WS_BASE_URL}/chat/`;
+
       this.ws = new WebSocket(wsUrl);
 
       this.ws.onopen = () => {

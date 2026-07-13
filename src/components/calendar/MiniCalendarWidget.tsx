@@ -210,9 +210,14 @@ export function MiniCalendarWidget({ onScheduleInterview }: Readonly<MiniCalenda
     return days;
   };
 
+  const parseLocalDate = (dateString: string): Date => {
+    const [year, month, day] = dateString.split('-').map(Number);
+    return new Date(year, month - 1, day);
+  };
+
   const getInterviewsForDate = (date: Date) => {
     return interviews.filter((interview) => {
-      const interviewDate = new Date(interview.scheduled_date);
+      const interviewDate = parseLocalDate(interview.scheduled_date);
       return interviewDate.toDateString() === date.toDateString();
     });
   };
@@ -238,7 +243,7 @@ export function MiniCalendarWidget({ onScheduleInterview }: Readonly<MiniCalenda
   return (
     <Card className="p-6">
       {/* Header */}
-      <div className="flex items-center justify-between mb-4">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4">
         <div>
           <h3 className="text-lg text-gray-900 mb-1">Interview Calendar</h3>
           <p className="text-sm text-gray-600">
@@ -248,7 +253,7 @@ export function MiniCalendarWidget({ onScheduleInterview }: Readonly<MiniCalenda
       </div>
 
       {/* Calendar Navigation */}
-      <div className="flex items-center justify-between mb-4">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4">
         <Button variant="ghost" size="sm" onClick={previousMonth}>
           <ChevronLeft className="w-4 h-4" />
         </Button>
@@ -302,7 +307,7 @@ export function MiniCalendarWidget({ onScheduleInterview }: Readonly<MiniCalenda
 
       {/* Today's Schedule */}
       <div className="border-t border-gray-200 pt-4">
-        <div className="flex items-center justify-between mb-3">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 mb-3">
           <h4 className="font-medium text-gray-900">
             {selectedDate.toDateString() === new Date().toDateString()
               ? "Today's Schedule"
@@ -324,7 +329,7 @@ export function MiniCalendarWidget({ onScheduleInterview }: Readonly<MiniCalenda
       </div>
 
       {/* Quick Stats */}
-      <div className="grid grid-cols-3 gap-2 mt-4 pt-4 border-t border-gray-200">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 mt-4 pt-4 border-t border-gray-200">
         <div className="text-center p-2 bg-green-50 rounded-lg">
           <div className="text-sm font-semibold text-green-700">
             {isLoading ? '-' : interviews.filter((i) => i.status === 'confirmed').length}

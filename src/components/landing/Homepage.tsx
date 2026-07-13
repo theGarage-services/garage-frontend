@@ -1,18 +1,23 @@
 import { useState, useEffect, useCallback } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Button } from '../ui/button';
-import { Card } from '../ui/card';
+import { Card, CardContent } from '../ui/card';
 import { Badge } from '../ui/badge';
 import { Checkbox } from '../ui/checkbox';
 import { Popover, PopoverContent, PopoverTrigger } from '../ui/popover';
-import { ChevronDown, MapPin, Briefcase, DollarSign, Building, Clock, Share2, Heart, Zap, CheckCircle, Users, Star, FileText, X, Crown, BarChart3, Filter, Check, Shield, ShieldCheck, UserMinus } from 'lucide-react';
+import { ChevronDown, MapPin, Briefcase, DollarSign, Building2, Clock, Share2, Heart, Zap, CheckCircle, Users, Star, FileText, X, Crown, BarChart3, Filter, Check, Shield, ShieldCheck, UserMinus, Building } from 'lucide-react';
 import { AppHeader } from '../layout/AppHeader';
 import { MyQueues } from '../queue/MyQueues';
+import { candidateProfileService, type FilteredJobPost, type SystemicRejectionSummary } from '@/api/candidateProfile';
+import { declineConsideration } from '@/api/chat';
+import { flagJobPostAsFraud } from '@/api/fraud';
+import { buildProfileImageUrl } from '@/api/recruiterProfile';
+import { FlagFraudDialog } from '../common/FlagFraudDialog';
 import { ImageWithFallback } from '../figma/ImageWithFallback';
-import imgGoogleFavicon2025Svg1 from '../../../assets/f41a7265fbd0207a04bf4698fb2ddab3e9942bd7.png';
-import { candidateProfileService, type FilteredJobPost } from '@/api/candidateProfile';
+import { VideoApplicationModal } from '../jobs/applications/VideoApplicationModal';
 
 type ApplicationMethod = 'manual' | 'quick-apply' | 'recruiter-consideration';
-type ApplicationStatus = 'application-received' | 'not-considered' | 'under-consideration' | 'interview-stage' | 'rejected' | 'offer';
+type ApplicationStatus = 'consider' | 'applied' | 'interviews' | 'offers' | 'hired' | 'rejected' | 'withdrawn';
 
 interface Recruiter {
   id: string;
@@ -37,7 +42,7 @@ interface Job {
   type: string;
   rank: string;
   postedTime: string;
-  logo: string;
+  logo?: string;
   isFavorited: boolean;
   description: string;
   requirements: string[];
@@ -45,6 +50,7 @@ interface Job {
   companySize: string;
   companyIndustry: string;
   workModel: string;
+  vacancyType: string;
   experienceLevel: string;
   recruiter: Recruiter | null;
   // Application tracking fields
@@ -52,9 +58,23 @@ interface Job {
   isApplied?: boolean;
   isSaved?: boolean;
   hasApplied?: boolean;
+  status?: ApplicationStatus;
+  dateApplied?: string;
   companyRating?: number;
   matchPercentage?: number;
+  scoreBreakdown?: Record<string, any>;
+  greenzoneStatus?: string | null;
+  greenzoneReason?: string | null;
+  // Consideration request fields
+  hasPendingConsideration?: boolean;
+  pendingConsiderationId?: number | null;
+  pendingConsiderationMessage?: string | null;
 }
+
+const normalizeApplicationStatus = (status?: string | null): ApplicationStatus => {
+  const validStatuses: ApplicationStatus[] = ['consider', 'applied', 'interviews', 'offers', 'hired', 'rejected', 'withdrawn'];
+  return validStatuses.includes(status as ApplicationStatus) ? (status as ApplicationStatus) : 'consider';
+};
 
 interface TrackedJob {
   id: string;
@@ -74,7 +94,7 @@ interface TrackedJob {
 }
 
 interface HomepageProps {
-  onNavigate: (view: 'homepage' | 'tracker' | 'profile' | 'notifications' | 'settings' | 'support' | 'report-issue' | 'queue-detail' | 'my-queues' | 'queue-selector') => void;
+  onNavigate: (view: 'homepage' | 'tracker' | 'profile' | 'notifications' | 'settings' | 'support' | 'report-issue' | 'queue-detail' | 'my-queues' | 'queues') => void;
   onNavigateToJobDetails?: (job: any) => void;
   onNavigateToQueueDetail?: (queue: any) => void;
   onJobApplication: (job: any, method: 'manual' | 'quick-apply' | 'recruiter-consideration') => void;
@@ -85,7 +105,50 @@ interface HomepageProps {
   onToggleautoMatch: (enabled: boolean) => void;
 }
 
-export function Homepage({ onNavigate, onNavigateToJobDetails, onNavigateToQueueDetail, onJobApplication, trackedJobs, user, onLogout, autoMatchEnabled }: Readonly<HomepageProps>) {
+const formatMatchScore = (score: number | undefined | null): string => {
+  if (score == null || Number.isNaN(score)) return '0';
+  return Number.isInteger(score) ? String(score) : score.toFixed(1);
+};
+
+const GREENZONE_STYLES: Record<string, { label: string; className: string }> = {
+  confirmed_in: { label: 'Strong Match', className: 'bg-emerald-100 text-emerald-800 border-emerald-200' },
+  contested: { label: 'Competitive', className: 'bg-amber-100 text-amber-800 border-amber-200' },
+  confirmed_out: { label: 'Lower Fit', className: 'bg-slate-100 text-slate-700 border-slate-200' },
+};
+
+function updateJobById(jobs: Job[], jobId: string, updater: (job: Job) => Job): Job[] {
+  return jobs.map(j => (j.id === jobId ? updater(j) : j));
+}
+
+function YourStandingWidget({ summary }: Readonly<{ summary: SystemicRejectionSummary | null }>) {
+  if (!summary || summary.total_decisions === 0) return null;
+  const pluralize = (count: number, noun: string) => `${count} ${noun}${count === 1 ? '' : 's'}`;
+  return (
+    <Card className="mb-6 bg-gradient-to-r from-blue-50 to-white border-blue-100">
+      <CardContent className="p-5">
+        <h3 className="text-lg font-semibold text-gray-900 mb-2">Your Standing</h3>
+        <p className="text-sm text-gray-600 mb-3">
+          {summary.confirmed_in_count > 0 && `Strongly matched with ${pluralize(summary.confirmed_in_count, 'role')}. `}
+          {summary.contested_count > 0 && `In the competitive zone for ${pluralize(summary.contested_count, 'role')}. `}
+          {summary.confirmed_out_count > 0 && `Lower fit for ${pluralize(summary.confirmed_out_count, 'role')}. `}
+        </p>
+        <div className="flex flex-wrap gap-2">
+          <Badge className="bg-emerald-100 text-emerald-800 border-emerald-200">{summary.confirmed_in_count} Strong Match</Badge>
+          <Badge className="bg-amber-100 text-amber-800 border-amber-200">{summary.contested_count} Competitive</Badge>
+          <Badge className="bg-slate-100 text-slate-700 border-slate-200">{summary.confirmed_out_count} Lower Fit</Badge>
+        </div>
+        {summary.is_flagged && (
+          <p className="mt-3 text-sm text-amber-800 bg-amber-50 border border-amber-200 rounded-lg p-2">
+            Your lower-fit rate is higher than the platform average. This may indicate a pattern worth reviewing.
+          </p>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
+export function Homepage({ onNavigate, onNavigateToJobDetails, onJobApplication, trackedJobs, user, onLogout, autoMatchEnabled }: Readonly<HomepageProps>) {
+  const navigate = useNavigate();
   const [selectedFilter, setSelectedFilter] = useState('All Jobs');
   const [selectedJobId, setSelectedJobId] = useState<string | null>(null);
   
@@ -93,6 +156,7 @@ export function Homepage({ onNavigate, onNavigateToJobDetails, onNavigateToQueue
   const [apiJobs, setApiJobs] = useState<Job[]>([]);
   const [jobsLoading, setJobsLoading] = useState(true);
   const [jobsError, setJobsError] = useState<string | null>(null);
+  const [standingSummary, setStandingSummary] = useState<SystemicRejectionSummary | null>(null);
   const [candidateProfile, setCandidateProfile] = useState<{
     industry: string;
     exp_level: string;
@@ -137,10 +201,15 @@ export function Homepage({ onNavigate, onNavigateToJobDetails, onNavigateToQueue
       'onsite': 'On-site',
     };
 
+    const vacancyTypeMap: Record<string, string> = {
+      'current': 'Current Vacancy',
+      'future': 'Future Position',
+    };
+
     return {
       id: apiJob.id.toString(),
       title: apiJob.title,
-      company: apiJob.company,
+      company: apiJob.company_name || apiJob.company || 'Unknown',
       location: apiJob.location,
       salary: salaryDisplay,
       type: typeMap[apiJob.employment_type] || apiJob.employment_type,
@@ -148,19 +217,30 @@ export function Homepage({ onNavigate, onNavigateToJobDetails, onNavigateToQueue
       postedTime: apiJob.published_at
         ? `Posted ${Math.ceil((Date.now() - new Date(apiJob.published_at).getTime()) / (1000 * 60 * 60 * 24))} days ago`
         : 'Recently posted',
-      logo: imgGoogleFavicon2025Svg1,
+      logo: apiJob.company_logo ? buildProfileImageUrl(apiJob.company_logo) : undefined,
       isFavorited: false,
       description: apiJob.summary || apiJob.description || '',
       requirements: apiJob.requirements ? apiJob.requirements.split('\n').filter(r => r.trim()) : [],
       benefits: apiJob.benefits ? apiJob.benefits.split('\n').filter(b => b.trim()) : [],
-      companySize: 'Unknown',
+      companySize: apiJob.company_size || 'Unknown',
       companyIndustry: apiJob.industry || 'Unknown',
       workModel: workModelMap[apiJob.work_arrangement] || apiJob.work_arrangement,
+      vacancyType: vacancyTypeMap[apiJob.vacancy_type] || apiJob.vacancy_type || 'Current Vacancy',
       experienceLevel: apiJob.experience_level || 'Unknown',
       recruiter: null,
-      isApplied: false,
-      isSaved: false,
-      hasApplied: false,
+      isApplied: apiJob.has_applied || false,
+      isSaved: apiJob.is_saved || false,
+      hasApplied: apiJob.has_applied || false,
+      status: normalizeApplicationStatus(apiJob.application_status),
+      dateApplied: apiJob.date_applied ?? undefined,
+      matchPercentage: apiJob.match_percentage ?? undefined,
+      scoreBreakdown: apiJob.score_breakdown || undefined,
+      greenzoneStatus: apiJob.greenzone_status ?? null,
+      greenzoneReason: apiJob.greenzone_reason ?? null,
+      hasPendingConsideration: apiJob.has_pending_consideration || false,
+      pendingConsiderationId: apiJob.pending_consideration_id || null,
+      pendingConsiderationMessage: apiJob.pending_consideration_message || null,
+      applicationMethod: apiJob.application_method === 'recruiter-consideration' ? 'recruiter-consideration' : 'quick-apply',
     };
   }, []);
 
@@ -170,7 +250,7 @@ export function Homepage({ onNavigate, onNavigateToJobDetails, onNavigateToQueue
       setJobsLoading(true);
       setJobsError(null);
       console.log(`[Homepage] Starting fetch for filter: ${selectedFilter}`);
-      
+
       try {
         // Map filter to category
         const categoryMap: Record<string, 'available' | 'auto-matched' | 'manual' | 'saved'> = {
@@ -181,21 +261,25 @@ export function Homepage({ onNavigate, onNavigateToJobDetails, onNavigateToQueue
         };
         const category = categoryMap[selectedFilter] || 'available';
         console.log(`[Homepage] Mapped filter '${selectedFilter}' to category '${category}'`);
-        
+
         console.log(`[Homepage] Calling getQueueBasedJobs with category=${category}, limit=50, offset=0`);
         const response = await candidateProfileService.getQueueBasedJobs(category, { limit: 50, offset: 0 });
-        
+
         if (response?.success) {
+          // Single-pass transform: all scoring fields are already mapped inside transformApiJobToJob
           const transformedJobs = response.results.map(transformApiJobToJob);
-          
-          // Add match percentage to job objects
-          const jobsWithMatch = transformedJobs.map((job, index) => ({
-            ...job,
-            matchPercentage: response.results[index]?.match_percentage || 0,
-            isSaved: response.results[index]?.is_saved || false
-          }));
-          
-          setApiJobs(jobsWithMatch);
+
+          setApiJobs(transformedJobs);
+
+          // Load standing summary in parallel (best-effort; failures shouldn't block the job list)
+          candidateProfileService.getSystemicRejectionSummary().then((summaryResponse) => {
+            if (summaryResponse?.success) {
+              setStandingSummary(summaryResponse.summary);
+            }
+          }).catch((err) => {
+            console.error('[Homepage] Failed to load standing summary:', err);
+          });
+
           setCandidateProfile({
             ...response.candidate_profile,
             preferred_locations: null,
@@ -204,7 +288,7 @@ export function Homepage({ onNavigate, onNavigateToJobDetails, onNavigateToQueue
             preferred_work_arrangements: null
           });
           
-          console.log(`[Homepage] State updated successfully with ${jobsWithMatch.length} jobs`);
+          console.log(`[Homepage] State updated successfully with ${transformedJobs.length} jobs`);
         } else {
           console.error(`[Homepage] Response not successful:`, response);
           setJobsError('Failed to fetch jobs - invalid response');
@@ -232,19 +316,203 @@ export function Homepage({ onNavigate, onNavigateToJobDetails, onNavigateToQueue
     return trackedJobs.some(trackedJob => trackedJob.id === jobId);
   };
 
-  const handleQuickApply = (job: Job) => {
-    if (!isJobTracked(job.id)) {
-      onJobApplication(job, 'quick-apply');
-      // Update local job state to show as applied
-      job.hasApplied = true;
-      job.isApplied = true;
-      job.applicationMethod = 'quick-apply';
+  // Track pending consideration requests for selected job
+  const [selectedJobConsideration, setSelectedJobConsideration] = useState<{
+    id: number;
+    status: string;
+    message: string;
+  } | null>(null);
+  const [considerationVideoFlowId, setConsiderationVideoFlowId] = useState<number | null>(null);
+  const [showVideoModal, setShowVideoModal] = useState(false);
+
+  useEffect(() => {
+    const fetchConsideration = async () => {
+      if (!selectedJob) {
+        setSelectedJobConsideration(null);
+        return;
+      }
+
+      // If job data already has a pending consideration, use it directly
+      if (selectedJob.hasPendingConsideration && selectedJob.pendingConsiderationId) {
+        setSelectedJobConsideration({
+          id: selectedJob.pendingConsiderationId,
+          status: 'pending',
+          message: selectedJob.pendingConsiderationMessage || ''
+        });
+        return;
+      }
+
+      // Fallback: fetch from API
+      try {
+        const result = await candidateProfileService.getReceivedConsiderationRequestsForJob(Number(selectedJob.id));
+        if (result.success && result.data.length > 0) {
+          // Prioritize pending (actionable), then accepted (applied), then any other
+          const consideration = result.data.find((c: any) => c.status === 'pending')
+            || result.data.find((c: any) => c.status === 'accepted')
+            || result.data[0];
+          setSelectedJobConsideration({
+            id: consideration.id,
+            status: consideration.status,
+            message: consideration.message
+          });
+        } else {
+          setSelectedJobConsideration(null);
+        }
+      } catch (err) {
+        console.error('Error fetching consideration requests:', err);
+        setSelectedJobConsideration(null);
+      }
+    };
+    fetchConsideration();
+  }, [selectedJob?.id]);
+
+  const acceptPendingConsideration = async (job: Job) => {
+    if (!selectedJobConsideration) return;
+    try {
+      const result = await candidateProfileService.acceptConsiderationRequest(
+        selectedJobConsideration.id,
+        'Thank you for your interest! I would like to proceed.'
+      );
+      if (result.requires_video_prompts) {
+        setConsiderationVideoFlowId(selectedJobConsideration.id);
+        setShowVideoModal(true);
+        return;
+      }
+      if (result.success) {
+        setApiJobs(prev => updateJobById(prev, job.id, j => ({
+          ...j,
+          hasApplied: true,
+          isApplied: true,
+          applicationMethod: 'recruiter-consideration',
+          hasPendingConsideration: false,
+          pendingConsiderationId: null,
+          pendingConsiderationMessage: null
+        })));
+        setSelectedJobConsideration(null);
+        alert('Interest accepted! Your profile has been shared with the recruiter.');
+      } else {
+        alert(`Failed to accept interest: ${result.error}`);
+      }
+    } catch (err: any) {
+      console.error('Failed to accept interest:', err);
+      alert('Failed to accept interest. Please try again.');
+    }
+  };
+
+  const performRegularQuickApply = async (job: Job) => {
+    try {
+      const result = await candidateProfileService.quickApplyToJob(Number(job.id), `Quick apply for ${job.title}`);
+      if (result.success) {
+        onJobApplication(job, 'quick-apply');
+        setApiJobs(prev => updateJobById(prev, job.id, j => ({
+          ...j,
+          hasApplied: true,
+          isApplied: true,
+          applicationMethod: 'quick-apply'
+        })));
+        alert('Application submitted successfully!');
+      } else {
+        alert(`Failed to apply: ${result.error}`);
+      }
+    } catch (err: any) {
+      console.error('Failed to apply:', err);
+      alert('Failed to apply. Please try again.');
+    }
+  };
+
+  const handleQuickApply = async (job: Job) => {
+    if (isJobTracked(job.id)) return;
+    if (selectedJobConsideration?.status === 'pending') {
+      await acceptPendingConsideration(job);
+    } else {
+      await performRegularQuickApply(job);
+    }
+  };
+
+  const handleAcceptInterest = async () => {
+    if (!selectedJob || !selectedJobConsideration) return;
+    await handleQuickApply(selectedJob);
+  };
+
+  const handleCompleteConsiderationVideo = async (responses: any[]) => {
+    if (!selectedJob || !considerationVideoFlowId) return;
+    const responseIds = responses.map((r) => Number(r.id)).filter(Boolean);
+    try {
+      const result = await candidateProfileService.acceptConsiderationRequest(
+        considerationVideoFlowId,
+        'Thank you for your interest! I would like to proceed.',
+        responseIds
+      );
+      if (result.success) {
+        setApiJobs(prev => updateJobById(prev, selectedJob.id, j => ({
+          ...j,
+          hasApplied: true,
+          isApplied: true,
+          applicationMethod: 'recruiter-consideration',
+          hasPendingConsideration: false,
+          pendingConsiderationId: null,
+          pendingConsiderationMessage: null
+        })));
+        setSelectedJobConsideration(null);
+        setConsiderationVideoFlowId(null);
+        setShowVideoModal(false);
+        alert('Interest accepted! Your profile has been shared with the recruiter.');
+      } else {
+        alert(`Failed to accept interest: ${result.error}`);
+      }
+    } catch (err: any) {
+      console.error('Failed to accept interest:', err);
+      alert('Failed to accept interest. Please try again.');
+    }
+  };
+
+  const handleRejectInvitation = async () => {
+    if (!selectedJob || !selectedJobConsideration) return;
+    try {
+      await declineConsideration(selectedJobConsideration.id, 'Thank you, but I am not interested at this time.');
+      setSelectedJobConsideration(null);
+      // Update the job in state to remove pending consideration
+      setApiJobs(prev => updateJobById(prev, selectedJob.id, job => ({
+        ...job,
+        hasPendingConsideration: false,
+        pendingConsiderationId: null,
+        pendingConsiderationMessage: null
+      })));
+      alert('Invitation rejected.');
+    } catch (err: any) {
+      console.error('Failed to reject invitation:', err);
+      alert('Failed to reject invitation. Please try again.');
     }
   };
 
   const handleWithdrawApplication = (_job: Job) => {
     // Remove from tracked jobs
     // Note: In real app, this would also remove from trackedJobs via parent component
+  };
+
+  const handleToggleSaveJob = async (job: Job) => {
+    const jobId = Number.parseInt(job.id);
+    const nextSaved = !job.isSaved;
+    setApiJobs(prev => updateJobById(prev, job.id, j => ({ ...j, isSaved: nextSaved })));
+    try {
+      if (nextSaved) {
+        await candidateProfileService.saveJob(jobId);
+      } else {
+        await candidateProfileService.unsaveJob(jobId);
+      }
+    } catch (error) {
+      console.error('Failed to toggle save status:', error);
+      setApiJobs(prev => updateJobById(prev, job.id, j => ({ ...j, isSaved: !nextSaved })));
+      alert('Failed to update saved status. Please try again.');
+    }
+  };
+
+  const handleFlagJobFraud = async (job: Job, reason: string) => {
+    await flagJobPostAsFraud(job.id, reason);
+    setApiJobs(prev => prev.filter(j => j.id !== job.id));
+    if (selectedJobId === job.id) {
+      setSelectedJobId(null);
+    }
   };
 
   // Filter options derived from actual job data
@@ -335,7 +603,7 @@ export function Homepage({ onNavigate, onNavigateToJobDetails, onNavigateToQueue
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 to-orange-50 flex">
       {/* Main Content */}
-      <div className={`flex-1 transition-all duration-300 ${selectedJobId ? 'mr-[800px]' : ''}`}>
+      <div className={`flex-1 min-w-0 transition-all duration-300 ${selectedJobId ? 'lg:mr-[800px]' : ''}`}>
         <AppHeader
           userRole="job-seeker"
           user={user}
@@ -347,17 +615,17 @@ export function Homepage({ onNavigate, onNavigateToJobDetails, onNavigateToQueue
         {/* Enhanced Queue Leadership Section */}
         <div className="container mx-auto px-6 pt-8">
           <div className="mb-6 p-6 bg-gradient-to-r from-purple-50 via-orange-50 to-blue-50 rounded-3xl border border-purple-200/50">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-4">
-                <div className="w-12 h-12 bg-gradient-to-r from-purple-600 to-orange-600 rounded-xl flex items-center justify-center">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+              <div className="flex items-start sm:items-center gap-4 min-w-0">
+                <div className="w-12 h-12 shrink-0 bg-gradient-to-r from-purple-600 to-orange-600 rounded-xl flex items-center justify-center">
                   <Crown className="w-6 h-6 text-white" />
                 </div>
-                <div>
-                  <h2 className="text-xl font-semibold text-gray-900 mb-1">Queue Leadership & Analytics</h2>
-                  <p className="text-gray-600">Click any queue below to view detailed analytics, leaderboards, and your competitive position</p>
+                <div className="min-w-0">
+                  <h2 className="text-xl font-semibold text-gray-900 mb-1 break-words">Queue Leadership & Analytics</h2>
+                  <p className="text-gray-600 text-sm break-words">Click any queue below to view detailed analytics, leaderboards, and your competitive position</p>
                 </div>
               </div>
-              <div className="flex items-center gap-2">
+              <div className="flex flex-wrap items-center gap-2">
                 <Badge className="bg-gradient-to-r from-purple-100 to-orange-100 text-purple-800 border border-purple-200">
                   <BarChart3 className="w-3 h-3 mr-1" />
                   Advanced Analytics
@@ -370,22 +638,24 @@ export function Homepage({ onNavigate, onNavigateToJobDetails, onNavigateToQueue
             </div>
           </div>
 
-          <MyQueues 
-            onEditQueues={() => onNavigate('queue-selector')}
-            onQueueClick={(queue) => onNavigateToQueueDetail?.(queue)}
+          <MyQueues
+            onNavigate={(view) => onNavigate(view as any)}
+            onQueueClick={(queue) => {
+              navigate(`/queues/${encodeURIComponent(queue.id)}/${encodeURIComponent(queue.level)}`);
+            }}
             className="mb-8"
             user={user}
           />
         </div>
 
         <div className="container mx-auto px-6 pb-8">
-          <div className="flex gap-8">
+          <div className="flex flex-col lg:flex-row gap-8">
             {/* Sidebar */}
-            <div className="w-72 sticky top-24 h-fit">
+            <div className="w-full lg:w-72 lg:sticky lg:top-24 h-fit">
               {/* Enhanced Filters Card */}
               <div className="bg-gradient-to-br from-white to-orange-50 rounded-3xl p-6 shadow-xl border border-orange-100/50 backdrop-blur-sm">
                 <div className="mb-6">
-                  <div className="flex items-center justify-between mb-6">
+                  <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
                     <div className="flex items-center gap-3">
                       <div className="w-10 h-10 bg-gradient-to-r from-[#ff6b35] to-[#ff8c42] rounded-xl flex items-center justify-center shadow-lg">
                         <Filter className="w-5 h-5 text-white" />
@@ -638,16 +908,16 @@ export function Homepage({ onNavigate, onNavigateToJobDetails, onNavigateToQueue
             {/* Job Results */}
             <div className="flex-1">
               <div className="mb-6">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <h2 className="text-2xl font-semibold text-gray-900">
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                  <div className="min-w-0">
+                    <h2 className="text-2xl font-semibold text-gray-900 break-words">
                       {selectedFilter === 'All Jobs' ? 'Available Jobs' : selectedFilter}
                     </h2>
                     <p className="text-gray-600 mt-1">{displayedJobs.length} opportunities found</p>
                   </div>
                   
                   {/* Smart Apply Status Indicator */}
-                  <div className={`flex items-center gap-2 px-4 py-2 rounded-full border ${
+                  <div className={`self-start sm:self-auto flex items-center gap-2 px-4 py-2 rounded-full border ${
                     autoMatchEnabled 
                       ? 'bg-green-50 border-green-200 text-green-700' 
                       : 'bg-gray-50 border-gray-200 text-gray-600'
@@ -666,6 +936,8 @@ export function Homepage({ onNavigate, onNavigateToJobDetails, onNavigateToQueue
                   </div>
                 </div>
               </div>
+
+              <YourStandingWidget summary={standingSummary} />
 
               {/* Loading State */}
               {jobsLoading && (
@@ -709,9 +981,9 @@ export function Homepage({ onNavigate, onNavigateToJobDetails, onNavigateToQueue
                   {displayedJobs.map((job) => (
                   <Card 
                     key={job.id} 
-                    className={`p-6 hover:shadow-xl transition-all duration-300 cursor-pointer border-l-4 ${
-                      job.applicationMethod === 'recruiter-consideration' 
-                        ? 'border-l-green-500 bg-gradient-to-r from-green-50 to-white' 
+                    className={`p-4 sm:p-6 hover:shadow-xl transition-all duration-300 cursor-pointer border-l-4 ${
+                      job.applicationMethod === 'recruiter-consideration' || job.hasPendingConsideration
+                        ? 'border-l-green-500 bg-gradient-to-r from-green-50 to-white'
                         : job.hasApplied
                         ? 'border-l-blue-500 bg-gradient-to-r from-blue-50 to-white'
                         : job.isSaved
@@ -720,22 +992,26 @@ export function Homepage({ onNavigate, onNavigateToJobDetails, onNavigateToQueue
                     }`}
                     onClick={() => handleJobClick(job.id)}
                   >
-                    <div className="flex items-start justify-between">
-                      <div className="flex items-start gap-4 flex-1">
+                    <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
+                      <div className="flex flex-col sm:flex-row sm:items-start gap-4 flex-1 min-w-0">
                         <div className="w-12 h-12 rounded-xl overflow-hidden bg-gray-100 flex items-center justify-center">
-                          <ImageWithFallback
-                            src={job.logo}
-                            alt={`${job.company} logo`}
-                            className="w-full h-full object-cover"
-                          />
+                          {job.logo ? (
+                            <img
+                              src={job.logo}
+                              alt={`${job.company} logo`}
+                              className="w-full h-full object-cover"
+                            />
+                          ) : (
+                            <Building2 className="w-6 h-6 text-[#ff6b35]" />
+                          )}
                         </div>
                         
-                        <div className="flex-1">
-                          <div className="flex items-start justify-between mb-3">
-                            <div>
-                              <h3 className="font-semibold text-gray-900 mb-1">{job.title}</h3>
-                              <p className="text-gray-600 mb-2">{job.company}</p>
-                              <div className="flex items-center gap-4 text-sm text-gray-500">
+                        <div className="flex-1 min-w-0">
+                          <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3 mb-3">
+                            <div className="min-w-0">
+                              <h3 className="font-semibold text-gray-900 mb-1 break-words">{job.title}</h3>
+                              <p className="text-gray-600 mb-2 break-words">{job.company}</p>
+                              <div className="flex flex-wrap items-center gap-2 sm:gap-4 text-sm text-gray-500">
                                 <span className="flex items-center gap-1">
                                   <MapPin className="w-4 h-4" />
                                   {job.location}
@@ -755,46 +1031,82 @@ export function Homepage({ onNavigate, onNavigateToJobDetails, onNavigateToQueue
                               </div>
                             </div>
                             
-                            <div className="flex items-center gap-2">
-                              {job.applicationMethod === 'recruiter-consideration' && (
+                            <div className="flex flex-wrap items-center gap-2">
+                              {job.hasPendingConsideration && (
                                 <Badge className="bg-green-100 text-green-800 text-xs px-2 py-1">
-                                  Auto-Matched
+                                  Invitation
                                 </Badge>
                               )}
-                              {job.hasApplied && job.applicationMethod !== 'recruiter-consideration' && (
-                                <Badge className="bg-blue-100 text-blue-800 text-xs px-2 py-1">
-                                  Applied
+                              {job.hasApplied && !job.hasPendingConsideration && (
+                                <Badge className={`text-xs px-2 py-1 ${
+                                  job.applicationMethod === 'recruiter-consideration'
+                                    ? 'bg-green-100 text-green-800'
+                                    : 'bg-blue-100 text-blue-800'
+                                }`}>
+                                  {job.applicationMethod === 'recruiter-consideration' ? 'Recruiter Selected' : 'Applied'}
                                 </Badge>
                               )}
-                              {job.isSaved && (
+                              {job.isSaved && !job.hasApplied && !job.hasPendingConsideration && (
                                 <Badge className="bg-orange-100 text-orange-800 text-xs px-2 py-1">
                                   Saved
                                 </Badge>
                               )}
+                              <Badge className="bg-purple-100 text-purple-800 text-xs px-2 py-1">
+                                {job.vacancyType}
+                              </Badge>
                               {job.matchPercentage !== undefined && (
                                 <Badge className="bg-green-100 text-green-800 text-xs px-2 py-1">
-                                  {Math.round(job.matchPercentage)}% Match
+                                  {formatMatchScore(job.matchPercentage)}% Match
                                 </Badge>
                               )}
+                              {job.greenzoneStatus && GREENZONE_STYLES[job.greenzoneStatus] && (
+                                <Badge
+                                  title={job.greenzoneReason || undefined}
+                                  className={`text-xs px-2 py-1 border ${GREENZONE_STYLES[job.greenzoneStatus].className}`}
+                                >
+                                  {GREENZONE_STYLES[job.greenzoneStatus].label}
+                                </Badge>
+                              )}
+                              {job.scoreBreakdown && (
+                                <div className="flex flex-wrap gap-1 mt-1">
+                                  {[
+                                    { key: 'semantic', label: 'Sem', color: 'bg-blue-500' },
+                                    { key: 'skill_jaccard', label: 'Skill', color: 'bg-purple-500' },
+                                    { key: 'education_score', label: 'Edu', color: 'bg-green-500' },
+                                    { key: 'experience_score', label: 'Exp', color: 'bg-orange-500' },
+                                    { key: 'industry_alignment', label: 'Ind', color: 'bg-cyan-500' },
+                                    { key: 'level_alignment', label: 'Lvl', color: 'bg-pink-500' },
+                                  ].map(({ key, label, color }) => {
+                                    const val = job.scoreBreakdown![key];
+                                    if (val === undefined || val === null) return null;
+                                    const pct = Math.round(val * 100);
+                                    return (
+                                      <div key={key} className="flex items-center gap-0.5 text-[10px] bg-white border rounded px-1 py-0.5" title={`${label}: ${pct}%`}>
+                                        <div className={`w-1.5 h-1.5 rounded-full ${color}`} />
+                                        <span className="text-gray-600">{label}</span>
+                                        <span className="font-medium text-gray-900">{pct}%</span>
+                                      </div>
+                                    );
+                                  })}
+                                </div>
+                              )}
+                              <FlagFraudDialog
+                                title="Flag job as fraudulent"
+                                description="This will suspend the job post and notify the platform. Please add a brief reason."
+                                onConfirm={(reason) => handleFlagJobFraud(job, reason)}
+                                buttonSize="icon"
+                                buttonVariant="outline"
+                                buttonText=""
+                                className="px-2 border-red-300 text-red-500 hover:bg-red-50"
+                              />
                               <button
-                                onClick={async (e) => {
+                                onClick={(e) => {
                                   e.stopPropagation();
-                                  try {
-                                    const jobId = Number.parseInt(job.id);
-                                    if (job.isSaved) {
-                                      await candidateProfileService.unsaveJob(jobId);
-                                      job.isSaved = false;
-                                    } else {
-                                      await candidateProfileService.saveJob(jobId);
-                                      job.isSaved = true;
-                                    }
-                                  } catch (error) {
-                                    console.error('Failed to toggle save status:', error);
-                                  }
+                                  handleToggleSaveJob(job);
                                 }}
                                 className={`p-2 rounded-lg transition-colors ${
-                                  job.isSaved 
-                                    ? 'text-red-500 bg-red-50 hover:text-red-500 hover:bg-red-100' 
+                                  job.isSaved
+                                    ? 'text-red-500 bg-red-50 hover:text-red-500 hover:bg-red-100'
                                     : 'text-gray-400 hover:text-red-500 hover:bg-red-50'
                                 }`}
                               >
@@ -803,7 +1115,7 @@ export function Homepage({ onNavigate, onNavigateToJobDetails, onNavigateToQueue
                             </div>
                           </div>
                           
-                          <div className="flex items-center gap-6 text-sm text-gray-500 mb-3">
+                          <div className="flex flex-wrap items-center gap-4 sm:gap-6 text-sm text-gray-500 mb-3">
                             <span className="flex items-center gap-1">
                               <Building className="w-4 h-4" />
                               {job.companySize}
@@ -831,9 +1143,9 @@ export function Homepage({ onNavigate, onNavigateToJobDetails, onNavigateToQueue
 
       {/* Job Details Sidebar */}
       {selectedJobId && selectedJob && (
-        <div className="fixed right-0 top-16 w-[800px] h-[calc(100vh-4rem)] bg-white shadow-2xl z-40 overflow-y-auto border-l border-gray-200">
+        <div className="fixed right-0 top-16 w-full sm:w-[600px] lg:w-[800px] max-w-full h-[calc(100vh-4rem)] bg-white shadow-2xl z-40 overflow-y-auto border-l border-gray-200">
           <div className="p-6">
-            <div className="flex items-center justify-between mb-6">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
               <h2 className="text-xl font-semibold text-gray-900">Job Details</h2>
               <button
                 onClick={() => setSelectedJobId(null)}
@@ -843,16 +1155,27 @@ export function Homepage({ onNavigate, onNavigateToJobDetails, onNavigateToQueue
                 <X className="w-6 h-6 text-gray-500 hover:text-[#ff6b35]" />
               </button>
             </div>
-            
+
+            <div className="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-xl">
+              <p className="font-medium text-blue-900 mb-1">AI-Assisted Review</p>
+              <p className="text-sm text-blue-700">
+                AI is utilised to help evaluate this application.
+              </p>
+            </div>
+
             <div className="space-y-6">
               {/* Company Header */}
               <div className="flex items-start gap-4 p-6 bg-gradient-to-r from-gray-50 to-orange-50 rounded-xl border border-orange-100">
-                <div className="w-16 h-16 rounded-xl overflow-hidden bg-white shadow-lg">
-                  <ImageWithFallback
-                    src={selectedJob.logo}
-                    alt={`${selectedJob.company} logo`}
-                    className="w-full h-full object-cover"
-                  />
+                <div className="w-16 h-16 rounded-xl overflow-hidden bg-white shadow-lg flex items-center justify-center">
+                  {selectedJob.logo ? (
+                    <img
+                      src={selectedJob.logo}
+                      alt={`${selectedJob.company} logo`}
+                      className="w-full h-full object-cover"
+                    />
+                  ) : (
+                    <Building2 className="w-8 h-8 text-[#ff6b35]" />
+                  )}
                 </div>
                 <div className="flex-1">
                   <h3 className="text-xl font-semibold text-gray-900 mb-1">{selectedJob.title}</h3>
@@ -871,13 +1194,27 @@ export function Homepage({ onNavigate, onNavigateToJobDetails, onNavigateToQueue
                       {selectedJob.postedTime}
                     </span>
                   </div>
+                  <div className="flex flex-wrap gap-2 mt-3">
+                    <Badge className="bg-purple-100 text-purple-800 text-xs">
+                      {selectedJob.vacancyType}
+                    </Badge>
+                    <Badge className="bg-blue-100 text-blue-800 text-xs">
+                      {selectedJob.type}
+                    </Badge>
+                    <Badge className="bg-green-100 text-green-800 text-xs">
+                      {selectedJob.workModel}
+                    </Badge>
+                    <Badge className="bg-orange-100 text-orange-800 text-xs">
+                      {selectedJob.experienceLevel}
+                    </Badge>
+                  </div>
                 </div>
               </div>
 
               {/* Action Buttons */}
               <div className="flex gap-3">
-                {selectedJob.hasApplied || isJobTracked(selectedJob.id) ? (
-                  <Button 
+                {selectedJob.hasApplied || isJobTracked(selectedJob.id) || selectedJobConsideration?.status === 'accepted' ? (
+                  <Button
                     variant="outline"
                     onClick={() => handleWithdrawApplication(selectedJob)}
                     className="flex-1 border-red-500 text-red-600 hover:bg-red-50"
@@ -885,8 +1222,26 @@ export function Homepage({ onNavigate, onNavigateToJobDetails, onNavigateToQueue
                     <UserMinus className="w-4 h-4 mr-2" />
                     Withdraw Application
                   </Button>
+                ) : selectedJobConsideration?.status === 'pending' ? (
+                  <>
+                    <Button
+                      onClick={() => handleAcceptInterest()}
+                      className="flex-1 bg-green-600 hover:bg-green-700 text-white"
+                    >
+                      <CheckCircle className="w-4 h-4 mr-2" />
+                      Accept Interest
+                    </Button>
+                    <Button
+                      variant="outline"
+                      onClick={() => handleRejectInvitation()}
+                      className="flex-1 border-red-500 text-red-600 hover:bg-red-50"
+                    >
+                      <X className="w-4 h-4 mr-2" />
+                      Reject Invitation
+                    </Button>
+                  </>
                 ) : (
-                  <Button 
+                  <Button
                     onClick={() => handleQuickApply(selectedJob)}
                     className="flex-1 bg-[#ff6b35] hover:bg-[#e55a2b] text-white"
                   >
@@ -908,6 +1263,15 @@ export function Homepage({ onNavigate, onNavigateToJobDetails, onNavigateToQueue
                   <FileText className="w-4 h-4 mr-2" />
                   Full Description
                 </Button>
+                <FlagFraudDialog
+                  title="Flag job as fraudulent"
+                  description="This will suspend the job post and notify the platform. Please add a brief reason."
+                  onConfirm={(reason) => handleFlagJobFraud(selectedJob, reason)}
+                  buttonSize="icon"
+                  buttonVariant="outline"
+                  buttonText=""
+                  className="px-3 border-red-300 text-red-500 hover:bg-red-50"
+                />
               </div>
 
               {/* Job Description */}
@@ -920,8 +1284,8 @@ export function Homepage({ onNavigate, onNavigateToJobDetails, onNavigateToQueue
               <div className="bg-white rounded-xl border border-gray-200 p-6">
                 <h4 className="font-semibold text-gray-900 mb-3">Requirements</h4>
                 <ul className="space-y-2">
-                  {selectedJob.requirements.map((req, index) => (
-                    <li key={index} className="flex items-start gap-2 text-gray-600">
+                  {selectedJob.requirements.map((req) => (
+                    <li key={req} className="flex items-start gap-2 text-gray-600">
                       <CheckCircle className="w-4 h-4 text-green-500 mt-0.5 flex-shrink-0" />
                       <span className="text-sm">{req}</span>
                     </li>
@@ -933,8 +1297,8 @@ export function Homepage({ onNavigate, onNavigateToJobDetails, onNavigateToQueue
               <div className="bg-white rounded-xl border border-gray-200 p-6">
                 <h4 className="font-semibold text-gray-900 mb-3">Benefits & Perks</h4>
                 <ul className="space-y-2">
-                  {selectedJob.benefits.map((benefit, index) => (
-                    <li key={index} className="flex items-start gap-2 text-gray-600">
+                  {selectedJob.benefits.map((benefit) => (
+                    <li key={benefit} className="flex items-start gap-2 text-gray-600">
                       <Star className="w-4 h-4 text-[#ff6b35] mt-0.5 flex-shrink-0" />
                       <span className="text-sm">{benefit}</span>
                     </li>
@@ -945,7 +1309,7 @@ export function Homepage({ onNavigate, onNavigateToJobDetails, onNavigateToQueue
               {/* Company Info */}
               <div className="bg-white rounded-xl border border-gray-200 p-6">
                 <h4 className="font-semibold text-gray-900 mb-4">Company Information</h4>
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
                     <p className="text-sm text-gray-500 mb-1">Industry</p>
                     <p className="text-sm text-gray-900">{selectedJob.companyIndustry}</p>
@@ -990,6 +1354,18 @@ export function Homepage({ onNavigate, onNavigateToJobDetails, onNavigateToQueue
             </div>
           </div>
         </div>
+      )}
+
+      {showVideoModal && selectedJob && (
+        <VideoApplicationModal
+          jobId={Number(selectedJob.id)}
+          submitLabel="Submit & Accept Interest"
+          onComplete={handleCompleteConsiderationVideo}
+          onCancel={() => {
+            setShowVideoModal(false);
+            setConsiderationVideoFlowId(null);
+          }}
+        />
       )}
     </div>
   );

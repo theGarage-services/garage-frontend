@@ -25,7 +25,7 @@ export function AccountStep({
       </div>
 
       {/* Name Fields */}
-      <div className="grid grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <div className="space-y-2">
           <Label htmlFor="firstName">First Name</Label>
           <Input
@@ -104,7 +104,7 @@ export function AccountStep({
         {/* Password Requirements */}
         {formData.password && (
           <div className="mt-3 space-y-2">
-            <div className="grid grid-cols-2 gap-2 text-sm">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-sm">
               <div className={`flex items-center gap-2 ${passwordCheck.minLength ? 'text-green-600' : 'text-gray-400'}`}>
                 <CheckCircle className="w-3 h-3" />
                 8+ characters
@@ -176,9 +176,9 @@ export function AccountStep({
         <div className="text-sm">
           <Label htmlFor="terms" className="text-gray-700 cursor-pointer">
             I agree to the{' '}
-            <a href="#" className="text-[#ff6b35] hover:underline">Terms of Service</a>
+            <a href="/terms-of-service" className="text-[#ff6b35] hover:underline">Terms of Service</a>
             {' '}and{' '}
-            <a href="#" className="text-[#ff6b35] hover:underline">Privacy Policy</a>
+            <a href="/privacy-policy" className="text-[#ff6b35] hover:underline">Privacy Policy</a>
           </Label>
           {errors.agreeToTerms && (
             <div className="flex items-center gap-2 text-red-600 text-sm mt-1">

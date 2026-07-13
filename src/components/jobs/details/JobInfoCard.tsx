@@ -1,19 +1,23 @@
-import { Building, MapPin, Clock, Users, Briefcase, Star, Share2 } from 'lucide-react';
+import { Building, Building2, MapPin, Clock, Users, Briefcase, Star, Share2, Heart, CheckCircle, X, UserMinus } from 'lucide-react';
 import { Card, CardContent } from '../../ui/card';
 import { Button } from '../../ui/button';
 import { Badge } from '../../ui/badge';
-import { ImageWithFallback } from '../../figma/ImageWithFallback';
 import { JobStatusBadge } from '../JobStatusBadge';
+import { FlagFraudDialog } from '../../common/FlagFraudDialog';
+import { flagJobPostAsFraud } from '../../../api/fraud';
 
 interface JobData {
+  id: string | number;
   title: string;
   company: string;
+  companyId?: number | null;
   location: string;
   salary: string;
   type: string;
   logo?: string;
   postedTime?: string;
   workModel?: string;
+  vacancyType?: string;
   experienceLevel?: string;
   rank?: string;
   companySize?: string;
@@ -21,6 +25,7 @@ interface JobData {
   companyRating?: number;
   hasApplied?: boolean;
   isApplied?: boolean;
+  isSaved?: boolean;
   status?: string;
   hiringStatus?: {
     stage: string;
@@ -34,17 +39,23 @@ interface JobInfoCardProps {
   isPremium: boolean;
   fromTracker: boolean;
   onNavigate?: (view: string) => void;
-  onJobApplication?: (job: JobData, method: string) => void;
+  considerationStatus?: string;
+  onAcceptInterest?: () => void;
+  onRejectInvitation?: () => void;
+  onQuickApply?: () => void;
+  onWithdrawApplication?: () => void;
+  onToggleSave?: () => void;
 }
 
 function getStatusBadgeClass(status: string): string {
   const statusMap: Record<string, string> = {
-    'application-received': 'bg-blue-100 text-blue-800',
-    'not-considered': 'bg-gray-100 text-gray-800',
-    'under-consideration': 'bg-yellow-100 text-yellow-800',
-    'interview-stage': 'bg-green-100 text-green-800',
-    rejected: 'bg-red-100 text-red-800',
-    offer: 'bg-emerald-100 text-emerald-800'
+    'consider': 'bg-yellow-100 text-yellow-800',
+    'applied': 'bg-blue-100 text-blue-800',
+    'interviews': 'bg-purple-100 text-purple-800',
+    'offers': 'bg-emerald-100 text-emerald-800',
+    'hired': 'bg-green-100 text-green-800',
+    'rejected': 'bg-red-100 text-red-800',
+    'withdrawn': 'bg-gray-100 text-gray-800'
   };
   return statusMap[status] || 'bg-gray-100 text-gray-800';
 }
@@ -61,23 +72,28 @@ export function JobInfoCard({
   isPremium,
   fromTracker,
   onNavigate,
-  onJobApplication
+  considerationStatus,
+  onAcceptInterest,
+  onRejectInvitation,
+  onQuickApply,
+  onWithdrawApplication,
+  onToggleSave
 }: Readonly<JobInfoCardProps>) {
   return (
     <Card className="bg-white border border-gray-200 shadow-sm">
-      <CardContent className="p-8">
-        <div className="flex items-start gap-6">
+      <CardContent className="p-6 sm:p-8">
+        <div className="flex flex-col sm:flex-row items-start sm:items-center gap-6">
           {/* Company Logo */}
           <div className="flex-shrink-0">
             {jobData.logo ? (
-              <ImageWithFallback
+              <img
                 src={jobData.logo}
                 alt={jobData.company}
                 className="w-16 h-16 rounded-xl object-cover border border-gray-200"
               />
             ) : (
               <div className="w-16 h-16 bg-gradient-to-br from-[#ff6b35] to-[#ff8c42] rounded-xl flex items-center justify-center">
-                <Building className="w-8 h-8 text-white" />
+                <Building2 className="w-8 h-8 text-white" />
               </div>
             )}
           </div>
@@ -85,7 +101,7 @@ export function JobInfoCard({
           <div className="flex-1 min-w-0">
             {/* Job Title and Company */}
             <div className="mb-4">
-              <div className="flex items-center gap-3 mb-2">
+              <div className="flex flex-wrap items-center gap-3 mb-2">
                 <h1 className="text-3xl font-semibold text-gray-900">{jobData.title}</h1>
                 <JobStatusBadge job={jobData} isPremium={isPremium} size="lg" />
               </div>
@@ -97,9 +113,15 @@ export function JobInfoCard({
                   </Badge>
                 </div>
               )}
-              <div className="flex items-center gap-4 text-gray-600 mb-3">
+              <div className="flex flex-wrap items-center gap-4 text-gray-600 mb-3">
                 <button
-                  onClick={() => onNavigate?.('company-profile')}
+                  onClick={() => {
+                    if (jobData.companyId) {
+                      onNavigate?.(`company-profile/${jobData.companyId}`);
+                    } else {
+                      onNavigate?.('company-profile');
+                    }
+                  }}
                   className="flex items-center gap-1 hover:text-[#ff6b35] transition-colors"
                 >
                   <Building className="w-4 h-4" />
@@ -125,6 +147,11 @@ export function JobInfoCard({
               {jobData.workModel && (
                 <Badge className="bg-green-100 text-green-800 hover:bg-green-200">
                   {jobData.workModel}
+                </Badge>
+              )}
+              {jobData.vacancyType && (
+                <Badge className="bg-purple-100 text-purple-800 hover:bg-purple-200">
+                  {jobData.vacancyType}
                 </Badge>
               )}
               {jobData.experienceLevel && (
@@ -162,17 +189,68 @@ export function JobInfoCard({
             )}
 
             {/* Action Buttons */}
-            <div className="flex gap-3">
-              <Button
-                onClick={() => onJobApplication?.(jobData, 'quick-apply')}
-                className="bg-[#ff6b35] hover:bg-[#e55a2b] text-white px-6"
-              >
-                {jobData.hasApplied || jobData.isApplied ? 'Applied ✓' : 'Quick Apply'}
-              </Button>
+            <div className="flex flex-col sm:flex-row gap-3">
+              {jobData.hasApplied || jobData.isApplied || considerationStatus === 'accepted' ? (
+                <Button
+                  variant="outline"
+                  onClick={() => onWithdrawApplication?.()}
+                  className="border-red-500 text-red-600 hover:bg-red-50 px-6"
+                >
+                  <UserMinus className="w-4 h-4 mr-2" />
+                  Withdraw Application
+                </Button>
+              ) : considerationStatus === 'pending' ? (
+                <>
+                  <Button
+                    onClick={() => onAcceptInterest?.()}
+                    className="px-6 bg-green-600 hover:bg-green-700 text-white"
+                  >
+                    <CheckCircle className="w-4 h-4 mr-2" />
+                    Accept Interest
+                  </Button>
+                  <Button
+                    variant="outline"
+                    onClick={() => onRejectInvitation?.()}
+                    className="border-red-500 text-red-600 hover:bg-red-50 px-6"
+                  >
+                    <X className="w-4 h-4 mr-2" />
+                    Reject Invitation
+                  </Button>
+                </>
+              ) : (
+                <Button
+                  onClick={() => onQuickApply?.()}
+                  className="bg-[#ff6b35] hover:bg-[#e55a2b] text-white px-6"
+                >
+                  Quick Apply
+                </Button>
+              )}
               <Button variant="outline" className="border-gray-300">
                 <Share2 className="w-4 h-4 mr-2" />
                 Share
               </Button>
+              <Button
+                variant="outline"
+                onClick={() => onToggleSave?.()}
+                className={`border-gray-300 transition-colors ${
+                  jobData.isSaved
+                    ? 'text-red-500 bg-red-50 hover:bg-red-100'
+                    : 'hover:text-red-500 hover:bg-red-50'
+                }`}
+              >
+                <Heart className={`w-4 h-4 ${jobData.isSaved ? 'fill-current' : ''}`} />
+              </Button>
+              <FlagFraudDialog
+                title="Flag job as fraudulent"
+                description="This will suspend the job post and notify the platform. Please add a brief reason."
+                onConfirm={async (reason) => {
+                  await flagJobPostAsFraud(jobData.id, reason);
+                }}
+                buttonSize="icon"
+                buttonVariant="outline"
+                buttonText=""
+                className="px-3 border-red-300 text-red-500 hover:bg-red-50"
+              />
             </div>
           </div>
         </div>

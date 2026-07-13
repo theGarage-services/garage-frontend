@@ -8,11 +8,11 @@ export interface Company {
   slug: string;
   company_type: string;
   industry: string;
-  size: string;
+  industry_display?: string;
+  company_size: string;
   description: string;
   website: string;
   phone: string;
-  email: string;
   address: string;
   city: string;
   state: string;
@@ -26,14 +26,25 @@ export interface Company {
   tax_id?: string;
   settings?: CompanySettings;
   social_links?: SocialLinks;
-  culture_values?: CultureValues;
+  mission?: string;
+  vision?: string;
+  values?: string[];
+  office_locations?: Array<{
+    name: string;
+    address: string;
+    type: string;
+    employees: number;
+  }>;
+  member_count?: number;
+  open_positions_count?: number;
+  total_applications?: number;
   created_at: string;
   updated_at: string;
 }
 
 export interface CompanySettings {
-  allow_team_invitations: boolean;
-  require_approval_for_jobs: boolean;
+  invitations_enabled: boolean;
+  approval_required: boolean;
   job_posting_limit: number;
 }
 
@@ -46,21 +57,14 @@ export interface SocialLinks {
   glassdoor?: string;
 }
 
-export interface CultureValues {
-  mission?: string;
-  vision?: string;
-  values?: string[];
-  benefits?: string[];
-}
-
 export interface CompanyMember {
   id: string;
   user: User;
   company: string;
-  role: 'owner' | 'admin' | 'recruiter' | 'viewer';
-  status: 'active' | 'invited' | 'inactive';
+  role: 'owner' | 'admin' | 'recruiter' | 'team-lead' | 'viewer';
+  status: 'active' | 'pending' | 'invited' | 'removed';
   department?: string;
-  title?: string;
+  job_title?: string;
   permissions: MemberPermissions;
   joined_at: string;
   invited_by?: string;
@@ -114,11 +118,10 @@ export interface CreateCompanyData {
   name: string;
   company_type: string;
   industry: string;
-  size: string;
+  company_size: string;
   description?: string;
   website?: string;
   phone?: string;
-  email?: string;
   address?: string;
   city?: string;
   state?: string;
@@ -133,11 +136,10 @@ export interface UpdateCompanyData {
   name?: string;
   company_type?: string;
   industry?: string;
-  size?: string;
+  company_size?: string;
   description?: string;
   website?: string;
   phone?: string;
-  email?: string;
   address?: string;
   city?: string;
   state?: string;
@@ -146,7 +148,11 @@ export interface UpdateCompanyData {
   founded_year?: number;
   settings?: CompanySettings;
   social_links?: SocialLinks;
-  culture_values?: CultureValues;
+  mission?: string;
+  vision?: string;
+  values?: string[];
+  tax_id?: string;
+  status?: 'active' | 'pending' | 'draft';
 }
 
 // Invite member data
@@ -154,7 +160,7 @@ export interface InviteMemberData {
   email: string;
   role: string;
   department?: string;
-  title?: string;
+  job_title?: string;
   permissions?: Partial<MemberPermissions>;
 }
 
@@ -225,7 +231,7 @@ class CompanyService {
    */
   async updateCompany(id: string, data: UpdateCompanyData): Promise<Company> {
     const response = await apiClient.request(`/companies/${id}/`, {
-      method: 'PATCH',
+      method: 'PUT',
       body: JSON.stringify(data),
     });
 
@@ -235,6 +241,36 @@ class CompanyService {
     }
 
     return await response.json();
+  }
+
+  /**
+   * Update a company and optionally upload a new logo in one call.
+   * If logo upload fails after a successful update, the error is
+   * thrown with `partialUpdate: true` so callers can decide to
+   * still surface the successful profile update.
+   */
+  async updateCompanyWithLogo(
+    id: string,
+    data: UpdateCompanyData,
+    logoFile?: File | null
+  ): Promise<Company> {
+    const updated = await this.updateCompany(id, data);
+
+    if (logoFile) {
+      try {
+        const { logo_url } = await this.uploadLogo(id, logoFile);
+        updated.logo = logo_url;
+      } catch (logoErr: any) {
+        const err = new Error(
+          logoErr?.message || 'Profile updated but logo upload failed'
+        );
+        (err as any).partialUpdate = true;
+        (err as any).company = updated;
+        throw err;
+      }
+    }
+
+    return updated;
   }
 
   /**

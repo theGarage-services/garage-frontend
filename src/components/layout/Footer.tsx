@@ -4,25 +4,23 @@ export function Footer() {
   const navigate = useNavigate();
 
   return (
-    <footer className="bg-gradient-to-br from-slate-900 via-gray-800 to-slate-900 text-white py-16 mt-16 relative overflow-hidden">
-      {/* Ambient glow effects */}
-      <div className="absolute inset-0 overflow-hidden pointer-events-none">
-        <div className="absolute bottom-0 left-1/4 w-96 h-96 bg-[#ff6b35]/10 rounded-full blur-3xl" />
-        <div className="absolute top-0 right-1/4 w-96 h-96 bg-blue-500/5 rounded-full blur-3xl" />
-      </div>
+    <footer className="bg-[#1A1A1A] text-white py-16 relative overflow-hidden">
+      {/* Ambient glow */}
+  <div className="absolute top-0 left-0 w-full sm:w-96 h-96 bg-[#FF6000]/10 rounded-full blur-3xl pointer-events-none" aria-hidden="true" />
+  <div className="absolute bottom-0 right-0 w-full sm:w-96 h-96 bg-[#469AF9]/10 rounded-full blur-3xl pointer-events-none" aria-hidden="true" />
 
       <div className="container mx-auto px-6 relative z-10">
         <div className="grid grid-cols-1 md:grid-cols-4 gap-12 mb-12">
           {/* Brand Section */}
           <div className="space-y-4">
             <div className="flex items-center gap-3 mb-4">
-              <span className="text-2xl font-medium">
+              <span className="text-4xl md:text-3xl font-bold">
                 <span className="text-white">the</span>
                 <span className="text-[#ff6b35]">Garage</span>
               </span>
             </div>
-            <p className="text-gray-400 text-sm leading-relaxed">
-              Empowering job seekers and recruiters with intelligent tracking, analytics, and collaboration tools.
+            <p className="text-gray-400 text-md md:text-lg  leading-relaxed">
+              It Gets Better
             </p>
             {/* Social Links */}
             <div className="flex items-center gap-4 pt-4">
@@ -42,7 +40,7 @@ export function Footer() {
 
           {/* Product Section */}
           <div>
-            <h3 className="font-semibold mb-4 text-white">Product</h3>
+            <h2 className="font-semibold mb-4 text-white">Product</h2>
             <ul className="space-y-3">
               <li>
                 <button className="text-gray-400 hover:text-[#ff6b35] transition-colors text-sm cursor-pointer bg-transparent border-none p-0">Features</button>
@@ -58,12 +56,36 @@ export function Footer() {
                   Pricing
                 </button>
               </li>
+              <li>
+                <button onClick={() => {
+                  navigate('/faq');
+                  window.scrollTo(0, 0);
+                }} className="text-gray-400 hover:text-[#ff6b35] transition-colors text-sm cursor-pointer bg-transparent border-none p-0">FAQ</button>
+              </li>
+              <li>
+                <button onClick={() => {
+                  navigate('/auth/role-select?role=job-seeker&intent=login');
+                  window.scrollTo(0, 0);
+                }} className="text-gray-400 hover:text-[#ff6b35] transition-colors text-sm cursor-pointer bg-transparent border-none p-0">For Job Seekers</button>
+              </li>
+              <li>
+                <button onClick={() => {
+                  navigate('/auth/role-select?role=recruiter&intent=login');
+                  window.scrollTo(0, 0);
+                }} className="text-gray-400 hover:text-[#ff6b35] transition-colors text-sm cursor-pointer bg-transparent border-none p-0">For Recruiters</button>
+              </li>
+              <li>
+                <button onClick={() => {
+                  navigate('/auth/role-select?role=admin&intent=login');
+                  window.scrollTo(0, 0);
+                }} className="text-gray-400 hover:text-[#ff6b35] transition-colors text-sm cursor-pointer bg-transparent border-none p-0">For Institutions</button>
+              </li>
             </ul>
           </div>
 
           {/* Company Section */}
           <div>
-            <h3 className="font-semibold mb-4 text-white">Company</h3>
+            <h2 className="font-semibold mb-4 text-white">Company</h2>
             <ul className="space-y-3">
               <li>
                 <button
@@ -77,10 +99,20 @@ export function Footer() {
                 </button>
               </li>
               <li>
-                <button className="text-gray-400 hover:text-[#ff6b35] transition-colors text-sm cursor-pointer bg-transparent border-none p-0">Blog</button>
+                <button 
+                onClick={() => {
+                    navigate('/jobseeker');
+                    window.scrollTo(0, 0);
+                  }}
+                className="text-gray-400 hover:text-[#ff6b35] transition-colors text-sm cursor-pointer bg-transparent border-none p-0">Job Seeker</button>
               </li>
               <li>
-                <button className="text-gray-400 hover:text-[#ff6b35] transition-colors text-sm cursor-pointer bg-transparent border-none p-0">Careers</button>
+                <button 
+                onClick={() => {
+                    navigate('/recruiter');
+                    window.scrollTo(0, 0);
+                  }}
+                className="text-gray-400 hover:text-[#ff6b35] transition-colors text-sm cursor-pointer bg-transparent border-none p-0">Recruiter</button>
               </li>
               <li>
                 <button onClick={() => {
@@ -88,18 +120,12 @@ export function Footer() {
                   window.scrollTo(0, 0);
                 }} className="text-gray-400 hover:text-[#ff6b35] transition-colors text-sm cursor-pointer bg-transparent border-none p-0">Contact</button>
               </li>
-              <li>
-                <button onClick={() => {
-                  navigate('/faq');
-                  window.scrollTo(0, 0);
-                }} className="text-gray-400 hover:text-[#ff6b35] transition-colors text-sm cursor-pointer bg-transparent border-none p-0">FAQ</button>
-              </li>
             </ul>
           </div>
 
           {/* Legal Section */}
           <div>
-            <h3 className="font-semibold mb-4 text-white">Legal</h3>
+            <h2 className="font-semibold mb-4 text-white">Legal</h2>
             <ul className="space-y-3">
               <li>
                 <button onClick={() => {

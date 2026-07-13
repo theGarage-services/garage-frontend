@@ -146,7 +146,7 @@ export function ProfileImageUpload({ currentImage, onUpload, onClose }: Readonly
 
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-xl shadow-2xl max-w-lg w-full max-h-[90vh] flex flex-col">
+      <div className="bg-white rounded-xl shadow-2xl max-w-[95vw] sm:max-w-lg w-full max-h-[90vh] flex flex-col">
         <div className="flex items-center justify-between p-6 pb-4 border-b">
           <h3 className="text-lg font-semibold text-gray-900">Update Profile Picture</h3>
           <button
@@ -243,7 +243,7 @@ export function ProfileImageUpload({ currentImage, onUpload, onClose }: Readonly
         )}
 
         {/* Action Buttons */}
-        <div className="flex gap-3 pt-4">
+        <div className="flex flex-col sm:flex-row gap-3 pt-4">
           <Button
             variant="outline"
             onClick={onClose}

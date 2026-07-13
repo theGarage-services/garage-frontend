@@ -82,7 +82,7 @@ const JobCard = ({ job, handleViewJob }: { job: JobPosting; handleViewJob: (job:
           </Badge>
         </div>
 
-        <div className="flex items-center gap-6 text-gray-600 mb-3">
+        <div className="flex flex-wrap items-center gap-x-6 gap-y-1 text-gray-600 mb-3">
           <div className="flex items-center gap-1">
             <Building2 className="w-4 h-4" />
             {job.department}
@@ -103,7 +103,7 @@ const JobCard = ({ job, handleViewJob }: { job: JobPosting; handleViewJob: (job:
 
         <p className="text-gray-600 mb-4 line-clamp-2">{job.description}</p>
 
-        <div className="flex items-center gap-6 text-sm text-gray-500">
+        <div className="flex flex-wrap items-center gap-x-6 gap-y-1 text-sm text-gray-500">
           <div className="flex items-center gap-1">
             <Users className="w-4 h-4" />
             {job.applicants} applicants
@@ -158,8 +158,8 @@ export const ListView = ({
 
       {/* Page Title & Controls Section */}
       <div className="pt-20 bg-gradient-to-r from-[#ff6b35] to-[#ff8c42] text-white pb-8 shadow-lg">
-        <div className="max-w-7xl mx-auto px-8">
-          <div className="flex items-center justify-between">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
             <div>
               <h1 className="text-3xl font-semibold mb-2">Job Management</h1>
               <p className="text-white/90">Create, manage, and track your job postings</p>
@@ -167,7 +167,7 @@ export const ListView = ({
 
             <Button
               onClick={() => onNavigate('job-posting')}
-              className="bg-white text-[#ff6b35] hover:bg-white/90"
+              className="bg-white text-[#ff6b35] hover:bg-white/90 self-start sm:self-auto"
             >
               <Plus className="w-4 h-4 mr-2" />
               Create Job Posting
@@ -179,9 +179,9 @@ export const ListView = ({
       <div className="max-w-7xl mx-auto p-8">
         {/* Filters and Search */}
         <Card className="p-6 mb-6">
-          <div className="flex flex-col md:flex-row gap-4 items-center justify-between">
-            <div className="flex gap-4 flex-1">
-              <div className="relative flex-1 max-w-md">
+          <div className="flex flex-col md:flex-row gap-4 items-stretch md:items-center justify-between">
+            <div className="flex flex-col sm:flex-row gap-4 flex-1">
+              <div className="relative flex-1 max-w-none sm:max-w-[95vw] sm:max-w-md">
                 <Search className="w-4 h-4 absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
                 <Input
                   placeholder="Search job postings..."
@@ -192,7 +192,7 @@ export const ListView = ({
               </div>
 
               <Select value={filterStatus} onValueChange={setFilterStatus}>
-                <SelectTrigger className="w-48 h-10">
+                <SelectTrigger className="w-full sm:w-48 h-10">
                   <Filter className="w-4 h-4 mr-2" />
                   <SelectValue />
                 </SelectTrigger>

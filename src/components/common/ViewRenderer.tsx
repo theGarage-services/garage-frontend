@@ -54,7 +54,7 @@ const RecruiterComponents = {
 const SharedComponents = {
   Notifications: lazy(() => import('../notifications/Notifications').then(module => ({ default: module.Notifications }))),
   Support: lazy(() => import('../common/Support').then(module => ({ default: module.Support }))),
-  AccountSettings: lazy(() => import('../profile/AccountSettings').then(module => ({ default: module.AccountSettings }))),
+  AccountSettings: lazy(() => import('../common/AccountSettings').then(module => ({ default: module.AccountSettings }))),
   ReportIssue: lazy(() => import('../common/ReportIssue').then(module => ({ default: module.ReportIssue }))),
   PlatformOverview: lazy(() => import('../landing/PlatformOverview').then(module => ({ default: module.PlatformOverview }))),
   MetricsDashboard: lazy(() => import('../dashboard/MetricsDashboard').then(module => ({ default: module.MetricsDashboard }))),
@@ -200,7 +200,7 @@ export function ViewRenderer({
       case 'my-queues':
         return withSuspense(
           <JobSeekerComponents.MyQueues 
-            onEditQueues={() => onNavigate('queue-selector')}
+            onNavigate={onNavigate}
             onQueueClick={onNavigateToQueueDetail}
             onBack={onBack}
             showAsPage={true}

@@ -5,6 +5,18 @@
 export type ViewType = 'list' | 'job-detail' | 'edit-job' | 'candidates' | 'results';
 export type CandidateTab = 'ai-recommended' | 'manually-applied' | 'all-queue';
 
+export interface ScoreBreakdown {
+  semantic?: number;
+  skill_jaccard?: number;
+  education_score?: number;
+  experience_score?: number;
+  industry_alignment?: number;
+  level_alignment?: number;
+  composite_score?: number;
+  match_percentage?: number;
+  skill_gaps?: string[];
+}
+
 export interface QueueCandidateLocal {
   id: string;
   name: string;
@@ -20,6 +32,7 @@ export interface QueueCandidateLocal {
   applicationDate?: string;
   applicationStatus: string;
   lastActivity: string;
+  lastLogin?: string;
   joinedQueue: string;
   resume?: string;
   aiRecommendation?: {
@@ -28,6 +41,8 @@ export interface QueueCandidateLocal {
     concerns: string[];
   };
   predicted_industry?: string;
+  considerationRequestId?: number;
+  scoreBreakdown?: ScoreBreakdown;
 }
 
 export interface WorkExperience {
@@ -77,6 +92,7 @@ export interface Candidate {
   currentCompany: string;
   applicationDate: string;
   applicationStatus: string;
+  status?: string;
   lastActivity: string;
   resumeId: string;
   profileId: string;
@@ -95,6 +111,7 @@ export interface Candidate {
   };
   considerationStatus?: string;
   considerationMatchScore?: number;
+  scoreBreakdown?: ScoreBreakdown;
 }
 
 export interface CandidatesData {

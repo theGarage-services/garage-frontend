@@ -5,6 +5,7 @@ import { Label } from '../ui/label';
 import { Card } from '../ui/card';
 import { Textarea } from '../ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
+import { DepartmentSelect } from '../common/DepartmentSelect';
 import { Building2, AlertCircle, CheckCircle, Upload, File, X } from 'lucide-react';
 import { Alert, AlertDescription } from '../ui/alert';
 
@@ -210,7 +211,7 @@ function DetailsStep({ formData, errors, handleChange }: Readonly<StepProps>) {
         error={errors.address}
       />
 
-      <div className="grid grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <FormField
           id="city"
           label="City"
@@ -229,7 +230,7 @@ function DetailsStep({ formData, errors, handleChange }: Readonly<StepProps>) {
         />
       </div>
 
-      <div className="grid grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <FormField
           id="country"
           label="Country"
@@ -299,14 +300,20 @@ function VerificationStep({ formData, errors, handleChange, handleFileUpload, se
         error={errors.recruiterTitle}
       />
 
-      <FormField
-        id="department"
-        label="Department"
-        placeholder="e.g. Human Resources, Talent Acquisition"
-        value={formData.department}
-        onChange={(e) => handleChange('department', e.target.value)}
-        error={errors.department}
-      />
+      <div className="space-y-2">
+        <Label htmlFor="department">Department</Label>
+        <DepartmentSelect
+          value={formData.department}
+          onValueChange={(value) => handleChange('department', value)}
+          triggerClassName={`h-12 border-2 ${errors.department ? 'border-red-300' : 'border-gray-200'}`}
+        />
+        {errors.department && (
+          <div className="flex items-center gap-2 text-red-600 text-sm">
+            <AlertCircle className="w-4 h-4" />
+            {errors.department}
+          </div>
+        )}
+      </div>
 
       <FileUploadSection
         verificationDocument={formData.verificationDocument}
@@ -352,7 +359,7 @@ function FileUploadSection({ verificationDocument, error, handleFileUpload, setF
           onChange={handleFileUpload}
           className="hidden"
         />
-        <label htmlFor="verification" className="cursor-pointer">
+        <label htmlFor="verification" className="cursor-pointer" aria-label="Upload verification document">
           <div className="flex flex-col items-center gap-3">
             <div className="w-12 h-12 bg-gray-100 rounded-full flex items-center justify-center">
               <Upload className="w-6 h-6 text-gray-400" />
@@ -374,11 +381,11 @@ function FileUploadSection({ verificationDocument, error, handleFileUpload, setF
 
       {verificationDocument && (
         <div className="bg-green-50 border border-green-200 rounded-lg p-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <File className="w-5 h-5 text-green-600" />
-              <div>
-                <p className="font-medium text-green-800">{verificationDocument.name}</p>
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+            <div className="flex items-center gap-3 min-w-0">
+              <File className="w-5 h-5 text-green-600 shrink-0" />
+              <div className="min-w-0">
+                <p className="font-medium text-green-800 truncate">{verificationDocument.name}</p>
                 <p className="text-sm text-green-600">
                   {(verificationDocument.size / 1024 / 1024).toFixed(2)} MB
                 </p>
@@ -391,6 +398,7 @@ function FileUploadSection({ verificationDocument, error, handleFileUpload, setF
                 setFormData(prev => ({ ...prev, verificationDocument: null }));
                 setErrors(prev => ({ ...prev, verificationDocument: '' }));
               }}
+              className="self-start sm:self-auto"
             >
               <X className="w-4 h-4" />
             </Button>
@@ -612,6 +620,7 @@ function useSubmit(formData: FormData, recruiterData: any, validateVerificationS
       };
       onInstitutionCreated(institutionData);
     } catch (error) {
+      console.error('Failed to create institution:', error);
       setSetupError('An error occurred while setting up your institution. Please try again.');
     } finally {
       setIsLoading(false);

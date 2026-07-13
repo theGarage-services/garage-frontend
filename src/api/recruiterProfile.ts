@@ -1,26 +1,45 @@
 import apiClient from './client';
-import type { User } from './auth';
+
+export interface RecruiterProfileData {
+  company_name: string | null;
+  company_size: string | null;
+  industry: string | null;
+  department: string | null;
+  website: string | null;
+  institution: Record<string, unknown> | null;
+  bio: string | null;
+  phone: string | null;
+  location: string | null;
+  linkedin: string | null;
+  timezone: string | null;
+  profile_image: string | null;
+  company_id: string | null;
+  is_institutional: boolean | null;
+  slug: string | null;
+  company_type: string | null;
+  company_industry: string | null;
+  company_status: string | null;
+}
 
 export interface RecruiterProfile {
-  id: number;
-  user: User;
-  company: string;
-  company_size: string;
+  success: boolean;
+  user_data: {
+    first_name: string;
+    last_name: string;
+    email: string;
+    username: string;
+  };
+  recruiter_profile_data: RecruiterProfileData | null;
+  candidate_profile_data: Record<string, unknown> | null;
+  role: string;
+  tier: string;
   industry: string;
-  department: string;
-  website: string;
-  institution: Record<string, unknown>;
-  bio: string;
-  phone: string;
-  location: string;
-  linkedin: string;
-  profile_image: string;
-  created_at: string;
-  updated_at: string;
+  profile_complete: boolean;
 }
 
 export interface UpdateRecruiterProfileData {
   company?: string;
+  company_name?: string;
   company_size?: string;
   industry?: string;
   department?: string;
@@ -33,6 +52,7 @@ export interface UpdateRecruiterProfileData {
   phone?: string;
   location?: string;
   linkedin?: string;
+  timezone?: string;
   profile_image?: string;
 }
 
@@ -44,33 +64,17 @@ export const COMPANY_SIZES = [
   { value: '1000+', label: '1,000+ employees' },
 ];
 
-// Industry options matching backend CandidateProfile.INDUSTRY_CHOICES
-export const INDUSTRY_OPTIONS = [
-  { value: 'accountant', label: 'Accountant' },
-  { value: 'advocate', label: 'Advocate' },
-  { value: 'agriculture', label: 'Agriculture' },
-  { value: 'apparel', label: 'Apparel' },
-  { value: 'arts', label: 'Arts' },
-  { value: 'automobile', label: 'Automobile' },
-  { value: 'aviation', label: 'Aviation' },
-  { value: 'banking', label: 'Banking' },
-  { value: 'bpo', label: 'Business Process Outsourcing' },
-  { value: 'business-development', label: 'Business Development' },
-  { value: 'chef', label: 'Chef' },
-  { value: 'construction', label: 'Construction' },
-  { value: 'consultant', label: 'Consultant' },
-  { value: 'designer', label: 'Designer' },
-  { value: 'digital-marketing', label: 'Digital Marketing' },
-  { value: 'education', label: 'Education' },
-  { value: 'engineering', label: 'Engineering' },
-  { value: 'finance', label: 'Finance' },
-  { value: 'fitness', label: 'Fitness' },
-  { value: 'healthcare', label: 'Healthcare' },
-  { value: 'hr', label: 'Human Resources' },
-  { value: 'information-technology', label: 'Information Technology' },
-  { value: 'public-relations', label: 'Public Relations' },
-  { value: 'sales', label: 'Sales' },
-];
+export interface PublicRecruiterProfile {
+  name: string;
+  title: string;
+  company: string | null;
+  avatar: string | null;
+  bio: string | null;
+  location: string | null;
+  website: string | null;
+  linkedin: string | null;
+  email: string | null;
+}
 
 class RecruiterProfileService {
   /**
@@ -98,11 +102,55 @@ class RecruiterProfileService {
   }
 
   /**
+   * Get public recruiter profile by user ID (for job details pages)
+   */
+  async getPublicProfile(userId: number): Promise<PublicRecruiterProfile | null> {
+    try {
+      const response = await apiClient.request(`/accounts/recruiter/${userId}/public-profile/`, {
+        method: 'GET',
+      });
+
+      if (!response.ok) {
+        if (response.status === 404) {
+          return null;
+        }
+        throw new Error('Failed to fetch public recruiter profile');
+      }
+
+      const result = await response.json();
+      return result.data as PublicRecruiterProfile;
+    } catch (error) {
+      console.error('Error fetching public recruiter profile:', error);
+      return null;
+    }
+  }
+
+  /**
+   * Upload recruiter profile image
+   */
+  async uploadProfileImage(file: File): Promise<string> {
+    const formData = new FormData();
+    formData.append('profile_image', file);
+
+    const response = await apiClient.request('/accounts/upload-profile-image/', {
+      method: 'POST',
+      body: formData,
+    });
+
+    if (!response.ok) {
+      throw new Error('Failed to upload profile image');
+    }
+
+    const result = await response.json();
+    return result.profile_image_url as string;
+  }
+
+  /**
    * Update the recruiter profile
    */
   async updateProfile(data: UpdateRecruiterProfileData): Promise<RecruiterProfile> {
-    const response = await apiClient.request('/accounts/update-profile/', {
-      method: 'POST',
+    const response = await apiClient.request('/accounts/profile/', {
+      method: 'PATCH',
       body: JSON.stringify(data),
     });
 
@@ -118,23 +166,35 @@ class RecruiterProfileService {
    * Transform backend profile to frontend format
    */
   transformProfileForFrontend(profile: RecruiterProfile): Record<string, unknown> {
+    const userData = profile.user_data || { first_name: '', last_name: '', email: '', username: '' };
+    const recruiterData = profile.recruiter_profile_data || {
+      company_name: null, company_size: null, industry: null, department: null,
+      website: null, institution: null, bio: null, phone: null, location: null,
+      linkedin: null, timezone: null, profile_image: null, company_id: null,
+      is_institutional: null, slug: null, company_type: null,
+      company_industry: null, company_status: null
+    };
     return {
-      firstName: profile.user.first_name,
-      lastName: profile.user.last_name,
-      email: profile.user.email,
-      phone: profile.phone || '', // Now stored in RecruiterProfile
-      company: profile.company,
-      title: profile.company, // For backwards compatibility
-      companySize: profile.company_size,
-      industry: profile.industry,
-      department: profile.department,
-      bio: profile.bio,
-      location: profile.location || '', // Now stored in RecruiterProfile
-      website: profile.website,
-      institution: profile.institution,
-      timezone: 'America/Los_Angeles', // Default, not stored in backend
-      linkedin: profile.linkedin || '', // Now stored in RecruiterProfile
-      profileImage: profile.profile_image || '', // Profile photo URL
+      firstName: userData.first_name,
+      lastName: userData.last_name,
+      email: userData.email,
+      phone: recruiterData.phone,
+      company: recruiterData.company_name,
+      title: recruiterData.company_name,
+      companySize: recruiterData.company_size,
+      industry: recruiterData.industry || profile.industry,
+      department: recruiterData.department,
+      bio: recruiterData.bio,
+      location: recruiterData.location,
+      website: recruiterData.website,
+      institution: recruiterData.institution,
+      timezone: recruiterData.timezone || 'America/Los_Angeles',
+      linkedin: recruiterData.linkedin,
+      profileImage: recruiterData.profile_image,
+      slug: recruiterData.slug,
+      companyType: recruiterData.company_type,
+      companyIndustry: recruiterData.company_industry,
+      companyStatus: recruiterData.company_status,
     };
   }
 
@@ -147,16 +207,41 @@ class RecruiterProfileService {
       last_name: (data.lastName as string) || '',
       phone: (data.phone as string) || '',
       location: (data.location as string) || '',
-      company: (data.company as string) || (data.title as string) || '',
+      company_name: (data.company as string) || (data.title as string) || '',
       company_size: (data.companySize as string) || '',
       industry: (data.industry as string) || '',
       department: (data.department as string) || '',
       website: (data.website as string) || '',
       institution: (data.institution as Record<string, unknown>) || {},
       bio: (data.bio as string) || '',
-      profile_image: (data.profileImage as string) || '',
+      timezone: (data.timezone as string) || '',
+      linkedin: (data.linkedin as string) || '',
     };
   }
+}
+
+/**
+ * Build a full image URL from a backend file path/URL.
+ * Handles relative paths, absolute URLs, and corrupted double-prefix paths.
+ */
+export function buildProfileImageUrl(url: string | null | undefined): string {
+  if (!url) return '';
+
+  const base = import.meta.env.VITE_API_BASE_URL.replace(/\/api\/?$/, '');
+  const decoded = decodeURIComponent(url);
+  const mediaParts = decoded.split('/media/');
+  if (mediaParts.length > 2) {
+    const realPath = mediaParts.at(-1);
+    return `${base}/media/${realPath}`;
+  }
+
+  // Clean absolute URL
+  if (decoded.startsWith('http')) {
+    return decoded;
+  }
+
+  // Normal relative path from backend
+  return decoded.startsWith('/') ? `${base}${decoded}` : `${base}/${decoded}`;
 }
 
 export const recruiterProfileService = new RecruiterProfileService();

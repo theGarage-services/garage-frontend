@@ -81,7 +81,7 @@ function AdminBanner() {
           </p>
           <div className="bg-white rounded-lg p-3 border border-red-200">
             <p className="text-xs font-medium text-red-900 mb-2">4 User Types You Can Create:</p>
-            <div className="grid grid-cols-2 gap-2 text-xs text-red-700">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs text-red-700">
               <div>• <strong>Regular Recruiter</strong> - Execution</div>
               <div>• <strong>Manager</strong> - Team & Approvals</div>
               <div>• <strong>Lead</strong> - Strategic Oversight</div>

@@ -1,9 +1,11 @@
 /**
  * Custom hook for chat functionality.
  * Provides centralized chat state management and API integration.
+ * Includes real-time WebSocket support for messages and typing indicators.
  */
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import * as chatApi from '../api/chat';
+import { getUnreadNotificationCount } from '../api/notifications';
 import type {
   Conversation,
   Message,
@@ -16,13 +18,58 @@ import type {
   CreateConsiderationRequest,
 } from '../api/chat';
 
+/** Build WebSocket URL from current API base */
+function getWebSocketUrl(): string {
+  const apiUrl = import.meta.env.VITE_API_BASE_URL || 'http://127.0.0.1:8000';
+  const parsed = new URL(apiUrl);
+  const wsProto = parsed.protocol === 'https:' ? 'wss' : 'ws';
+  // Tokens are sent via httpOnly cookie; do not include them in the URL.
+  return `${wsProto}://${parsed.host}/ws/chat/`;
+}
+
+/** Append a message only if its id is not already present. */
+function appendUniqueMessage(prev: Message[], msg: Message): Message[] {
+  if (prev.some((m) => m.id === msg.id)) return prev;
+  return [...prev, msg];
+}
+
+/** Add or remove a typing user from the list. */
+function updateTypingUsers(prev: TypingUser[], userId: number, username: string, isTyping: boolean, conversationId: number): TypingUser[] {
+  if (!isTyping) {
+    return prev.filter((t) => t.userId !== userId);
+  }
+  if (prev.some((t) => t.userId === userId)) return prev;
+  return [...prev, { userId, username, conversationId }];
+}
+
+/** Mark specified messages as read. */
+function markMessagesRead(prev: Message[], messageIds: number[]): Message[] {
+  return prev.map((msg) => (messageIds.includes(msg.id) ? { ...msg, status: 'read' as const } : msg));
+}
+
+/** Remove typing indicators for a given conversation. */
+function removeTypingForConversation(prev: TypingUser[], conversationId: number): TypingUser[] {
+  return prev.filter((t) => t.conversationId !== conversationId);
+}
+
+/** Remove a specific typing user by id. */
+function removeTypingUser(prev: TypingUser[], userId: number): TypingUser[] {
+  return prev.filter((t) => t.userId !== userId);
+}
+
+interface TypingUser {
+  userId: number;
+  username: string;
+  conversationId: number;
+}
+
 interface UseChatReturn {
   // Conversations
   conversations: Conversation[];
   isLoadingConversations: boolean;
   errorConversations: string | null;
   refreshConversations: () => Promise<void>;
-  
+
   // Current conversation
   currentConversation: Conversation | null;
   setCurrentConversation: (conv: Conversation | null) => void;
@@ -31,7 +78,7 @@ interface UseChatReturn {
   loadMessages: (conversationId: number) => Promise<void>;
   sendMessage: (data: CreateMessageRequest) => Promise<void>;
   markAsRead: (conversationId: number) => Promise<void>;
-  
+
   // Coffee Chat
   coffeeChatRequests: CoffeeChatRequest[];
   receivedCoffeeChats: CoffeeChatRequest[];
@@ -40,16 +87,16 @@ interface UseChatReturn {
   sendCoffeeChatRequest: (data: CreateCoffeeChatRequest) => Promise<CoffeeChatRequest>;
   acceptCoffeeChat: (id: number, message?: string) => Promise<void>;
   declineCoffeeChat: (id: number, message?: string) => Promise<void>;
-  
+
   // Considerations
   considerationRequests: ConsiderationRequest[];
   receivedConsiderations: ConsiderationRequest[];
   sentConsiderations: ConsiderationRequest[];
   isLoadingConsiderations: boolean;
   sendConsideration: (data: CreateConsiderationRequest) => Promise<ConsiderationRequest>;
-  acceptConsideration: (id: number, message?: string) => Promise<void>;
+  acceptConsideration: (id: number, message?: string, videoResponseIds?: number[]) => Promise<{ success?: boolean; requires_video_prompts?: boolean; missing_prompt_ids?: number[]; consideration?: ConsiderationRequest; job_application?: { id: number; status: string }; error?: string }>;
   declineConsideration: (id: number, message?: string) => Promise<void>;
-  
+
   // Notifications
   notifications: ChatNotification[];
   unreadCount: number;
@@ -57,14 +104,19 @@ interface UseChatReturn {
   refreshNotifications: () => Promise<void>;
   markNotificationRead: (id: number) => Promise<void>;
   markAllNotificationsRead: () => Promise<void>;
-  
+
   // Stats
   stats: ConversationStats | null;
   refreshStats: () => Promise<void>;
-  
+
   // Init chat
   initChatFromJob: (jobId: number, candidateId?: number) => Promise<Conversation>;
   initChatFromProfile: (userId: number) => Promise<Conversation>;
+
+  // Real-time
+  isConnected: boolean;
+  typingUsers: TypingUser[];
+  sendTypingIndicator: (conversationId: number, isTyping: boolean) => void;
 }
 
 export function useChat(): UseChatReturn {
@@ -98,6 +150,13 @@ export function useChat(): UseChatReturn {
   // Stats state
   const [stats, setStats] = useState<ConversationStats | null>(null);
 
+  // WebSocket state
+  const [isConnected, setIsConnected] = useState(false);
+  const [typingUsers, setTypingUsers] = useState<TypingUser[]>([]);
+  const wsRef = useRef<WebSocket | null>(null);
+  const reconnectTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const typingTimeoutRef = useRef<Record<number, ReturnType<typeof setTimeout>>>({});
+
   // Load conversations
   const refreshConversations = useCallback(async () => {
     setIsLoadingConversations(true);
@@ -111,6 +170,137 @@ export function useChat(): UseChatReturn {
       setIsLoadingConversations(false);
     }
   }, []);
+
+  // WebSocket message handlers
+  const handleNewMessage = useCallback((msg: Message) => {
+    setConversationMessages((prev) => appendUniqueMessage(prev, msg));
+    refreshConversations();
+  }, [refreshConversations]);
+
+  const handleTypingIndicator = useCallback((data: any) => {
+    const { user_id, username, is_typing } = data;
+    const convId = currentConversation?.id ?? 0;
+    setTypingUsers((prev) => updateTypingUsers(prev, user_id, username, is_typing, convId));
+    if (is_typing) {
+      if (typingTimeoutRef.current[user_id]) clearTimeout(typingTimeoutRef.current[user_id]);
+      typingTimeoutRef.current[user_id] = setTimeout(() => {
+        setTypingUsers((prev) => removeTypingUser(prev, user_id));
+      }, 3000);
+    }
+  }, [currentConversation?.id]);
+
+  const handleReadReceipt = useCallback((messageIds: number[]) => {
+    setConversationMessages((prev) => markMessagesRead(prev, messageIds));
+  }, []);
+
+  const handleConnectionEstablished = useCallback((ws: WebSocket) => {
+    if (currentConversation) {
+      ws.send(JSON.stringify({
+        type: 'join_conversation',
+        conversation_id: currentConversation.id,
+      }));
+    }
+  }, [currentConversation]);
+
+  const dispatchWebSocketMessage = useCallback((event: MessageEvent, ws: WebSocket) => {
+    try {
+      const data = JSON.parse(event.data);
+      switch (data.type) {
+        case 'new_message':
+          handleNewMessage(data.message as Message);
+          break;
+        case 'typing_indicator':
+          handleTypingIndicator(data);
+          break;
+        case 'read_receipt':
+          handleReadReceipt(data.message_ids);
+          break;
+        case 'connection_established':
+          handleConnectionEstablished(ws);
+          break;
+      }
+    } catch {
+      // ignore malformed messages
+    }
+  }, [handleNewMessage, handleTypingIndicator, handleReadReceipt, handleConnectionEstablished]);
+
+  // WebSocket connection
+  const connectWebSocket = useCallback(() => {
+    // Guard against CONNECTING (0) and OPEN (1) states
+    if (wsRef.current && wsRef.current.readyState <= WebSocket.OPEN) return;
+
+    const ws = new WebSocket(getWebSocketUrl());
+    wsRef.current = ws;
+
+    ws.onopen = () => {
+      setIsConnected(true);
+    };
+
+    ws.onmessage = (event) => {
+      dispatchWebSocketMessage(event, ws);
+    };
+
+    ws.onclose = () => {
+      setIsConnected(false);
+      wsRef.current = null;
+      reconnectTimerRef.current = setTimeout(() => connectWebSocket(), 3000);
+    };
+
+    ws.onerror = () => {
+      ws.close();
+    };
+  }, [dispatchWebSocketMessage]);
+
+  const disconnectWebSocket = useCallback(() => {
+    // Cancel any pending reconnect before closing
+    if (reconnectTimerRef.current) {
+      clearTimeout(reconnectTimerRef.current);
+      reconnectTimerRef.current = null;
+    }
+    if (wsRef.current) {
+      // Remove onclose so intentional close doesn't trigger auto-reconnect
+      wsRef.current.onclose = null;
+      wsRef.current.close();
+      wsRef.current = null;
+      setIsConnected(false);
+    }
+  }, []);
+
+  const sendTypingIndicator = useCallback((conversationId: number, isTyping: boolean) => {
+    if (wsRef.current?.readyState === WebSocket.OPEN) {
+      wsRef.current.send(JSON.stringify({
+        type: 'typing_indicator',
+        conversation_id: conversationId,
+        is_typing: isTyping,
+      }));
+    }
+  }, []);
+
+  const clearTypingForConversation = useCallback((conversationId: number) => {
+    setTypingUsers((prev) => removeTypingForConversation(prev, conversationId));
+  }, []);
+
+  // Auto-connect on mount (real auth is in the httpOnly cookie; the
+  // sessionStorage flag is only a UX hint, so we always try to connect)
+  useEffect(() => {
+    connectWebSocket();
+    return () => disconnectWebSocket();
+  }, [connectWebSocket, disconnectWebSocket]);
+
+  // Join conversation group when currentConversation changes
+  useEffect(() => {
+    if (wsRef.current?.readyState === WebSocket.OPEN && currentConversation) {
+      wsRef.current.send(JSON.stringify({
+        type: 'join_conversation',
+        conversation_id: currentConversation.id,
+      }));
+    }
+    return () => {
+      if (currentConversation) {
+        clearTypingForConversation(currentConversation.id);
+      }
+    };
+  }, [currentConversation?.id]);
 
   // Load messages for conversation
   const loadMessages = useCallback(async (conversationId: number) => {
@@ -211,9 +401,10 @@ export function useChat(): UseChatReturn {
   }, [refreshConsiderations]);
 
   // Accept/decline consideration
-  const acceptConsideration = useCallback(async (id: number, message?: string) => {
-    await chatApi.acceptConsideration(id, message);
+  const acceptConsideration = useCallback(async (id: number, message?: string, videoResponseIds?: number[]) => {
+    const result = await chatApi.acceptConsideration(id, message, videoResponseIds);
     await refreshConsiderations();
+    return result;
   }, [refreshConsiderations]);
 
   const declineConsideration = useCallback(async (id: number, message?: string) => {
@@ -227,7 +418,7 @@ export function useChat(): UseChatReturn {
     try {
       const [notifs, count] = await Promise.all([
         chatApi.getChatNotifications(),
-        chatApi.getUnreadNotificationCount(),
+        getUnreadNotificationCount(),
       ]);
       setNotifications(notifs);
       setUnreadCount(count.unread_count);
@@ -274,7 +465,7 @@ export function useChat(): UseChatReturn {
     return result.conversation;
   }, [refreshConversations]);
 
-  // Initial load
+  // Initial load (real auth lives in the cookie, so always attempt to load)
   useEffect(() => {
     refreshConversations();
     refreshCoffeeChats();
@@ -282,6 +473,17 @@ export function useChat(): UseChatReturn {
     refreshNotifications();
     refreshStats();
   }, [refreshConversations, refreshCoffeeChats, refreshConsiderations, refreshNotifications, refreshStats]);
+
+  // Debug logging when chat data changes
+  useEffect(() => {
+    console.log('[useChat] conversations:', conversations.length, conversations);
+  }, [conversations]);
+  useEffect(() => {
+    console.log('[useChat] receivedCoffeeChats:', receivedCoffeeChats.length, receivedCoffeeChats);
+  }, [receivedCoffeeChats]);
+  useEffect(() => {
+    console.log('[useChat] receivedConsiderations:', receivedConsiderations.length, receivedConsiderations);
+  }, [receivedConsiderations]);
 
   return {
     // Conversations
@@ -332,5 +534,10 @@ export function useChat(): UseChatReturn {
     // Init chat
     initChatFromJob,
     initChatFromProfile,
+
+    // Real-time
+    isConnected,
+    typingUsers,
+    sendTypingIndicator,
   };
 }

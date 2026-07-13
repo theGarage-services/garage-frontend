@@ -213,6 +213,7 @@ class TestDataService {
       await this.createSampleQueues();
       
     } catch (error) {
+      console.error('Error initializing test data:', error);
     }
   }
 
@@ -227,6 +228,7 @@ class TestDataService {
       }
       
     } catch (error) {
+      console.error('Error clearing test data:', error);
     }
   }
 }

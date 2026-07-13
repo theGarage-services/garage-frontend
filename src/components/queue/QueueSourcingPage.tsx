@@ -127,10 +127,10 @@ export function QueueSourcingPage({ onBack, onViewCandidate, onMessageCandidate 
     <div className="min-h-screen bg-gradient-to-br from-gray-50 via-orange-50 to-gray-100 p-6">
       <div className="max-w-7xl mx-auto">
         {/* Header */}
-        <div className="flex items-center justify-between mb-8">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-8">
           <div>
-            <Button 
-              variant="ghost" 
+            <Button
+              variant="ghost"
               onClick={onBack}
               className="mb-4 text-gray-600 hover:text-[#ff6b35]"
             >
@@ -141,8 +141,8 @@ export function QueueSourcingPage({ onBack, onViewCandidate, onMessageCandidate 
               Access theGarage job seeker queues and discover top talent
             </p>
           </div>
-          
-          <div className="flex items-center gap-2">
+
+          <div className="flex items-center gap-2 self-start sm:self-auto">
             <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
             <Badge variant="secondary" className="bg-green-100 text-green-700">
               <Activity className="w-3 h-3 mr-1" />
@@ -161,7 +161,7 @@ export function QueueSourcingPage({ onBack, onViewCandidate, onMessageCandidate 
         {/* Overall Analytics */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
           <Card className="p-6 bg-gradient-to-br from-white to-blue-50 border-0 shadow-md">
-            <div className="flex items-center justify-between mb-4">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 mb-4">
               <div className="w-12 h-12 bg-gradient-to-r from-blue-500 to-blue-600 rounded-xl flex items-center justify-center">
                 <Users className="w-6 h-6 text-white" />
               </div>
@@ -172,7 +172,7 @@ export function QueueSourcingPage({ onBack, onViewCandidate, onMessageCandidate 
           </Card>
 
           <Card className="p-6 bg-gradient-to-br from-white to-green-50 border-0 shadow-md">
-            <div className="flex items-center justify-between mb-4">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 mb-4">
               <div className="w-12 h-12 bg-gradient-to-r from-green-500 to-green-600 rounded-xl flex items-center justify-center">
                 <Zap className="w-6 h-6 text-white" />
               </div>
@@ -183,7 +183,7 @@ export function QueueSourcingPage({ onBack, onViewCandidate, onMessageCandidate 
           </Card>
 
           <Card className="p-6 bg-gradient-to-br from-white to-purple-50 border-0 shadow-md">
-            <div className="flex items-center justify-between mb-4">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 mb-4">
               <div className="w-12 h-12 bg-gradient-to-r from-purple-500 to-purple-600 rounded-xl flex items-center justify-center">
                 <Rocket className="w-6 h-6 text-white" />
               </div>
@@ -194,7 +194,7 @@ export function QueueSourcingPage({ onBack, onViewCandidate, onMessageCandidate 
           </Card>
 
           <Card className="p-6 bg-gradient-to-br from-white to-orange-50 border-0 shadow-md">
-            <div className="flex items-center justify-between mb-4">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 mb-4">
               <div className="w-12 h-12 bg-gradient-to-r from-[#ff6b35] to-[#ff8c42] rounded-xl flex items-center justify-center">
                 <Layers className="w-6 h-6 text-white" />
               </div>
@@ -207,9 +207,9 @@ export function QueueSourcingPage({ onBack, onViewCandidate, onMessageCandidate 
 
         {/* Search and Filters */}
         <Card className="p-6 mb-6">
-          <div className="flex flex-col md:flex-row gap-4 items-center justify-between">
-            <div className="flex gap-4 flex-1">
-              <div className="relative flex-1 max-w-md">
+          <div className="flex flex-col lg:flex-row gap-4 items-start lg:items-center justify-between">
+            <div className="flex flex-col sm:flex-row gap-4 w-full lg:flex-1">
+              <div className="relative flex-1 max-w-[95vw] sm:max-w-md">
                 <Search className="w-4 h-4 absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
                 <Input
                   placeholder="Search queues, skills, or roles..."
@@ -218,9 +218,9 @@ export function QueueSourcingPage({ onBack, onViewCandidate, onMessageCandidate 
                   className="pl-10"
                 />
               </div>
-              
+
               <Select value={filterQueue} onValueChange={setFilterQueue}>
-                <SelectTrigger className="w-48">
+                <SelectTrigger className="w-full sm:w-48">
                   <SelectValue placeholder="Filter by queue" />
                 </SelectTrigger>
                 <SelectContent>
@@ -232,7 +232,7 @@ export function QueueSourcingPage({ onBack, onViewCandidate, onMessageCandidate 
               </Select>
 
               <Select value={filterLocation} onValueChange={setFilterLocation}>
-                <SelectTrigger className="w-48">
+                <SelectTrigger className="w-full sm:w-48">
                   <SelectValue placeholder="Filter by location" />
                 </SelectTrigger>
                 <SelectContent>
@@ -243,7 +243,7 @@ export function QueueSourcingPage({ onBack, onViewCandidate, onMessageCandidate 
                 </SelectContent>
               </Select>
             </div>
-            
+
             <div className="text-sm text-gray-600">
               {filteredQueues.length} queue{filteredQueues.length === 1 ? '' : 's'} found
             </div>
@@ -263,14 +263,14 @@ export function QueueSourcingPage({ onBack, onViewCandidate, onMessageCandidate 
                 const IconComponent = queue.icon;
                 return (
                   <Card key={queue.id} className="p-6 hover:shadow-xl hover:scale-[1.02] transition-all duration-300">
-                    <div className="flex items-start justify-between">
-                      <div className="flex gap-4 flex-1">
-                        <div className={`w-16 h-16 bg-gradient-to-r ${queue.color} rounded-xl flex items-center justify-center shadow-lg`}>
+                    <div className="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-4">
+                      <div className="flex flex-col sm:flex-row gap-4 flex-1 min-w-0">
+                        <div className={`w-16 h-16 bg-gradient-to-r ${queue.color} rounded-xl flex items-center justify-center shadow-lg shrink-0`}>
                           <IconComponent className="w-8 h-8 text-white" />
                         </div>
-                        
-                        <div className="flex-1">
-                          <div className="flex items-center gap-3 mb-2">
+
+                        <div className="flex-1 min-w-0">
+                          <div className="flex flex-wrap items-center gap-3 mb-2">
                             <h3 className="text-xl text-gray-900">{queue.name}</h3>
                             <Badge variant="secondary" className="bg-green-100 text-green-800">
                               {queue.activeCandidates} active
@@ -280,10 +280,10 @@ export function QueueSourcingPage({ onBack, onViewCandidate, onMessageCandidate 
                               <span className="text-sm text-green-600 font-medium">+{queue.growthRate}%</span>
                             </div>
                           </div>
-                          
+
                           <p className="text-gray-600 mb-4">{queue.description}</p>
-                          
-                          <div className="grid md:grid-cols-3 gap-6 mb-4">
+
+                          <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 mb-4">
                             <div>
                               <div className="text-2xl text-gray-900 mb-1">
                                 {queue.totalCandidates.toLocaleString()}
@@ -312,8 +312,8 @@ export function QueueSourcingPage({ onBack, onViewCandidate, onMessageCandidate 
                             <div>
                               <div className="text-sm text-gray-600 mb-2">Top Skills:</div>
                               <div className="flex flex-wrap gap-2">
-                                {queue.topSkills.map((skill, idx) => (
-                                  <Badge key={idx} variant="secondary" className="text-xs">
+                                {queue.topSkills.map((skill) => (
+                                  <Badge key={skill} variant="secondary" className="text-xs">
                                     {skill}
                                   </Badge>
                                 ))}
@@ -323,8 +323,8 @@ export function QueueSourcingPage({ onBack, onViewCandidate, onMessageCandidate 
                             <div>
                               <div className="text-sm text-gray-600 mb-2">Locations:</div>
                               <div className="flex flex-wrap gap-2">
-                                {queue.locations.slice(0, 4).map((location, idx) => (
-                                  <Badge key={idx} variant="outline" className="text-xs">
+                                {queue.locations.slice(0, 4).map((location) => (
+                                  <Badge key={location} variant="outline" className="text-xs">
                                     <MapPin className="w-3 h-3 mr-1" />
                                     {location}
                                   </Badge>
@@ -335,7 +335,7 @@ export function QueueSourcingPage({ onBack, onViewCandidate, onMessageCandidate 
                         </div>
                       </div>
                       
-                      <div className="flex flex-col gap-2 ml-4">
+                      <div className="flex flex-col sm:flex-row lg:flex-col gap-2 self-start lg:self-auto">
                         <Button
                           size="sm"
                           className="bg-[#ff6b35] hover:bg-[#e55a2b] text-white"
@@ -350,14 +350,14 @@ export function QueueSourcingPage({ onBack, onViewCandidate, onMessageCandidate 
                         </Button>
                       </div>
                     </div>
-                    
+
                     <div className="mt-4 pt-4 border-t border-gray-100">
-                      <div className="flex items-center justify-between text-sm text-gray-500">
+                      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 text-sm text-gray-500">
                         <div className="flex items-center gap-2">
                           <Activity className="w-4 h-4" />
                           Last updated {queue.lastUpdated}
                         </div>
-                        <div className="flex items-center gap-4">
+                        <div className="flex flex-wrap items-center gap-4">
                           <div className="flex items-center gap-1">
                             <div className="w-2 h-2 bg-green-500 rounded-full"></div>
                             {queue.activeCandidates} active
@@ -390,16 +390,16 @@ export function QueueSourcingPage({ onBack, onViewCandidate, onMessageCandidate 
                   <div className="space-y-4">
                     {queue.topCandidates.map((candidate) => (
                       <div key={candidate.id} className="p-4 bg-gradient-to-r from-gray-50 to-orange-50 rounded-xl border border-orange-100">
-                        <div className="flex items-center justify-between">
-                          <div className="flex items-center gap-4">
-                            <Avatar className="w-12 h-12">
+                        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                          <div className="flex items-start gap-4 min-w-0">
+                            <Avatar className="w-12 h-12 shrink-0">
                               <AvatarFallback className="bg-[#ff6b35] text-white">
                                 {candidate.avatar}
                               </AvatarFallback>
                             </Avatar>
-                            
-                            <div>
-                              <div className="flex items-center gap-3 mb-1">
+
+                            <div className="min-w-0">
+                              <div className="flex flex-wrap items-center gap-3 mb-1">
                                 <h4 className="text-gray-900">{candidate.name}</h4>
                                 <div className="flex items-center gap-1">
                                   <Star className="w-4 h-4 text-yellow-400 fill-current" />
@@ -409,8 +409,8 @@ export function QueueSourcingPage({ onBack, onViewCandidate, onMessageCandidate 
                                   {candidate.match}% match
                                 </Badge>
                               </div>
-                              
-                              <div className="flex items-center gap-4 text-sm text-gray-600">
+
+                              <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-gray-600">
                                 <div className="flex items-center gap-1">
                                   <Briefcase className="w-4 h-4" />
                                   {candidate.experience}
@@ -424,34 +424,34 @@ export function QueueSourcingPage({ onBack, onViewCandidate, onMessageCandidate 
                                   Active {candidate.lastActive}
                                 </div>
                               </div>
-                              
-                              <div className="flex gap-2 mt-2">
-                                {candidate.skills.slice(0, 3).map((skill, idx) => (
-                                  <Badge key={idx} variant="secondary" className="text-xs">
+
+                              <div className="flex flex-wrap gap-2 mt-2">
+                                {candidate.skills.slice(0, 3).map((skill) => (
+                                  <Badge key={skill} variant="secondary" className="text-xs">
                                     {skill}
                                   </Badge>
                                 ))}
                               </div>
                             </div>
                           </div>
-                          
-                          <div className="flex items-center gap-3">
-                            <div className="text-right mr-4">
+
+                          <div className="flex sm:flex-col items-center sm:items-end gap-3 self-start sm:self-auto">
+                            <div className="text-right">
                               <div className="text-lg text-gray-900">{candidate.salary}</div>
                               <div className="text-xs text-gray-500">Expected</div>
                             </div>
-                            
+
                             <div className="flex flex-col gap-2">
-                              <Button 
-                                size="sm" 
+                              <Button
+                                size="sm"
                                 onClick={() => onViewCandidate?.(candidate)}
                                 className="bg-[#ff6b35] hover:bg-[#e55a2b] text-white"
                               >
                                 <Eye className="w-3 h-3 mr-1" />
                                 View
                               </Button>
-                              <Button 
-                                size="sm" 
+                              <Button
+                                size="sm"
                                 variant="outline"
                                 onClick={() => onMessageCandidate?.(candidate)}
                               >

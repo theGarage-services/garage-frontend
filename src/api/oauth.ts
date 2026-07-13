@@ -1,4 +1,5 @@
 import apiClient from './client';
+import type { MFAMethod } from './mfa';
 
 export interface OAuthUser {
   id: number;
@@ -6,28 +7,19 @@ export interface OAuthUser {
   email: string;
   first_name: string;
   last_name: string;
-  role: string; // Add role field
+  role: string;
+  tier?: string;
+  profile_complete?: boolean;
 }
 
 export interface OAuthResponse {
   message: string;
-  user: OAuthUser;
-  tokens: {
-    refresh: string;
-    access: string;
-  };
-  created: boolean;
-}
-
-// Helper to get search params that works with both BrowserRouter and HashRouter
-function getSearchParams(): URLSearchParams {
-  // For HashRouter, query params are in the hash fragment (e.g. #/path?foo=bar)
-  const hash = globalThis.location.hash;
-  if (hash.includes('?')) {
-    return new URLSearchParams(hash.split('?')[1]);
-  }
-  // Fallback for BrowserRouter
-  return new URLSearchParams(globalThis.location.search);
+  user?: OAuthUser;
+  created?: boolean;
+  mfa_required?: boolean;
+  mfa_token?: string;
+  preferred_method?: MFAMethod;
+  available_methods?: MFAMethod[];
 }
 
 export class OAuthService {
@@ -81,9 +73,10 @@ export class OAuthService {
         // Store state and role in session storage for verification
         sessionStorage.setItem('oauth_state', data.state);
         if (role) {
+          sessionStorage.removeItem('oauth_role');
           sessionStorage.setItem('oauth_role', role);
         }
-        
+
         // Redirect to Google authorization URL
         globalThis.location.href = data.authorization_url;
       })
@@ -94,22 +87,22 @@ export class OAuthService {
 
   // Handle OAuth callback from redirect
   async handleOAuthRedirect(role?: string) {
-
+    
     // Get role from parameter or session storage
-    const urlRole = getSearchParams().get('role');
+    const urlRole = new URLSearchParams(globalThis.location.search).get('role');
     const sessionRole = sessionStorage.getItem('oauth_role');
-
-
-
+    
+    
+    
     // Use the first available role source, no default fallback
     const finalRole = role || urlRole || sessionRole;
-
-
+    
+    
     if (!finalRole) {
       throw new Error('No role found for OAuth authentication');
     }
-
-    const urlParams = getSearchParams();
+    
+    const urlParams = new URLSearchParams(globalThis.location.search);
     const code = urlParams.get('code');
     const state = urlParams.get('state');
     const error = urlParams.get('error');
@@ -132,22 +125,12 @@ export class OAuthService {
 
     const oauthResponse = await this.handleOAuthCallback(code, state, finalRole);
 
-    // Store tokens in apiClient
-    apiClient.setTokens(oauthResponse.tokens.access, oauthResponse.tokens.refresh);
-
-    // Clear OAuth state
+    // Backend sets tokens as httpOnly cookies; just clear local OAuth state.
     sessionStorage.removeItem('oauth_state');
     sessionStorage.removeItem('oauth_role');
 
-    // Clean up URL (hash-aware for HashRouter compatibility)
-    const hash = globalThis.location.hash;
-    if (hash.includes('?')) {
-      // Strip query params from hash while preserving the route
-      const cleanHash = hash.split('?')[0];
-      globalThis.location.hash = cleanHash;
-    } else {
-      globalThis.history.replaceState({}, document.title, globalThis.location.pathname);
-    }
+    // Clean up URL
+    globalThis.history.replaceState({}, document.title, globalThis.location.pathname);
 
     return oauthResponse;
   }

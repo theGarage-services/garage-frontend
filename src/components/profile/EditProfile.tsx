@@ -342,10 +342,10 @@ export function EditProfile({ onClose, onSave, initialData }: Readonly<EditProfi
 
   return (
     <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-      <Card className="w-full max-w-4xl max-h-[90vh] overflow-hidden bg-white shadow-2xl">
+      <Card className="w-full max-w-[95vw] sm:max-w-4xl max-h-[90vh] overflow-hidden bg-white shadow-2xl">
         {/* Header */}
         <div className="p-6 border-b border-gray-200 bg-gradient-to-r from-gray-50 to-orange-50">
-          <div className="flex items-center justify-between">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
             <div>
               <h2 className="text-2xl font-medium text-gray-900">Edit Profile</h2>
               <p className="text-gray-600 mt-1">Update your professional information and preferences</p>
@@ -354,16 +354,16 @@ export function EditProfile({ onClose, onSave, initialData }: Readonly<EditProfi
               variant="ghost"
               size="sm"
               onClick={onClose}
-              className="rounded-full w-10 h-10 p-0"
+              className="rounded-full w-10 h-10 p-0 self-start sm:self-auto"
             >
               <X className="w-5 h-5" />
             </Button>
           </div>
         </div>
 
-        <div className="flex">
+        <div className="flex flex-col md:flex-row">
           {/* Sidebar Navigation */}
-          <div className="w-64 border-r border-gray-200 bg-gray-50/50">
+          <div className="w-full md:w-64 border-b md:border-b-0 md:border-r border-gray-200 bg-gray-50/50 max-h-[30vh] md:max-h-none overflow-y-auto md:overflow-visible">
             <div className="p-4 space-y-2">
               {tabs.map((tab) => {
                 const IconComponent = tab.icon;
@@ -386,7 +386,7 @@ export function EditProfile({ onClose, onSave, initialData }: Readonly<EditProfi
           </div>
 
           {/* Main Content */}
-          <div className="flex-1 overflow-y-auto max-h-[70vh]">
+          <div className="flex-1 overflow-y-auto max-h-[50vh] md:max-h-[70vh]">
             <div className="p-6">
               {/* Personal Information Tab */}
               {activeTab === 'personal' && (
@@ -395,7 +395,7 @@ export function EditProfile({ onClose, onSave, initialData }: Readonly<EditProfi
                     <h3 className="text-lg font-medium text-gray-900 mb-4">Personal Information</h3>
                     
                     {/* Profile Picture */}
-                    <div className="flex items-center gap-6 mb-6 p-4 bg-gradient-to-r from-orange-50 to-orange-100/50 rounded-xl border border-orange-200">
+                    <div className="flex flex-col sm:flex-row items-start sm:items-center gap-6 mb-6 p-4 bg-gradient-to-r from-orange-50 to-orange-100/50 rounded-xl border border-orange-200">
                       <div className="relative">
                         <Avatar className="w-24 h-24">
                           <AvatarImage src={formData.profileImage} />
@@ -435,7 +435,7 @@ export function EditProfile({ onClose, onSave, initialData }: Readonly<EditProfi
                   </div>
 
                   {/* Basic Info */}
-                  <div className="grid grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
                       <Label htmlFor="firstName">First Name *</Label>
                       <Input
@@ -652,7 +652,7 @@ export function EditProfile({ onClose, onSave, initialData }: Readonly<EditProfi
                         />
                       </div>
 
-                      <div className="grid grid-cols-2 gap-4">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                         {/* NOTE: Availability removed - not stored in backend */}
                         <div>
                           <Label htmlFor="workType">Preferred Work Type</Label>
@@ -674,7 +674,7 @@ export function EditProfile({ onClose, onSave, initialData }: Readonly<EditProfi
 
                   {/* Work Experience */}
                   <div>
-                    <div className="flex items-center justify-between mb-4">
+                    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4">
                       <h4 className="font-medium text-gray-900">Work Experience</h4>
                       <Button
                         size="sm"
@@ -690,7 +690,7 @@ export function EditProfile({ onClose, onSave, initialData }: Readonly<EditProfi
                     <div className="space-y-4">
                       {formData.workHistory.map((work: any) => (
                         <div key={work.id} className="p-4 bg-gray-50 rounded-lg border">
-                          <div className="flex items-center justify-between mb-3">
+                          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 mb-3">
                             <Briefcase className="w-5 h-5 text-[#ff6b35]" />
                             <Button
                               size="sm"
@@ -701,7 +701,7 @@ export function EditProfile({ onClose, onSave, initialData }: Readonly<EditProfi
                               <Trash2 className="w-4 h-4" />
                             </Button>
                           </div>
-                          <div className="grid grid-cols-2 gap-3">
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                             <Input
                               placeholder="Job Title/Role"
                               value={work.role || work.position || ''}
@@ -744,7 +744,7 @@ export function EditProfile({ onClose, onSave, initialData }: Readonly<EditProfi
                               placeholder="Responsibilities/Description"
                               value={work.responsibilities || work.description || ''}
                               onChange={(e) => updateWorkHistory(work.id, 'responsibilities', e.target.value)}
-                              className="col-span-2 w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#ff6b35] focus:border-transparent min-h-[80px] resize-none"
+                              className="md:col-span-2 w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#ff6b35] focus:border-transparent min-h-[80px] resize-none"
                               rows={3}
                             />
                           </div>
@@ -755,7 +755,7 @@ export function EditProfile({ onClose, onSave, initialData }: Readonly<EditProfi
 
                   {/* Education */}
                   <div>
-                    <div className="flex items-center justify-between mb-4">
+                    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4">
                       <h4 className="font-medium text-gray-900">Education</h4>
                       <Button
                         size="sm"
@@ -771,7 +771,7 @@ export function EditProfile({ onClose, onSave, initialData }: Readonly<EditProfi
                     <div className="space-y-4">
                       {formData.education.map((edu: Education) => (
                         <div key={edu.id} className="p-4 bg-gray-50 rounded-lg border">
-                          <div className="flex items-center justify-between mb-3">
+                          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 mb-3">
                             <GraduationCap className="w-5 h-5 text-[#ff6b35]" />
                             <Button
                               size="sm"
@@ -782,7 +782,7 @@ export function EditProfile({ onClose, onSave, initialData }: Readonly<EditProfi
                               <Trash2 className="w-4 h-4" />
                             </Button>
                           </div>
-                          <div className="grid grid-cols-2 gap-3">
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                             <Input
                               placeholder="Degree/Program"
                               value={edu.degree}
@@ -852,7 +852,7 @@ export function EditProfile({ onClose, onSave, initialData }: Readonly<EditProfi
                         </div>
                       </div>
                       
-                      <div className="flex gap-3 mb-4">
+                      <div className="flex flex-wrap gap-3 mb-4">
                         <Button
                           className="bg-gradient-to-r from-[#ff6b35] to-[#ff8c42] hover:from-[#e55a2b] hover:to-[#d4461f] text-white"
                           onClick={() => console.log('Resume editor not available')}
@@ -957,7 +957,7 @@ export function EditProfile({ onClose, onSave, initialData }: Readonly<EditProfi
                       <h4 className="font-medium text-gray-900 mb-4">Skills</h4>
                       
                       <div className="mb-4">
-                        <div className="flex gap-2">
+                        <div className="flex flex-col sm:flex-row gap-2">
                           <Input
                             placeholder="Add skills (single or comma-separated: Python, SQL, React)"
                             onKeyDown={(e) => {
@@ -1059,12 +1059,12 @@ export function EditProfile({ onClose, onSave, initialData }: Readonly<EditProfi
 
         {/* Footer */}
         <div className="p-6 border-t border-gray-200 bg-gray-50/50">
-          <div className="flex items-center justify-between">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
             <div className="flex items-center gap-2 text-sm text-gray-600">
               <CheckCircle className="w-4 h-4 text-green-500" />
               <span>All changes are saved automatically</span>
             </div>
-            <div className="flex gap-3">
+            <div className="flex flex-wrap gap-3">
               <Button variant="outline" onClick={onClose}>
                 Cancel
               </Button>

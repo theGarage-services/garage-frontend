@@ -190,12 +190,12 @@ export function MyTeam({ onNavigate, onViewRecruiter, onLogout, user }: Readonly
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Page Header */}
         <div className="mb-8">
-          <div className="flex items-center justify-between">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
             <div>
               <h1 className="text-3xl font-medium text-gray-900 mb-2">Team Management</h1>
               <p className="text-gray-600">Manage your recruiting team and monitor performance</p>
             </div>
-            <div className="flex items-center gap-3">
+            <div className="flex flex-wrap items-center gap-3">
               <Button variant="outline" className="border-[#ff6b35] text-[#ff6b35] hover:bg-[#ff6b35] hover:text-white">
                 <Mail className="w-4 h-4 mr-2" />
                 Invite Member
@@ -214,12 +214,12 @@ export function MyTeam({ onNavigate, onViewRecruiter, onLogout, user }: Readonly
             const IconComponent = stat.icon;
             const gradients = [
               'from-blue-500 to-blue-600',
-              'from-purple-500 to-purple-600', 
+              'from-purple-500 to-purple-600',
               'from-green-500 to-green-600',
               'from-orange-500 to-orange-600'
             ];
             return (
-              <Card key={index} className="p-6 hover:shadow-xl hover:scale-105 transition-all duration-300 bg-gradient-to-br from-white to-gray-50 border-0 shadow-md">
+              <Card key={stat.title} className="p-6 hover:shadow-xl hover:scale-105 transition-all duration-300 bg-gradient-to-br from-white to-gray-50 border-0 shadow-md">
                 <div className="flex items-center justify-between mb-4">
                   <div className={`w-12 h-12 bg-gradient-to-r ${gradients[index]} rounded-xl flex items-center justify-center shadow-lg`}>
                     <IconComponent className="w-6 h-6 text-white" />
@@ -280,7 +280,7 @@ export function MyTeam({ onNavigate, onViewRecruiter, onLogout, user }: Readonly
           {filteredMembers.map((member) => (
             <Card key={member.id} className="p-6 hover:shadow-xl hover:scale-105 transition-all duration-300 cursor-pointer" 
                   onClick={() => onViewRecruiter(member)}>
-              <div className="flex items-start justify-between mb-4">
+              <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3 mb-4">
                 <div className="flex items-center gap-3">
                   <Avatar className="w-12 h-12">
                     <AvatarFallback className="bg-[#ff6b35] text-white">
@@ -292,9 +292,9 @@ export function MyTeam({ onNavigate, onViewRecruiter, onLogout, user }: Readonly
                     <p className="text-sm text-gray-600">{member.department}</p>
                   </div>
                 </div>
-                <div className="flex items-center gap-2">
-                  <Badge 
-                    variant={member.status === 'active' ? 'default' : 'secondary'} 
+                <div className="flex items-center gap-2 self-start sm:self-auto">
+                  <Badge
+                    variant={member.status === 'active' ? 'default' : 'secondary'}
                     className={member.status === 'active' ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-600'}
                   >
                     {member.status === 'active' ? (
@@ -310,7 +310,7 @@ export function MyTeam({ onNavigate, onViewRecruiter, onLogout, user }: Readonly
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-4 mb-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
                 <div className="text-center p-3 bg-gradient-to-r from-blue-50 to-blue-100 rounded-lg">
                   <div className="text-lg font-semibold text-blue-700">{member.stats.jobPostings}</div>
                   <div className="text-xs text-blue-600">Job Postings</div>
@@ -321,7 +321,7 @@ export function MyTeam({ onNavigate, onViewRecruiter, onLogout, user }: Readonly
                 </div>
               </div>
 
-              <div className="flex items-center justify-between text-sm text-gray-600 mb-3">
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 text-sm text-gray-600 mb-3">
                 <div className="flex items-center gap-1">
                   <Star className="w-4 h-4 text-yellow-500" />
                   <span>{member.stats.successRate}% success</span>
@@ -333,7 +333,7 @@ export function MyTeam({ onNavigate, onViewRecruiter, onLogout, user }: Readonly
               </div>
 
               <div className="border-t pt-3">
-                <div className="flex items-center justify-between text-xs text-gray-500">
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1 text-xs text-gray-500">
                   <span>This month: {member.currentMonth.interviews} interviews</span>
                   <span>Joined {new Date(member.joinDate).toLocaleDateString()}</span>
                 </div>

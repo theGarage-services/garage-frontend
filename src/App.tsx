@@ -1,5 +1,5 @@
 import React, { useState, useCallback, useEffect } from 'react';
-import { Routes, Route, useNavigate, Navigate, useSearchParams } from 'react-router-dom';
+import { Routes, Route, useNavigate, Navigate, useSearchParams, useParams } from 'react-router-dom';
 import '../styles/globals.css';
 
 // Essential components for authentication flow
@@ -7,6 +7,8 @@ import { LandingPage } from './components/landing/LandingPage';
 import { About } from './components/landing/About';
 import { Pricing } from './components/landing/Pricing';
 import { LegalPage } from './components/landing/LegalPage';
+import { Jobseeker } from './components/landing/Jobseeker';
+import { Recruiter } from './components/landing/Recruiter';
 import { RoleSelector } from './components/auth/RoleSelector';
 import { Login } from './components/auth/Login';
 import { SignUp } from './components/auth/SignUp';
@@ -21,6 +23,8 @@ import { ThemeProvider } from './theme/ThemeProvider';
 
 // Enterprise system components
 import { CompanySetupWizard } from './components/company/CompanySetupWizard';
+import { CompanyEditPage } from './components/company/CompanyEdit';
+import { CompanyProfile } from './components/company/CompanyProfile';
 import { UserCreationWizard } from './components/team/UserCreationWizard';
 import { TeamManagementDashboard } from './components/dashboard/TeamManagementDashboard';
 import { ApprovalQueue } from './components/queue/ApprovalQueue';
@@ -32,8 +36,11 @@ import { IndividualMemberDashboard } from './components/dashboard/IndividualMemb
 import { Homepage } from './components/landing/Homepage';
 import { JobDetailsPage } from './components/jobs/JobDetailsPage';
 import { JobTracker } from './components/jobs/JobTracker';
+import { JobNotesList } from './components/jobs/JobNotesList';
 import { Profile } from './components/profile/Profile';
-import { AccountSettings } from './components/profile/AccountSettings';
+import { CandidateRecruiterProfilePage } from './components/profile/CandidateRecruiterProfilePage';
+import { CandidateProfileView } from './components/profile/CandidateProfileView';
+import { AccountSettings } from './components/common/AccountSettings';
 import { Notifications } from './components/notifications/Notifications';
 import { Support } from './components/common/Support';
 import { Contact } from './components/common/Contact';
@@ -47,11 +54,13 @@ import { InterviewCalendar } from './components/calendar/InterviewCalendar';
 import { RecruiterChatSystem } from './components/chat/RecruiterChatSystem';
 import { JobSeekerChatSystem } from './components/chat/JobSeekerChatSystem';
 import { RecruiterStatsPage } from './components/dashboard/RecruiterStatsPage';
+import { MetricsDashboard } from './components/dashboard/MetricsDashboard';
 import { RecruiterProfile } from './components/recruiter/RecruiterProfile';
 import { JobPostingPage } from './components/jobs/JobPostingPage';
 
 // Queue management components
 import { MyQueues } from './components/queue/MyQueues';
+import { QueueSelector } from './components/queue/QueueSelector';
 import { QueueDetailPage } from './components/queue/QueueDetailPage';
 import { QueueSourcingPage } from './components/queue/QueueSourcingPage';
 import { TrackedJob } from '@/types';
@@ -94,6 +103,29 @@ const RoleBasedRoute = ({ children, isAuthenticated, user, userRole, allowedRole
   return <>{children}</>;
 };
 
+// Wrapper that reads company ID from URL params and renders CompanyProfile
+const CompanyProfileRoute = ({ user, onBack, onNavigate }: {
+  user: any;
+  onBack: () => void;
+  onNavigate: (view: string) => void;
+}) => {
+  const { id } = useParams<{ id: string }>();
+  return (
+    <ThemeProvider>
+      <div className="min-h-screen bg-background">
+        <ErrorBoundary>
+          <CompanyProfile
+            institution={{ id }}
+            user={user}
+            onBack={onBack}
+            onNavigate={onNavigate}
+          />
+        </ErrorBoundary>
+      </div>
+    </ThemeProvider>
+  );
+};
+
 // Helper function to create recruiter navigation handler
 const createRecruiterNavigate = (navigate: (path: string) => void) => {
   return (view: string) => {
@@ -109,11 +141,15 @@ const createRecruiterNavigate = (navigate: (path: string) => void) => {
       'interview-calendar': '/calendar',
       'job-posting': '/recruiter/jobs/new',
       'recruiter-messages': '/chat',
+      'messages': '/chat',
       'stats': '/stats',
-      'profile': '/recruiter/profile',
+      'metrics-dashboard': '/metrics-dashboard',
+      'recruiter-profile': '/recruiter/profile',
       'settings': '/settings',
       'notifications': '/notifications',
-      'support': '/support'
+      'support': '/support',
+      'company-edit': '/company/edit',
+      'queue-sourcing': '/queues/sourcing'
     };
     navigate(routeMap[view] || `/${view}`);
 
@@ -127,10 +163,10 @@ const AutoRoleSelect = ({ onRoleSelect, onBack, onSetIntent }: { onRoleSelect: (
   const intent = searchParams.get('intent') as 'login' | 'signup' | null;
 
   useEffect(() => {
+    if (intent === 'login' || intent === 'signup') {
+      onSetIntent(intent);
+    }
     if (role === 'job-seeker' || role === 'recruiter' || role === 'admin') {
-      if (intent === 'login' || intent === 'signup') {
-        onSetIntent(intent);
-      }
       onRoleSelect(role);
     }
   }, [role, intent, onRoleSelect, onSetIntent]);
@@ -154,6 +190,10 @@ const useAuthentication = () => {
   const [showResumeUpload, setShowResumeUpload] = useState(false);
   const [newUserData, setNewUserData] = useState<any>(null);
 
+  // OAuth signup state
+  const [isOAuthUser, setIsOAuthUser] = useState(false);
+  const [oauthUserData, setOauthUserData] = useState<any>(null);
+
   const createDefaultUser = useCallback((userData: any, role: 'job-seeker' | 'recruiter') => {
     // Handle both camelCase (frontend) and snake_case (API) field names
     const firstName = userData.firstName || userData.first_name || userData.name?.split(' ')[0] || '';
@@ -170,7 +210,7 @@ const useAuthentication = () => {
       role: userData.role || role,
       tier: userData.tier || 'basic',
       avatar: userData.avatar || null,
-      isPremium: userData.isPremium || false,
+      isPremium: userData.isPremium || userData.tier === 'premium' || false,
       ...(role === 'job-seeker' && {
         preferred_locations: userData.preferred_locations || ['No Preference'],
         preferred_salary_ranges: userData.preferred_salary_ranges || ['No Preference'],
@@ -199,6 +239,8 @@ const useAuthentication = () => {
     setUser(user);
     setUserRole(role);
     setIsAuthenticated(true);
+    setIsOAuthUser(false);
+    setOauthUserData(null);
     navigate('/dashboard');
   }, [createDefaultUser, navigate]);
 
@@ -208,7 +250,9 @@ const useAuthentication = () => {
     setIsAuthenticated(false);
     setShowResumeUpload(false);
     setNewUserData(null);
-    navigate('/');
+    setIsOAuthUser(false);
+    setOauthUserData(null);
+    navigate('/home');
   }, [navigate]);
 
   const handleResumeUploadComplete = useCallback((resumeData: any) => {
@@ -255,11 +299,15 @@ const useAuthentication = () => {
     authIntent,
     showResumeUpload,
     newUserData,
+    isOAuthUser,
+    oauthUserData,
     setAuthView,
     setAuthIntent,
     setUserRole,
     setUser,
     setIsAuthenticated,
+    setIsOAuthUser,
+    setOauthUserData,
     handleLogin,
     handleSignUp,
     handleLogout,
@@ -317,6 +365,7 @@ const renderPublicRoutes = ({ auth, navigate }: { auth: any; navigate: any }) =>
         navigate('/auth/role-select');
       }}
       onViewAbout={() => navigate('/about')}
+      isAuthenticated={auth.isAuthenticated}
       onBackToApp={auth.isAuthenticated ? () => navigate('/dashboard') : undefined}
     />} />
     
@@ -331,8 +380,25 @@ const renderPublicRoutes = ({ auth, navigate }: { auth: any; navigate: any }) =>
         auth.setAuthView('role-select');
         navigate('/auth/role-select');
       }}
+      isAuthenticated={auth.isAuthenticated}
       onBackToApp={auth.isAuthenticated ? () => navigate('/dashboard') : undefined} 
       onNavigateToLanding={() => navigate('/home')} />}
+    />
+    <Route path="/Jobseeker" element={<Jobseeker
+      onGetStarted={() => {
+        auth.setAuthIntent('signup');
+        auth.setAuthView('role-select');
+        navigate('/auth/role-select');
+      }}
+      isAuthenticated={auth.isAuthenticated} />}
+    />
+    <Route path="/Recruiter" element={<Recruiter
+      onGetStarted={() => {
+        auth.setAuthIntent('signup');
+        auth.setAuthView('role-select');
+        navigate('/auth/role-select');
+      }}
+      isAuthenticated={auth.isAuthenticated} />}
     />
     <Route path="/pricing" element={<Pricing />} />
     <Route path="/legal" element={<LegalPage />} />
@@ -381,6 +447,8 @@ const renderAuthRoutes = ({ auth, navigate }: { auth: any; navigate: any }) => (
 
     <Route path="/auth/signup" element={auth.userRole ? <SignUp
       userRole={auth.userRole}
+      isOAuthUser={auth.isOAuthUser}
+      oauthUserData={auth.oauthUserData}
       onSignUp={(userData, role) => {
         auth.handleSignUp(userData, role);
       }}
@@ -396,17 +464,19 @@ const renderAuthRoutes = ({ auth, navigate }: { auth: any; navigate: any }) => (
       onBack={() => navigate('/auth/login')}
     />} />
 
-    <Route path="/auth/oauth-callback" element={<OAuthCallback 
+    <Route path="/auth/oauth-callback" element={<OAuthCallback
       onOAuthSuccess={(userData) => {
-        // Handle OAuth success - redirect to appropriate flow
+        const role = userData.role as 'job-seeker' | 'recruiter';
+        // Log the user in so the SignUp route has an authenticated user/role
+        auth.handleLogin(userData, role);
+
         if (userData.created && !userData.profileComplete) {
-          // New user - go to profile completion
-          auth.setNewUserData(userData);
-          auth.setShowResumeUpload(true);
-          navigate('/resume-upload');
+          // New OAuth user - continue registration in the SignUp flow
+          auth.setIsOAuthUser(true);
+          auth.setOauthUserData(userData);
+          navigate('/auth/signup');
         } else {
           // Existing user - go to dashboard
-          auth.handleSignUp(userData, userData.role);
           navigate('/dashboard');
         }
       }}
@@ -417,7 +487,7 @@ const renderAuthRoutes = ({ auth, navigate }: { auth: any; navigate: any }) => (
       role={sessionStorage.getItem('oauth_role') || 'job-seeker'}
     />} />
 
-    <Route path="/resume-upload" element={auth.showResumeUpload && auth.newUserData ? <ResumeUploadFlow 
+    <Route path="/resume-upload" element={auth.showResumeUpload && auth.newUserData ? <ResumeUploadFlow
       onComplete={auth.handleResumeUploadComplete}
       onSkip={auth.handleResumeUploadSkip}
       userEmail={auth.newUserData.email}
@@ -558,7 +628,10 @@ const DashboardContent = ({ auth, jobTracking, navigate }: {
             onNavigate={(view) => {
               const routeMap: Record<string, string> = {
                 'homepage': '/dashboard',
+                'queues': '/queues',
+                'queues/selector': '/queues/selector',
                 'job-tracker': '/jobs/tracker',
+                'jobs/notes': '/jobs/notes',
                 'profile': '/profile',
                 'notifications': '/notifications',
                 'settings': '/settings',
@@ -574,6 +647,7 @@ const DashboardContent = ({ auth, jobTracking, navigate }: {
             trackedJobs={jobTracking.trackedJobs}
             autoMatchEnabled={jobTracking.autoApplyEnabled}
             onToggleautoMatch={jobTracking.handleToggleAutoApply}
+            onNavigateToJobDetails={(job) => navigate(`/jobs/${job.id}`, { state: { job } })}
           />
         </ErrorBoundary>
       </div>
@@ -604,6 +678,7 @@ const renderProtectedRoutes = ({ auth, jobTracking, navigate, handleBack }: {
                 onNavigate={(view) => navigate(`/${view}`)}
                 onLogout={auth.handleLogout}
                 onBack={handleBack}
+                onJobApplication={jobTracking.handleJobApplication}
               />
             </ErrorBoundary>
           </div>
@@ -629,6 +704,22 @@ const renderProtectedRoutes = ({ auth, jobTracking, navigate, handleBack }: {
       </ProtectedRoute>
     } />
 
+    <Route path="/jobs/notes" element={
+      <ProtectedRoute isAuthenticated={auth.isAuthenticated} userRole={auth.userRole}>
+        <ThemeProvider>
+          <div className="min-h-screen bg-background">
+            <ErrorBoundary>
+              <JobNotesList
+                user={auth.user}
+                onNavigate={(view) => navigate(`/${view}`)}
+                onLogout={auth.handleLogout}
+              />
+            </ErrorBoundary>
+          </div>
+        </ThemeProvider>
+      </ProtectedRoute>
+    } />
+
     <Route path="/profile" element={
       <ProtectedRoute isAuthenticated={auth.isAuthenticated} userRole={auth.userRole}>
         <ThemeProvider>
@@ -642,6 +733,77 @@ const renderProtectedRoutes = ({ auth, jobTracking, navigate, handleBack }: {
             </ErrorBoundary>
           </div>
         </ThemeProvider>
+      </ProtectedRoute>
+    } />
+
+    <Route path="/candidate/:id" element={
+      <ProtectedRoute isAuthenticated={auth.isAuthenticated} userRole={auth.userRole}>
+        <ThemeProvider>
+          <div className="min-h-screen bg-background">
+            <ErrorBoundary>
+              <CandidateProfileView user={auth.user} />
+            </ErrorBoundary>
+          </div>
+        </ThemeProvider>
+      </ProtectedRoute>
+    } />
+
+    <Route path="/queues" element={
+      <ProtectedRoute isAuthenticated={auth.isAuthenticated} userRole={auth.userRole}>
+        <ThemeProvider>
+          <div className="min-h-screen bg-background">
+            <ErrorBoundary>
+              <MyQueues
+                user={auth.user}
+                showAsPage={true}
+                onBack={() => navigate(-1)}
+                onNavigate={(view) => navigate(`/${view}`)}
+                onLogout={auth.handleLogout}
+              />
+            </ErrorBoundary>
+          </div>
+        </ThemeProvider>
+      </ProtectedRoute>
+    } />
+
+    <Route path="/queues/selector" element={
+      <ProtectedRoute isAuthenticated={auth.isAuthenticated} userRole={auth.userRole}>
+        <ThemeProvider>
+          <div className="min-h-screen bg-background">
+            <ErrorBoundary>
+              <QueueSelector
+                user={auth.user}
+                onNavigate={(view) => navigate(`/${view}`)}
+                onLogout={auth.handleLogout}
+              />
+            </ErrorBoundary>
+          </div>
+        </ThemeProvider>
+      </ProtectedRoute>
+    } />
+
+    <Route path="/recruiter-profile/:id" element={
+      <ProtectedRoute isAuthenticated={auth.isAuthenticated} userRole={auth.userRole}>
+        <ThemeProvider>
+          <div className="min-h-screen bg-background">
+            <ErrorBoundary>
+              <CandidateRecruiterProfilePage
+                onNavigate={(view) => navigate(`/${view}`)}
+                onBack={handleBack}
+              />
+            </ErrorBoundary>
+          </div>
+        </ThemeProvider>
+      </ProtectedRoute>
+    } />
+
+    <Route path="/company-profile/:id" element={
+      <ProtectedRoute isAuthenticated={auth.isAuthenticated} userRole={auth.userRole}>
+        <CompanyProfileRoute
+          user={auth.user}
+          onBack={handleBack}
+          onNavigate={(view) => navigate(`/${view}`)}
+        />
       </ProtectedRoute>
     } />
 
@@ -660,6 +822,18 @@ const renderProtectedRoutes = ({ auth, jobTracking, navigate, handleBack }: {
       </ProtectedRoute>
     } />
 
+    <Route path="/company/edit" element={
+      <ProtectedRoute isAuthenticated={auth.isAuthenticated} userRole={auth.userRole}>
+        <ThemeProvider>
+          <div className="min-h-screen bg-background">
+            <ErrorBoundary>
+              <CompanyEditPage onBack={handleBack} />
+            </ErrorBoundary>
+          </div>
+        </ThemeProvider>
+      </ProtectedRoute>
+    } />
+
     <Route path="/notifications" element={
       <ProtectedRoute isAuthenticated={auth.isAuthenticated} userRole={auth.userRole}>
         <ThemeProvider>
@@ -667,7 +841,48 @@ const renderProtectedRoutes = ({ auth, jobTracking, navigate, handleBack }: {
             <ErrorBoundary>
               <Notifications
                 user={auth.user}
-                onNavigate={(view: 'homepage' | 'job-tracker' | 'profile' | 'notifications' | 'settings' | 'support' | 'report-issue' | 'recruiter-chat') => navigate(`/${view}`)}
+                onNavigate={(view) => {
+                  if (view.startsWith('/')) {
+                    navigate(view);
+                    return;
+                  }
+                  const userRole = auth.user?.role;
+                  const isRecruiter = ['lead', 'manager', 'recruiter', 'hiring-manager'].includes(userRole);
+                  const isAdmin = userRole === 'admin' || auth.user?.isInstitutionAdmin;
+                  if (isRecruiter || isAdmin) {
+                    const routeMap: Record<string, string> = {
+                      'homepage': '/dashboard',
+                      'job-management': '/recruiter/jobs',
+                      'candidate-management': '/recruiter/candidates',
+                      'interview-calendar': '/calendar',
+                      'job-posting': '/recruiter/jobs/new',
+                      'recruiter-messages': '/chat',
+                      'messages': '/chat',
+                      'stats': '/stats',
+                      'profile': '/recruiter/profile',
+                      'settings': '/settings',
+                      'notifications': '/notifications',
+                      'support': '/support',
+                      'company-settings': '/company/settings',
+                      'company-edit': '/company/edit',
+                    };
+                    navigate(routeMap[view] || `/${view}`);
+                    return;
+                  }
+                  const routeMap: Record<string, string> = {
+                    'homepage': '/dashboard',
+                    'profile': '/profile',
+                    'messages': '/messages',
+                    'notifications': '/notifications',
+                    'settings': '/settings',
+                    'job-search': '/jobs',
+                    'saved-jobs': '/jobs/saved',
+                    'my-applications': '/jobs/applications',
+                    'resume': '/resume',
+                    'company-edit': '/company/edit',
+                  };
+                  navigate(routeMap[view] || `/${view}`);
+                }}
                 onLogout={auth.handleLogout}
               />
             </ErrorBoundary>
@@ -955,6 +1170,28 @@ const renderRecruiterRoutes = ({ auth, navigate, handleBack }: { auth: any; navi
         </ThemeProvider>
       </RoleBasedRoute>
     } />
+
+    <Route path="/metrics-dashboard" element={
+      <RoleBasedRoute
+        isAuthenticated={auth.isAuthenticated}
+        user={auth.user}
+        userRole={auth.userRole}
+        allowedRoles={['recruiter', 'lead', 'manager', 'hiring-manager']}
+      >
+        <ThemeProvider>
+          <div className="min-h-screen bg-background">
+            <ErrorBoundary>
+              <MetricsDashboard
+                user={auth.user}
+                onNavigate={createRecruiterNavigate(navigate)}
+                onBack={handleBack}
+                onLogout={auth.handleLogout}
+              />
+            </ErrorBoundary>
+          </div>
+        </ThemeProvider>
+      </RoleBasedRoute>
+    } />
   </>
 );
 
@@ -965,21 +1202,6 @@ const renderQueueRoutes = ({ auth, jobTracking, navigate, handleBack }: {
   handleBack: any;
 }) => (
   <>
-    <Route path="/queues" element={
-      <ProtectedRoute isAuthenticated={auth.isAuthenticated} userRole={auth.userRole}>
-        <ThemeProvider>
-          <div className="min-h-screen bg-background">
-            <ErrorBoundary>
-              <MyQueues
-                user={auth.user}
-                onQueueClick={(queue) => jobTracking.setSelectedQueue(queue)}
-              />
-            </ErrorBoundary>
-          </div>
-        </ThemeProvider>
-      </ProtectedRoute>
-    } />
-
     <Route path="/queues/:id" element={
       <ProtectedRoute isAuthenticated={auth.isAuthenticated} userRole={auth.userRole}>
         <ThemeProvider>
@@ -989,6 +1211,34 @@ const renderQueueRoutes = ({ auth, jobTracking, navigate, handleBack }: {
                 user={auth.user}
                 queue={jobTracking.selectedQueue}
                 onNavigate={createRecruiterNavigate(navigate)}
+                onLogout={auth.handleLogout}
+                onBack={handleBack}
+              />
+            </ErrorBoundary>
+          </div>
+        </ThemeProvider>
+      </ProtectedRoute>
+    } />
+
+    <Route path="/queues/:industry/:level" element={
+      <ProtectedRoute isAuthenticated={auth.isAuthenticated} userRole={auth.userRole}>
+        <ThemeProvider>
+          <div className="min-h-screen bg-background">
+            <ErrorBoundary>
+              <QueueDetailPage
+                user={auth.user}
+                onNavigate={(view: string) => {
+                  const routeMap: Record<string, string> = {
+                    'homepage': '/dashboard',
+                    'queues': '/queues',
+                    'queues/selector': '/queues/selector',
+                    'profile': '/profile',
+                    'notifications': '/notifications',
+                    'settings': '/settings',
+                    'support': '/support',
+                  };
+                  navigate(routeMap[view] || `/${view}`);
+                }}
                 onLogout={auth.handleLogout}
                 onBack={handleBack}
               />
@@ -1163,4 +1413,3 @@ function App() {
 }
 
 export default App;
-

@@ -17,8 +17,7 @@ export class DataSyncService {
       }
       
     } catch (error) {
-      
-      // If sync fails, initialize local test data
+      console.error('Error syncing with backend:', error);
       await TestDataService.initializeTestData();
     }
   }
@@ -36,6 +35,7 @@ export class DataSyncService {
       
       return hasJobs || hasQueues;
     } catch (error) {
+      console.error('Error verifying data consistency:', error);
       return false;
     }
   }
@@ -54,6 +54,7 @@ export class DataSyncService {
       await TestDataService.initializeTestData();
       
     } catch (error) {
+      console.error('Error resetting and reinitializing data:', error);
     }
   }
 
@@ -67,7 +68,7 @@ export class DataSyncService {
     try {
       const jobs = await apiClient.getJobs();
       const queues = await apiClient.getQueues();
-      const isAuthenticated = !!sessionStorage.getItem('access_token');
+      const isAuthenticated = apiClient.isAuthenticated();
       
       return {
         jobsCount: jobs.length,
@@ -76,6 +77,7 @@ export class DataSyncService {
         isAuthenticated
       };
     } catch (error) {
+      console.error('Error getting data status:', error);
       return {
         jobsCount: 0,
         queuesCount: 0,

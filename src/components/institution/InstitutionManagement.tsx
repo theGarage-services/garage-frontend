@@ -80,7 +80,7 @@ export function InstitutionManagement({ institution, user, onBack }: Readonly<In
         description: company.description || '',
         website: company.website || '',
         industry: company.industry || '',
-        size: company.size || '',
+        size: company.company_size || '',
         founded: company.founded_year?.toString() || '',
         headquarters: `${company.city || ''}, ${company.state || ''}`,
         type: company.company_type || '',
@@ -91,7 +91,7 @@ export function InstitutionManagement({ institution, user, onBack }: Readonly<In
       
       // Update contact info
       setContactInfo({
-        mainEmail: company.email || '',
+        mainEmail: '',
         supportEmail: '',
         hrEmail: '',
         mainPhone: company.phone || '',
@@ -104,15 +104,14 @@ export function InstitutionManagement({ institution, user, onBack }: Readonly<In
         github: company.social_links?.github || '',
         youtube: ''
       });
-      
+
       // Update culture info if available
-      if (company.culture_values) {
+      if (company.mission || company.vision || company.values) {
         setCultureInfo(prev => ({
           ...prev,
-          mission: company.culture_values?.mission || prev.mission,
-          vision: company.culture_values?.vision || prev.vision,
-          values: company.culture_values?.values || prev.values,
-          benefits: company.culture_values?.benefits || prev.benefits
+          mission: company.mission || prev.mission,
+          vision: company.vision || prev.vision,
+          values: company.values || prev.values,
         }));
       }
       
@@ -326,7 +325,7 @@ export function InstitutionManagement({ institution, user, onBack }: Readonly<In
       {/* Header */}
       <div className="bg-white/80 backdrop-blur-md border-b border-gray-200 sticky top-0 z-50 shadow-sm">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center justify-between h-16">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 py-4">
             <div className="flex items-center gap-4">
               <Button variant="ghost" onClick={onBack} className="p-2">
                 <ArrowLeft className="w-5 h-5" />
@@ -335,13 +334,13 @@ export function InstitutionManagement({ institution, user, onBack }: Readonly<In
                 <div className="w-10 h-10 bg-gradient-to-r from-[#ff6b35] to-[#ff8c42] rounded-lg flex items-center justify-center">
                   <Building2 className="w-6 h-6 text-white" />
                 </div>
-                <div>
+                <div className="min-w-0">
                   <h1 className="text-xl text-gray-900">Organization Settings</h1>
                   <p className="text-sm text-gray-500">{institution?.name || 'Organization Settings'}</p>
                 </div>
               </div>
             </div>
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-3 self-start sm:self-auto">
               <Badge variant="outline" className="border-[#ff6b35] text-[#ff6b35]">
                 <Sparkles className="w-3 h-3 mr-1" />
                 {profileCompletion}% Complete
@@ -381,7 +380,7 @@ export function InstitutionManagement({ institution, user, onBack }: Readonly<In
           </div>
         ) : (
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-          <TabsList className="grid w-full grid-cols-7 bg-white/80 backdrop-blur-sm p-1">
+          <TabsList className="grid w-full grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 bg-white/80 backdrop-blur-sm p-1">
             <TabsTrigger value="overview" className="data-[state=active]:bg-[#ff6b35] data-[state=active]:text-white">
               <Home className="w-4 h-4 mr-2" />
               Overview
@@ -419,7 +418,7 @@ export function InstitutionManagement({ institution, user, onBack }: Readonly<In
             <div className="grid md:grid-cols-2 gap-6">
               {/* Profile Completion */}
               <Card className="p-6 bg-gradient-to-br from-white to-orange-50 border-0 shadow-lg">
-                <div className="flex items-center justify-between mb-4">
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-4">
                   <h3 className="text-lg text-gray-900">Profile Completion</h3>
                   <Sparkles className="w-5 h-5 text-[#ff6b35]" />
                 </div>
@@ -448,7 +447,7 @@ export function InstitutionManagement({ institution, user, onBack }: Readonly<In
               {/* Quick Stats */}
               <Card className="p-6">
                 <h3 className="text-lg text-gray-900 mb-4">Quick Stats</h3>
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div className="text-center p-4 bg-gradient-to-br from-blue-50 to-blue-100 rounded-lg">
                     <Users className="w-6 h-6 text-blue-600 mx-auto mb-2" />
                     <p className="text-2xl text-gray-900">{locations.reduce((sum, loc) => sum + loc.employees, 0)}</p>
@@ -481,10 +480,10 @@ export function InstitutionManagement({ institution, user, onBack }: Readonly<In
               </h3>
               <div className="space-y-3">
                 {achievements.map((achievement) => (
-                  <div key={achievement.id} className="flex items-center justify-between p-4 bg-gradient-to-r from-gray-50 to-orange-50 rounded-lg">
-                    <div className="flex items-center gap-3">
-                      <Award className="w-5 h-5 text-[#ff6b35]" />
-                      <div>
+                  <div key={achievement.id} className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 p-4 bg-gradient-to-r from-gray-50 to-orange-50 rounded-lg">
+                    <div className="flex items-start gap-3 min-w-0">
+                      <Award className="w-5 h-5 text-[#ff6b35] shrink-0" />
+                      <div className="min-w-0">
                         <p className="text-gray-900">{achievement.title}</p>
                         <p className="text-sm text-gray-500">{achievement.organization} • {achievement.date}</p>
                       </div>
@@ -515,7 +514,7 @@ export function InstitutionManagement({ institution, user, onBack }: Readonly<In
               }
             >
               <Card className="p-6">
-                <div className="flex items-center justify-between mb-6">
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
                   <div>
                     <h3 className="text-lg text-gray-900">Basic Company Information</h3>
                     <p className="text-sm text-gray-600">Manage your company's basic details and public information</p>
@@ -697,7 +696,7 @@ export function InstitutionManagement({ institution, user, onBack }: Readonly<In
           {/* BRANDING & MEDIA TAB */}
           <TabsContent value="branding" className="space-y-6">
             <Card className="p-6">
-              <div className="flex items-center justify-between mb-6">
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
                 <div>
                   <h3 className="text-lg text-gray-900">Brand Identity & Visual Assets</h3>
                   <p className="text-sm text-gray-600">Customize your company's visual identity and branding</p>
@@ -848,7 +847,7 @@ export function InstitutionManagement({ institution, user, onBack }: Readonly<In
           {/* CULTURE & VALUES TAB */}
           <TabsContent value="culture" className="space-y-6">
             <Card className="p-6">
-              <div className="flex items-center justify-between mb-6">
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
                 <div>
                   <h3 className="text-lg text-gray-900">Culture & Company Values</h3>
                   <p className="text-sm text-gray-600">Define what makes your company unique</p>
@@ -892,7 +891,7 @@ export function InstitutionManagement({ institution, user, onBack }: Readonly<In
 
                 {/* Core Values */}
                 <div>
-                  <div className="flex items-center justify-between mb-3">
+                  <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 mb-3">
                     <Label>Core Values</Label>
                     <Button
                       variant="outline"
@@ -906,7 +905,7 @@ export function InstitutionManagement({ institution, user, onBack }: Readonly<In
                   </div>
                   <div className="space-y-3">
                     {cultureInfo.values.map((value: string, index: number) => (
-                      <div key={index} className="flex items-center gap-2">
+                      <div key={`value-${value}-${index}`} className="flex items-center gap-2">
                         <Input
                           value={value}
                           onChange={(e) => updateValue(index, e.target.value)}
@@ -964,7 +963,7 @@ export function InstitutionManagement({ institution, user, onBack }: Readonly<In
                     <Label className="mb-3 block">Employee Benefits</Label>
                     <div className="space-y-2">
                       {cultureInfo.benefits.map((benefit: string, index: number) => (
-                        <div key={index} className="flex items-center gap-2 p-3 bg-gray-50 rounded-lg">
+                        <div key={`benefit-${benefit}-${index}`} className="flex items-center gap-2 p-3 bg-gray-50 rounded-lg">
                           <CheckCircle2 className="w-4 h-4 text-green-500" />
                           <span className="text-sm text-gray-700">{benefit}</span>
                         </div>
@@ -976,7 +975,7 @@ export function InstitutionManagement({ institution, user, onBack }: Readonly<In
                     <Label className="mb-3 block">Office Perks</Label>
                     <div className="space-y-2">
                       {cultureInfo.perks.map((perk, index) => (
-                        <div key={index} className="flex items-center gap-2 p-3 bg-gray-50 rounded-lg">
+                        <div key={`perk-${perk}-${index}`} className="flex items-center gap-2 p-3 bg-gray-50 rounded-lg">
                           <CheckCircle2 className="w-4 h-4 text-orange-500" />
                           <span className="text-sm text-gray-700">{perk}</span>
                         </div>
@@ -992,7 +991,7 @@ export function InstitutionManagement({ institution, user, onBack }: Readonly<In
                   <Label className="mb-3 block">Tech Stack & Tools</Label>
                   <div className="flex flex-wrap gap-2">
                     {cultureInfo.techStack.map((tech: string, index: number) => (
-                      <Badge key={index} variant="secondary" className="bg-blue-100 text-blue-800">
+                      <Badge key={`tech-${tech}-${index}`} variant="secondary" className="bg-blue-100 text-blue-800">
                         {tech}
                       </Badge>
                     ))}
@@ -1013,7 +1012,7 @@ export function InstitutionManagement({ institution, user, onBack }: Readonly<In
           {/* LOCATIONS TAB */}
           <TabsContent value="locations" className="space-y-6">
             <Card className="p-6">
-              <div className="flex items-center justify-between mb-6">
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
                 <div>
                   <h3 className="text-lg text-gray-900">Office Locations</h3>
                   <p className="text-sm text-gray-600">Manage your company's physical locations</p>
@@ -1131,7 +1130,7 @@ export function InstitutionManagement({ institution, user, onBack }: Readonly<In
           {/* CONTACT & SOCIAL TAB */}
           <TabsContent value="contact" className="space-y-6">
             <Card className="p-6">
-              <div className="flex items-center justify-between mb-6">
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
                 <div>
                   <h3 className="text-lg text-gray-900">Contact Information & Social Media</h3>
                   <p className="text-sm text-gray-600">Manage how candidates and partners can reach your company</p>
@@ -1323,7 +1322,7 @@ export function InstitutionManagement({ institution, user, onBack }: Readonly<In
           {/* LEGAL & COMPLIANCE TAB */}
           <TabsContent value="legal" className="space-y-6">
             <Card className="p-6">
-              <div className="flex items-center justify-between mb-6">
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
                 <div>
                   <h3 className="text-lg text-gray-900">Legal & Compliance Information</h3>
                   <p className="text-sm text-gray-600">Manage legal entity details and compliance information</p>

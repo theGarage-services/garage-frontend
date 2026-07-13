@@ -3,14 +3,13 @@ import { Button } from '../ui/button';
 import { Card } from '../ui/card';
 import { Badge } from '../ui/badge';
 import { Input } from '../ui/input';
-import { Avatar, AvatarFallback } from '../ui/avatar';
+import { Avatar, AvatarFallback, AvatarImage } from '../ui/avatar';
 import { ScrollArea } from '../ui/scroll-area';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../ui/tabs';
 import { 
   ArrowLeft,
   Send,
   Paperclip,
-  Smile,
   Clock,
   CheckCircle,
   Calendar,
@@ -27,17 +26,38 @@ import {
   Award,
   Target,
   MoreHorizontal,
+  HandHeart,
+  CheckSquare,
+  XSquare,
 } from 'lucide-react';
 import { Label } from '../ui/label';
 import { Switch } from '../ui/switch';
 import { useChat } from '../../hooks/useChat';
-import type { Message as ApiMessage } from '../../api/chat';
+import type { Message as ApiMessage, RecruiterStats } from '../../api/chat';
+import { fetchRecruiterStats } from '../../api/chat';
+import {
+  type CoffeeChatContact,
+  type RecruiterContact,
+  type ConsiderationContact,
+  type MessageSender,
+  transformConversationsToCoffeeChatContacts,
+  transformConversationsToRecruitersByRole,
+  transformReceivedConsiderationsToContacts,
+  computeConsiderationUnreadCount,
+  computeTotalCoffeeChatUnread,
+  computeTotalRoleGroupUnread,
+  getContactType,
+  getRecruiterStats,
+} from '../../api/chatTransforms';
+import { EmojiPicker } from './EmojiPicker';
+import { ResponsiveChatSplit } from './ResponsiveChatSplit';
+import { buildProfileImageUrl } from '@/api/recruiterProfile';
+import { VideoApplicationModal } from '../jobs/applications/VideoApplicationModal';
 
-type MessageSender = 'job-seeker' | 'recruiter' | 'peer';
 type MessageType = 'text' | 'file' | 'consideration' | 'interview-scheduled';
 type MessageStatus = 'sent' | 'delivered' | 'read';
-type ActiveTab = 'coffee-chats' | 'recruiters';
-type ContactUnion = CoffeeChatContact | RecruiterContact;
+type ActiveTab = 'coffee-chats' | 'recruiters' | 'considerations';
+type ContactUnion = CoffeeChatContact | RecruiterContact | ConsiderationContact;
 
 interface Message {
   id: string;
@@ -47,57 +67,7 @@ interface Message {
   type: MessageType;
   status: MessageStatus;
   metadata?: any;
-}
-
-interface CoffeeChatContact {
-  id: string;
-  name: string;
-  avatar: string;
-  position: string;
-  company: string;
-  isPremium?: boolean;
-  isOnline: boolean;
-  lastMessage: string;
-  lastMessageTime: string;
-  unreadCount: number;
-  contactType: 'recruiter' | 'job-seeker';
-  // Recruiter-specific stats
-  responseRate?: number;
-  avgResponseTime?: string;
-  successRate?: number;
-  totalHires?: number;
-}
-
-interface RecruiterContact {
-  id: string;
-  name: string;
-  avatar: string;
-  position: string;
-  company: string;
-  isPremium?: boolean;
-  isOnline: boolean;
-  lastMessage: string;
-  lastMessageTime: string;
-  unreadCount: number;
-  jobRole: string;
-  jobId: string;
-  applicationMethod: 'manual' | 'auto';
-  initiatedBy: 'recruiter' | 'job-seeker';
-  // Recruiter stats
-  responseRate: number;
-  avgResponseTime: string;
-  successRate: number;
-  interviewRate: number;
-}
-
-interface JobRoleGroup {
-  roleTitle: string;
-  roleId: string;
-  company: string;
-  totalConversations: number;
-  unreadCount: number;
-  applicationMethod: 'manual' | 'auto';
-  recruiters: RecruiterContact[];
+  isMine?: boolean;
 }
 
 interface JobSeekerChatSystemProps {
@@ -109,11 +79,16 @@ interface JobSeekerChatSystemProps {
 export function JobSeekerChatSystem({ 
   onBack, 
   initialContact}: Readonly<JobSeekerChatSystemProps>) {
-  const [activeTab, setActiveTab] = useState<ActiveTab>('coffee-chats');
+  const [activeTab, setActiveTab] = useState<ActiveTab>('recruiters');
   const [selectedContact, setSelectedContact] = useState<ContactUnion | null>(initialContact);
   const [message, setMessage] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
+  const typingTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [expandedRoles, setExpandedRoles] = useState<Set<string>>(new Set());
+  const [selectedConsideration, setSelectedConsideration] = useState<ConsiderationContact | null>(null);
+  const [considerationResponse, setConsiderationResponse] = useState('');
+  const [activeVideoFlow, setActiveVideoFlow] = useState<ConsiderationContact | null>(null);
+  const [recruiterStatsCache, setRecruiterStatsCache] = useState<Record<string, RecruiterStats>>({});
   
   // Toggle filters for Coffee Chats tab
   const [showRecruiters, setShowRecruiters] = useState(true);
@@ -125,20 +100,28 @@ export function JobSeekerChatSystem({
   const {
     conversations,
     currentConversation,
+    setCurrentConversation,
     conversationMessages,
     loadMessages,
     sendMessage: sendApiMessage,
     markAsRead,
+    receivedConsiderations,
+    acceptConsideration,
+    declineConsideration,
+    typingUsers,
+    sendTypingIndicator,
   } = useChat();
 
   // Messages now come from API via conversationMessages
   const messages: Message[] = conversationMessages.map((apiMsg: ApiMessage) => ({
     id: apiMsg.id.toString(),
-    sender: apiMsg.sender.id === currentConversation?.participants?.[0]?.id ? 'recruiter' : 'job-seeker',
+    sender: apiMsg.sender.role === 'recruiter' ? 'recruiter' : 'job-seeker',
     content: apiMsg.content,
     timestamp: new Date(apiMsg.created_at).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true }),
     type: apiMsg.message_type as MessageType,
     status: apiMsg.status as MessageStatus,
+    metadata: apiMsg.metadata,
+    isMine: apiMsg.is_mine,
   }));
 
   const scrollToBottom = () => {
@@ -148,6 +131,26 @@ export function JobSeekerChatSystem({
   useEffect(() => {
     scrollToBottom();
   }, [messages]);
+
+  // Fetch real recruiter stats when a recruiter contact is selected
+  useEffect(() => {
+    const contactType = selectedContact ? getContactType(selectedContact) : null;
+    if (contactType !== 'recruiter' || !selectedContact) return;
+
+    const recruiterUserId = currentConversation?.other_participant?.id;
+    if (!recruiterUserId) return;
+
+    const cacheKey = recruiterUserId.toString();
+    if (recruiterStatsCache[cacheKey]) return;
+
+    fetchRecruiterStats(recruiterUserId)
+      .then((stats) => {
+        setRecruiterStatsCache((prev) => ({ ...prev, [cacheKey]: stats }));
+      })
+      .catch(() => {
+        // Silently fail; fallback stats (0 / 'N/A') will be shown
+      });
+  }, [selectedContact, currentConversation?.other_participant?.id, recruiterStatsCache]);
 
   // Send message via API
   const handleSendMessage = async () => {
@@ -188,94 +191,18 @@ export function JobSeekerChatSystem({
     });
   };
 
-  // Transform API conversations into contact format
-  const filteredCoffeeChatContacts: CoffeeChatContact[] = conversations
-    .filter(c => c.conversation_type === 'coffee')
-    .map(c => ({
-      id: c.id.toString(),
-      name: c.other_participant?.username || c.participants?.[0]?.username || 'Unknown',
-      avatar: (c.other_participant?.username || c.participants?.[0]?.username || '?')[0].toUpperCase(),
-      position: c.other_participant?.role || 'Professional',
-      company: c.job?.company || '',
-      isOnline: c.participant_details?.find(p => p.user.id === c.other_participant?.id)?.is_online || false,
-      lastMessage: c.last_message_preview || 'No messages yet',
-      lastMessageTime: c.last_message_at
-        ? new Date(c.last_message_at).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true })
-        : '',
-      unreadCount: c.unread_count || 0,
-      get contactType(): 'recruiter' | 'job-seeker' { return (c.other_participant?.role === 'recruiter' ? 'recruiter' : 'job-seeker'); },
-    })).filter(contact => {
-      const matchesSearch = contact.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                           contact.position.toLowerCase().includes(searchQuery.toLowerCase());
-      const matchesFilter =
-        (showRecruiters && contact.contactType === 'recruiter') ||
-        (showJobSeekers && contact.contactType === 'job-seeker');
-      return matchesSearch && matchesFilter;
-    });
+  // Use transform helpers from API layer
+  const filteredCoffeeChatContacts = transformConversationsToCoffeeChatContacts(
+    conversations, searchQuery, { showRecruiters, showJobSeekers }
+  );
+  const filteredRecruitersByRole = transformConversationsToRecruitersByRole(
+    conversations, searchQuery
+  );
+  const considerationContacts = transformReceivedConsiderationsToContacts(receivedConsiderations);
 
-  // Group job conversations by role
-  const recruitersByRole: JobRoleGroup[] = conversations
-    .filter(c => c.conversation_type === 'job')
-    .reduce((groups: JobRoleGroup[], c) => {
-      const roleTitle = c.job?.title || 'Unknown Position';
-      const roleId = c.job?.id?.toString() || c.id.toString();
-      const company = c.job?.company || 'Unknown Company';
-
-      let group = groups.find(g => g.roleId === roleId);
-      if (!group) {
-        group = {
-          roleTitle,
-          roleId,
-          company,
-          totalConversations: 0,
-          unreadCount: 0,
-          applicationMethod: c.application_method || 'manual',
-          recruiters: []
-        };
-        groups.push(group);
-      }
-
-      const otherParticipant = c.other_participant || c.participants?.[0];
-      const participantDetail = c.participant_details?.find(p => p.user.id === otherParticipant?.id);
-
-      group.recruiters.push({
-        id: c.id.toString(),
-        name: otherParticipant?.username || 'Unknown',
-        avatar: (otherParticipant?.username || '?')[0].toUpperCase(),
-        position: otherParticipant?.role || 'Recruiter',
-        company,
-        isOnline: participantDetail?.is_online || false,
-        lastMessage: c.last_message_preview || 'No messages yet',
-        lastMessageTime: c.last_message_at
-          ? new Date(c.last_message_at).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true })
-          : '',
-        unreadCount: c.unread_count || 0,
-        jobRole: roleTitle,
-        jobId: roleId,
-        applicationMethod: c.application_method || 'manual',
-        initiatedBy: (c.initiated_by || 'recruiter') as 'recruiter' | 'job-seeker',
-        responseRate: 85,
-        avgResponseTime: '2h',
-        successRate: 75,
-        interviewRate: 40,
-      });
-
-      group.totalConversations++;
-      group.unreadCount += c.unread_count || 0;
-
-      return groups;
-    }, []);
-
-  const filteredRecruitersByRole = recruitersByRole.map(roleGroup => ({
-    ...roleGroup,
-    recruiters: roleGroup.recruiters.filter(recruiter =>
-      recruiter.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      recruiter.position.toLowerCase().includes(searchQuery.toLowerCase())
-    )
-  })).filter(roleGroup => roleGroup.recruiters.length > 0);
-
-  const totalCoffeeChatUnread = filteredCoffeeChatContacts.reduce((sum, contact) => sum + contact.unreadCount, 0);
-  const totalRecruiterUnread = recruitersByRole.reduce((sum, role) => sum + role.unreadCount, 0);
+  const totalCoffeeChatUnread = computeTotalCoffeeChatUnread(filteredCoffeeChatContacts);
+  const totalRecruiterUnread = computeTotalRoleGroupUnread(filteredRecruitersByRole);
+  const pendingConsiderationsCount = computeConsiderationUnreadCount(receivedConsiderations);
 
   const handleKeyPress = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter' && !e.shiftKey) {
@@ -284,29 +211,99 @@ export function JobSeekerChatSystem({
     }
   };
 
+  const handleInputChange = (value: string) => {
+    setMessage(value);
+    if (currentConversation) {
+      sendTypingIndicator(currentConversation.id, true);
+      if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
+      typingTimeoutRef.current = setTimeout(() => {
+        sendTypingIndicator(currentConversation.id, false);
+      }, 1500);
+    }
+  };
+
+  const selectContact = (contact: ContactUnion) => {
+    setSelectedContact(contact);
+    setSelectedConsideration(null);
+    if ('considerationId' in contact) {
+      // Consideration contact - if it has a linked conversation, load it
+      if (contact.hasConversation) {
+        const conv = conversations.find(c => c.id.toString() === contact.id);
+        if (conv) setCurrentConversation(conv);
+      } else {
+        setCurrentConversation(null);
+      }
+    } else {
+      // Regular contact - id is the conversation id
+      const conv = conversations.find(c => c.id.toString() === contact.id);
+      if (conv) setCurrentConversation(conv);
+    }
+  };
+
+  const handleAcceptConsideration = async (considerationId: number) => {
+    try {
+      const result = await acceptConsideration(considerationId, considerationResponse);
+      if (result.requires_video_prompts) {
+        setActiveVideoFlow(selectedConsideration);
+        return;
+      }
+      setSelectedConsideration(null);
+      setConsiderationResponse('');
+    } catch (err) {
+      console.error('Failed to accept consideration:', err);
+    }
+  };
+
+  const handleCompleteVideoFlow = async (responses: any[]) => {
+    if (!activeVideoFlow) return;
+    const videoResponseIds = responses.map((r) => Number(r.id)).filter(Boolean);
+    try {
+      const result = await acceptConsideration(activeVideoFlow.considerationId, considerationResponse, videoResponseIds);
+      if (result.success) {
+        setActiveVideoFlow(null);
+        setSelectedConsideration(null);
+        setConsiderationResponse('');
+      } else {
+        console.error('Failed to accept consideration after video upload:', result.error);
+      }
+    } catch (err) {
+      console.error('Failed to accept consideration after video upload:', err);
+    }
+  };
+
+  const handleDeclineConsideration = async (considerationId: number) => {
+    try {
+      await declineConsideration(considerationId, considerationResponse);
+      setSelectedConsideration(null);
+      setConsiderationResponse('');
+    } catch (err) {
+      console.error('Failed to decline consideration:', err);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 via-orange-50 to-gray-100">
-      <div className="max-w-7xl mx-auto p-6">
+      <div className="max-w-7xl mx-auto p-4 sm:p-6">
         {/* Header */}
-        <div className="flex items-center justify-between mb-6">
-          <Button 
-            variant="ghost" 
+        <div className="flex flex-col items-stretch sm:flex-row sm:items-center gap-4 mb-6 w-full">
+          <Button
+            variant="ghost"
             onClick={onBack}
-            className="text-gray-600 hover:text-[#ff6b35]"
+            className="self-start text-gray-600 hover:text-[#ff6b35]"
           >
             <ArrowLeft className="w-4 h-4 mr-2" />
             Back to Dashboard
           </Button>
-          
-          <div className="flex items-center gap-4">
-            <h1 className="text-2xl text-gray-900">Messages</h1>
+
+          <div className="w-full text-center sm:w-auto sm:flex-1 sm:text-left">
+            <h1 className="text-xl sm:text-2xl text-gray-900">Messages</h1>
           </div>
         </div>
 
         {/* Tabs */}
         <Tabs value={activeTab} onValueChange={(value: string) => setActiveTab(value as ActiveTab)} className="w-full">
-          <TabsList className="grid w-full max-w-md mx-auto grid-cols-2 mb-6">
-            <TabsTrigger value="coffee-chats" className="relative">
+          <TabsList className="grid w-full grid-cols-1 sm:grid-cols-3 sm:max-w-lg mx-auto mb-6 h-auto min-h-9">
+            <TabsTrigger value="coffee-chats" className="relative text-xs sm:text-sm whitespace-normal h-auto py-2">
               <Coffee className="w-4 h-4 mr-2" />
               Coffee Chats
               {totalCoffeeChatUnread > 0 && (
@@ -315,7 +312,7 @@ export function JobSeekerChatSystem({
                 </Badge>
               )}
             </TabsTrigger>
-            <TabsTrigger value="recruiters" className="relative">
+            <TabsTrigger value="recruiters" className="relative text-xs sm:text-sm whitespace-normal h-auto py-2">
               <Briefcase className="w-4 h-4 mr-2" />
               Job Conversations
               {totalRecruiterUnread > 0 && (
@@ -324,14 +321,25 @@ export function JobSeekerChatSystem({
                 </Badge>
               )}
             </TabsTrigger>
+            <TabsTrigger value="considerations" className="relative text-xs sm:text-sm whitespace-normal h-auto py-2">
+              <HandHeart className="w-4 h-4 mr-2" />
+              Considerations
+              {pendingConsiderationsCount > 0 && (
+                <Badge className="ml-2 bg-[#ff6b35] text-white text-xs h-5 px-2">
+                  {pendingConsiderationsCount}
+                </Badge>
+              )}
+            </TabsTrigger>
           </TabsList>
 
           {/* Coffee Chats Tab Content */}
           <TabsContent value="coffee-chats">
-            <div className="grid lg:grid-cols-4 gap-6 h-[calc(100vh-280px)]">
+            <ResponsiveChatSplit
+              detailSelected={!!selectedContact}
+              onBack={() => setSelectedContact(null)}
+            >
               {/* Coffee Chat Contacts Sidebar */}
-              <div className="lg:col-span-1">
-                <Card className="h-full flex flex-col">
+              <Card className="h-full flex flex-col">
                   <div className="p-4 border-b space-y-4">
                     <div className="relative">
                       <Search className="w-4 h-4 absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
@@ -378,26 +386,30 @@ export function JobSeekerChatSystem({
                   <ScrollArea className="flex-1">
                     <div className="p-2">
                       {filteredCoffeeChatContacts.map((contact) => (
-                        <div
+                        <button
                           key={contact.id}
-                          onClick={() => setSelectedContact(contact)}
-                          className={`p-3 rounded-lg cursor-pointer transition-all duration-200 mb-2 ${
-                            selectedContact?.id === contact.id 
-                              ? 'bg-[#ff6b35] text-white' 
+                          type="button"
+                          onClick={() => selectContact(contact)}
+                          className={`w-full text-left p-3 rounded-lg transition-all duration-200 mb-2 ${
+                            selectedContact?.id === contact.id
+                              ? 'bg-[#ff6b35] text-white'
                               : 'hover:bg-gray-100'
                           }`}
                         >
                           <div className="flex items-start gap-3">
                             <div className="relative">
                               <Avatar className="w-10 h-10">
+                                {contact.avatar ? (
+                                  <AvatarImage src={buildProfileImageUrl(contact.avatar)} />
+                                ) : null}
                                 <AvatarFallback className={
-                                  selectedContact?.id === contact.id 
-                                    ? "bg-white/20 text-white" 
+                                  selectedContact?.id === contact.id
+                                    ? "bg-white/20 text-white"
                                     : contact.contactType === 'recruiter'
                                       ? "bg-blue-500 text-white"
                                       : "bg-[#ff6b35] text-white"
                                 }>
-                                  {contact.avatar}
+                                  {contact.avatarFallback}
                                 </AvatarFallback>
                               </Avatar>
                               {contact.isOnline && (
@@ -452,26 +464,25 @@ export function JobSeekerChatSystem({
                               </span>
                             </div>
                           </div>
-                        </div>
+                        </button>
                       ))}
                     </div>
                   </ScrollArea>
-                </Card>
-              </div>
+              </Card>
 
               {/* Chat Area */}
-              <div className="lg:col-span-3">
-                {renderChatArea()}
-              </div>
-            </div>
+              {renderChatArea()}
+            </ResponsiveChatSplit>
           </TabsContent>
 
           {/* Recruiters Tab Content */}
           <TabsContent value="recruiters">
-            <div className="grid lg:grid-cols-4 gap-6 h-[calc(100vh-280px)]">
+            <ResponsiveChatSplit
+              detailSelected={!!selectedContact}
+              onBack={() => setSelectedContact(null)}
+            >
               {/* Recruiters Sidebar with Role Grouping */}
-              <div className="lg:col-span-1">
-                <Card className="h-full flex flex-col">
+              <Card className="h-full flex flex-col">
                   <div className="p-4 border-b space-y-4">
                     <div className="relative">
                       <Search className="w-4 h-4 absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
@@ -485,7 +496,7 @@ export function JobSeekerChatSystem({
 
                     <div className="flex items-center gap-2 text-sm text-gray-600">
                       <Briefcase className="w-4 h-4" />
-                      <span>{recruitersByRole.length} Job Positions</span>
+                      <span>{filteredRecruitersByRole.length} Job Positions</span>
                     </div>
                   </div>
                   
@@ -530,24 +541,28 @@ export function JobSeekerChatSystem({
                           {expandedRoles.has(roleGroup.roleId) && (
                             <div className="ml-4 mt-1 space-y-1">
                               {roleGroup.recruiters.map((recruiter) => (
-                                <div
+                                <button
                                   key={recruiter.id}
-                                  onClick={() => setSelectedContact(recruiter)}
-                                  className={`p-3 rounded-lg cursor-pointer transition-all duration-200 ${
-                                    selectedContact?.id === recruiter.id 
-                                      ? 'bg-[#ff6b35] text-white' 
+                                  type="button"
+                                  onClick={() => selectContact(recruiter)}
+                                  className={`w-full text-left p-3 rounded-lg transition-all duration-200 ${
+                                    selectedContact?.id === recruiter.id
+                                      ? 'bg-[#ff6b35] text-white'
                                       : 'hover:bg-gray-50'
                                   }`}
                                 >
                                   <div className="flex items-start gap-3">
                                     <div className="relative">
                                       <Avatar className="w-10 h-10">
+                                        {recruiter.avatar ? (
+                                          <AvatarImage src={buildProfileImageUrl(recruiter.avatar)} />
+                                        ) : null}
                                         <AvatarFallback className={
-                                          selectedContact?.id === recruiter.id 
-                                            ? "bg-white/20 text-white" 
+                                          selectedContact?.id === recruiter.id
+                                            ? "bg-white/20 text-white"
                                             : "bg-blue-500 text-white"
                                         }>
-                                          {recruiter.avatar}
+                                          {recruiter.avatarFallback}
                                         </AvatarFallback>
                                       </Avatar>
                                       {recruiter.isOnline && (
@@ -599,7 +614,7 @@ export function JobSeekerChatSystem({
                                       </div>
                                     </div>
                                   </div>
-                                </div>
+                                </button>
                               ))}
                             </div>
                           )}
@@ -607,19 +622,232 @@ export function JobSeekerChatSystem({
                       ))}
                     </div>
                   </ScrollArea>
-                </Card>
-              </div>
+              </Card>
 
               {/* Chat Area */}
-              <div className="lg:col-span-3">
-                {renderChatArea()}
-              </div>
-            </div>
+              {renderChatArea()}
+            </ResponsiveChatSplit>
+          </TabsContent>
+
+          {/* Considerations Tab Content */}
+          <TabsContent value="considerations">
+            <ResponsiveChatSplit
+              detailSelected={!!selectedConsideration}
+              onBack={() => {
+                setSelectedConsideration(null);
+                setSelectedContact(null);
+              }}
+            >
+              {/* Considerations Sidebar */}
+              <Card className="h-full flex flex-col">
+                  <div className="p-4 border-b space-y-4">
+                    <div className="relative">
+                      <Search className="w-4 h-4 absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
+                      <Input
+                        placeholder="Search considerations..."
+                        value={searchQuery}
+                        onChange={(e) => setSearchQuery(e.target.value)}
+                        className="pl-10"
+                      />
+                    </div>
+                    <div className="flex items-center gap-2 text-sm text-gray-600">
+                      <HandHeart className="w-4 h-4" />
+                      <span>{considerationContacts.length} Considerations</span>
+                    </div>
+                  </div>
+                  <ScrollArea className="flex-1">
+                    <div className="p-2">
+                      {considerationContacts.map((contact) => (
+                        <button
+                          key={contact.considerationId}
+                          type="button"
+                          onClick={() => {
+                            selectContact(contact);
+                            setSelectedConsideration(contact);
+                          }}
+                          className={`w-full text-left p-3 rounded-lg transition-all duration-200 mb-2 ${
+                            selectedConsideration?.considerationId === contact.considerationId
+                              ? 'bg-[#ff6b35] text-white'
+                              : 'hover:bg-gray-100'
+                          }`}
+                        >
+                          <div className="flex items-start gap-3">
+                            <div className="relative">
+                              <Avatar className="w-10 h-10">
+                                {contact.avatar ? (
+                                  <AvatarImage src={buildProfileImageUrl(contact.avatar)} />
+                                ) : null}
+                                <AvatarFallback className={
+                                  selectedConsideration?.considerationId === contact.considerationId
+                                    ? "bg-white/20 text-white"
+                                    : "bg-blue-500 text-white"
+                                }>
+                                  {contact.avatarFallback}
+                                </AvatarFallback>
+                              </Avatar>
+                              {contact.isPremium && (
+                                <Crown className="w-3 h-3 text-yellow-500 absolute -top-1 -right-1" />
+                              )}
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center justify-between mb-1">
+                                <h4 className={`text-sm font-medium truncate ${
+                                  selectedConsideration?.considerationId === contact.considerationId ? 'text-white' : 'text-gray-900'
+                                }`}>
+                                  {contact.name}
+                                </h4>
+                                <Badge className={`text-xs ${
+                                  contact.status === 'pending'
+                                    ? 'bg-amber-100 text-amber-700'
+                                    : contact.status === 'accepted'
+                                      ? 'bg-green-100 text-green-700'
+                                      : 'bg-red-100 text-red-700'
+                                }`}>
+                                  {contact.status}
+                                </Badge>
+                              </div>
+                              <p className={`text-xs mb-1 ${
+                                selectedConsideration?.considerationId === contact.considerationId ? 'text-white/80' : 'text-gray-600'
+                              }`}>
+                                {contact.jobTitle}
+                              </p>
+                              <p className={`text-xs truncate ${
+                                selectedConsideration?.considerationId === contact.considerationId ? 'text-white/70' : 'text-gray-500'
+                              }`}>
+                                {contact.message}
+                              </p>
+                            </div>
+                          </div>
+                        </button>
+                      ))}
+                    </div>
+                  </ScrollArea>
+              </Card>
+
+              {/* Chat Area */}
+              {renderConsiderationChatArea()}
+            </ResponsiveChatSplit>
           </TabsContent>
         </Tabs>
       </div>
+
+      {activeVideoFlow && (
+        <VideoApplicationModal
+          jobId={Number(activeVideoFlow.jobId)}
+          submitLabel="Submit & Accept Interest"
+          onComplete={handleCompleteVideoFlow}
+          onCancel={() => setActiveVideoFlow(null)}
+        />
+      )}
     </div>
   );
+
+  function renderConsiderationChatArea() {
+    if (!selectedConsideration) {
+      return (
+        <Card className="h-full flex items-center justify-center">
+          <div className="text-center text-gray-500">
+            <HandHeart className="w-12 h-12 mx-auto mb-4 text-gray-400" />
+            <h3 className="text-lg font-medium mb-2">Select a consideration</h3>
+            <p className="text-sm">View job considerations from recruiters</p>
+          </div>
+        </Card>
+      );
+    }
+
+    const isPending = selectedConsideration.status === 'pending';
+
+    return (
+      <Card className="h-full flex flex-col">
+        <div className="p-4 border-b">
+          <div className="flex items-center gap-3">
+            <Avatar className="w-10 h-10">
+              {selectedConsideration.avatar ? (
+                <AvatarImage src={buildProfileImageUrl(selectedConsideration.avatar)} />
+              ) : null}
+              <AvatarFallback className="bg-blue-500 text-white">
+                {selectedConsideration.avatarFallback}
+              </AvatarFallback>
+            </Avatar>
+            <div className="flex-1">
+              <h3 className="font-medium text-gray-900">{selectedConsideration.name}</h3>
+              <p className="text-sm text-gray-600">{selectedConsideration.jobTitle}</p>
+              <Badge className={`mt-1 text-xs ${
+                selectedConsideration.status === 'pending'
+                  ? 'bg-amber-100 text-amber-700'
+                  : selectedConsideration.status === 'accepted'
+                    ? 'bg-green-100 text-green-700'
+                    : 'bg-red-100 text-red-700'
+              }`}>
+                {selectedConsideration.status}
+              </Badge>
+            </div>
+          </div>
+        </div>
+
+        <ScrollArea className="flex-1 p-4">
+          <div className="space-y-4">
+            <div className="bg-blue-50 border border-blue-200 p-4 rounded-lg">
+              <div className="flex items-center gap-2 mb-2">
+                <Briefcase className="w-4 h-4 text-blue-600" />
+                <span className="text-sm font-medium text-blue-800">Job Consideration</span>
+              </div>
+              <p className="text-sm text-gray-700">{selectedConsideration.message}</p>
+              {selectedConsideration.matchScore && (
+                <div className="mt-2 flex items-center gap-1 text-xs text-blue-600">
+                  <Target className="w-3 h-3" />
+                  Match Score: {selectedConsideration.matchScore}%
+                </div>
+              )}
+            </div>
+
+            {selectedConsideration.status === 'accepted' && selectedConsideration.hasConversation && (
+              <div className="text-center">
+                <p className="text-sm text-gray-500 mb-2">
+                  You accepted this consideration. Chat is available in Job Conversations.
+                </p>
+              </div>
+            )}
+
+            {selectedConsideration.status === 'declined' && (
+              <div className="text-center">
+                <p className="text-sm text-gray-500">You declined this consideration.</p>
+              </div>
+            )}
+          </div>
+        </ScrollArea>
+
+        {isPending && (
+          <div className="p-4 border-t space-y-3">
+            <textarea
+              className="w-full p-2 border border-gray-300 rounded-md text-sm"
+              rows={2}
+              placeholder="Add a response message (optional)..."
+              value={considerationResponse}
+              onChange={(e) => setConsiderationResponse(e.target.value)}
+            />
+            <div className="flex items-center gap-2">
+              <Button
+                onClick={() => handleAcceptConsideration(selectedConsideration.considerationId)}
+                className="flex-1 bg-green-500 hover:bg-green-600 text-white"
+              >
+                <CheckSquare className="w-4 h-4 mr-1" />
+                Accept
+              </Button>
+              <Button
+                onClick={() => handleDeclineConsideration(selectedConsideration.considerationId)}
+                variant="outline"
+                className="flex-1 border-red-200 text-red-600 hover:bg-red-50"
+              >
+                <XSquare className="w-4 h-4 mr-1" />
+                Decline
+              </Button>
+            </div>
+          </div>
+        )}
+      </Card>
+    );
+  }
 
   function renderChatArea() {
     if (!selectedContact) {
@@ -627,7 +855,7 @@ export function JobSeekerChatSystem({
     }
 
     const contactType = getContactType(selectedContact);
-    const showRecruiterStats = contactType === 'recruiter';
+    const showRecruiterStats = contactType === 'recruiter' && !('considerationId' in selectedContact);
 
     return (
       <Card className="h-full flex flex-col">
@@ -636,24 +864,25 @@ export function JobSeekerChatSystem({
           contactType={contactType}
           activeTab={activeTab}
         />
-        {showRecruiterStats && <RecruiterStats contact={selectedContact} contactType={contactType} />}
+        {showRecruiterStats && (
+          <RecruiterStats
+            contact={selectedContact}
+            realStats={
+              recruiterStatsCache[currentConversation?.other_participant?.id?.toString() ?? ''] ?? null
+            }
+          />
+        )}
         <MessageList messages={messages} messagesEndRef={messagesEndRef} />
+        <TypingIndicator typingUsers={typingUsers} currentConversationId={currentConversation?.id} />
         <MessageInput
           message={message}
-          setMessage={setMessage}
+          setMessage={handleInputChange}
           sendMessage={handleSendMessage}
           handleKeyPress={handleKeyPress}
         />
       </Card>
     );
   }
-}
-
-// Helper to determine contact type
-function getContactType(contact: ContactUnion): MessageSender {
-  if ('jobRole' in contact) return 'recruiter';
-  if (contact.contactType === 'recruiter') return 'recruiter';
-  return 'job-seeker';
 }
 
 // Sub-components for renderChatArea
@@ -691,12 +920,15 @@ function ChatHeader({ contact, contactType, activeTab }: Readonly<ChatHeaderProp
 
   return (
     <div className="p-4 border-b">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-3 flex-1">
-          <div className="relative">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+        <div className="flex items-center gap-3 flex-1 min-w-0">
+          <div className="relative shrink-0">
             <Avatar className="w-10 h-10">
+              {contact.avatar ? (
+                <AvatarImage src={buildProfileImageUrl(contact.avatar)} />
+              ) : null}
               <AvatarFallback className={`${avatarColor} text-white`}>
-                {contact.avatar}
+                {contact.avatarFallback}
               </AvatarFallback>
             </Avatar>
             {contact.isOnline && (
@@ -704,8 +936,8 @@ function ChatHeader({ contact, contactType, activeTab }: Readonly<ChatHeaderProp
             )}
           </div>
 
-          <div className="flex-1">
-            <h3 className="font-medium text-gray-900 flex items-center gap-2">
+          <div className="flex-1 min-w-0">
+            <h3 className="font-medium text-gray-900 flex flex-wrap items-center gap-2">
               {contact.name}
               {contact.isPremium && <Crown className="w-4 h-4 text-yellow-500" />}
             </h3>
@@ -717,7 +949,7 @@ function ChatHeader({ contact, contactType, activeTab }: Readonly<ChatHeaderProp
           </div>
         </div>
 
-        <Button size="sm" variant="outline">
+        <Button size="sm" variant="outline" className="self-start sm:self-auto">
           <MoreHorizontal className="w-4 h-4" />
         </Button>
       </div>
@@ -777,11 +1009,11 @@ function ChatBadges({ contact, contactType, activeTab }: Readonly<ChatBadgesProp
 
 interface RecruiterStatsProps {
   contact: ContactUnion;
-  contactType: MessageSender;
+  realStats: RecruiterStats | null;
 }
 
-function RecruiterStats({ contact, contactType }: Readonly<RecruiterStatsProps>) {
-  const stats = getRecruiterStats(contact, contactType);
+function RecruiterStats({ contact, realStats }: Readonly<RecruiterStatsProps>) {
+  const stats = getRecruiterStats(contact, realStats);
 
   return (
     <div className="mt-4 mx-4 grid grid-cols-4 gap-3 p-3 bg-gray-50 rounded-lg">
@@ -815,31 +1047,6 @@ function StatItem({ icon, value, label }: Readonly<StatItemProps>) {
   );
 }
 
-function getRecruiterStats(contact: ContactUnion, contactType: string) {
-  const isRecruiter = contactType === 'recruiter';
-  const hasProp = (key: string) => key in contact;
-
-  const getNumber = (key: 'responseRate' | 'successRate') =>
-    hasProp(key) ? (contact[key] as number) : 0;
-
-  const getTime = () =>
-    hasProp('avgResponseTime') ? (contact.avgResponseTime ?? 'N/A') : 'N/A';
-
-  const getFourthStat = () => {
-    if (isRecruiter && 'interviewRate' in contact) {
-      return { value: contact.interviewRate ?? 'N/A', label: 'Interview Rate', isPercentage: true };
-    }
-    return { value: ('totalHires' in contact && contact.totalHires) || 'N/A', label: 'Total Hires', isPercentage: false };
-  };
-
-  return {
-    responseRate: getNumber('responseRate'),
-    avgResponseTime: getTime(),
-    successRate: getNumber('successRate'),
-    fourthStat: getFourthStat()
-  };
-}
-
 interface MessageListProps {
   messages: Message[];
   messagesEndRef: React.RefObject<HTMLDivElement | null>;
@@ -863,8 +1070,8 @@ interface MessageItemProps {
 }
 
 function MessageItem({ message }: Readonly<MessageItemProps>) {
-  const isJobSeeker = message.sender === 'job-seeker';
-  const isRecruiter = message.sender === 'recruiter';
+  const isJobSeeker = message.isMine ?? (message.sender === 'job-seeker');
+  const isRecruiter = !isJobSeeker;
 
   const bgClass = isJobSeeker
     ? 'bg-[#ff6b35] text-white'
@@ -917,6 +1124,28 @@ function MessageStatus({ status }: Readonly<MessageStatusProps>) {
   return <Clock className={`${iconClass} opacity-50`} />;
 }
 
+interface TypingIndicatorProps {
+  typingUsers: { userId: number; username: string; conversationId: number }[];
+  currentConversationId?: number;
+}
+
+function TypingIndicator({ typingUsers, currentConversationId }: Readonly<TypingIndicatorProps>) {
+  const activeTypers = typingUsers.filter(
+    (t) => t.conversationId === currentConversationId
+  );
+  if (activeTypers.length === 0) return null;
+
+  const label = activeTypers.length === 1
+    ? `${activeTypers[0].username} is typing...`
+    : 'Several people are typing...';
+
+  return (
+    <div className="px-4 pb-2 text-xs text-gray-500 animate-pulse">
+      {label}
+    </div>
+  );
+}
+
 interface MessageInputProps {
   message: string;
   setMessage: (msg: string) => void;
@@ -935,13 +1164,11 @@ function MessageInput({ message, setMessage, sendMessage, handleKeyPress }: Read
           <Input
             value={message}
             onChange={(e) => setMessage(e.target.value)}
-            onKeyPress={handleKeyPress}
+            onKeyDown={handleKeyPress}
             placeholder="Type your message..."
             className="pr-12"
           />
-          <Button size="sm" variant="ghost" className="absolute right-1 top-1/2 transform -translate-y-1/2">
-            <Smile className="w-4 h-4" />
-          </Button>
+          <EmojiPicker onEmojiSelect={(emoji: string) => setMessage(message + emoji)} />
         </div>
         <Button
           onClick={sendMessage}

@@ -1,5 +1,4 @@
 import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { Button } from '../ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '../ui/card';
@@ -16,7 +15,6 @@ interface ContactProps {
 }
 
 export function Contact({ onBack }: Readonly<ContactProps>) {
-  const navigate = useNavigate();
   const [contactSubject, setContactSubject] = useState('');
   const [contactMessage, setContactMessage] = useState('');
   const [contactType, setContactType] = useState('general');
@@ -68,17 +66,23 @@ export function Contact({ onBack }: Readonly<ContactProps>) {
             {/* Desktop Navigation */}
             <div className="hidden md:flex items-center gap-8">
               <button 
-                onClick={() => navigate('/')}
+                onClick={() => globalThis.location.href = '/'}
                 className="text-[#9E9B98] hover:text-[#1A1A1A] transition-colors"
               >
                 Home
               </button>
               <button 
-                onClick={() => navigate('/about')}
+                onClick={() => globalThis.location.href = '/about'}
                 className="text-[#9E9B98] hover:text-[#1A1A1A] transition-colors"
               >
                 About
               </button>
+              <Button 
+                onClick={() => globalThis.location.href = '/auth/role-select?role=job-seeker&intent=login'}
+                className="bg-gradient-to-r from-[#FF6000] to-[#FF8533] hover:from-[#FF7A1F] hover:to-[#FF9D4D] text-white"
+              >
+                Sign In
+              </Button>
             </div>
 
             {/* Mobile menu button */}
@@ -97,7 +101,7 @@ export function Contact({ onBack }: Readonly<ContactProps>) {
                 <button 
                   onClick={() => {
                     setIsMenuOpen(false);
-                    navigate('/');
+                    globalThis.location.href = '/';
                   }}
                   className="text-[#9E9B98] hover:text-[#1A1A1A] transition-colors text-left"
                 >
@@ -106,7 +110,7 @@ export function Contact({ onBack }: Readonly<ContactProps>) {
                 <button 
                   onClick={() => {
                     setIsMenuOpen(false);
-                    navigate('/about');
+                    globalThis.location.href = '/about';
                   }}
                   className="text-[#9E9B98] hover:text-[#1A1A1A] transition-colors text-left"
                 >
@@ -115,7 +119,7 @@ export function Contact({ onBack }: Readonly<ContactProps>) {
                 <Button 
                   onClick={() => {
                     setIsMenuOpen(false);
-                    navigate('/auth/role-select?role=job-seeker&intent=login');
+                    globalThis.location.href = '/auth/role-select?role=job-seeker&intent=login';
                   }}
                   className="bg-gradient-to-r from-[#FF6000] to-[#FF8533] hover:from-[#FF7A1F] hover:to-[#FF9D4D] text-white"
                 >
@@ -254,21 +258,21 @@ export function Contact({ onBack }: Readonly<ContactProps>) {
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-3">
-                <div className="flex items-center justify-between">
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1">
                   <span className="text-sm text-gray-600">General Inquiries</span>
-                  <Badge variant="outline">24 hours</Badge>
+                  <Badge variant="outline" className="self-start sm:self-auto">24 hours</Badge>
                 </div>
-                <div className="flex items-center justify-between">
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1">
                   <span className="text-sm text-gray-600">Technical Issues</span>
-                  <Badge variant="outline">12 hours</Badge>
+                  <Badge variant="outline" className="self-start sm:self-auto">12 hours</Badge>
                 </div>
-                <div className="flex items-center justify-between">
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1">
                   <span className="text-sm text-gray-600">Billing Support</span>
-                  <Badge variant="outline">8 hours</Badge>
+                  <Badge variant="outline" className="self-start sm:self-auto">8 hours</Badge>
                 </div>
-                <div className="flex items-center justify-between">
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1">
                   <span className="text-sm text-gray-600">Premium Support</span>
-                  <Badge className="bg-[#ff6b35] text-white">2 hours</Badge>
+                  <Badge className="bg-[#ff6b35] text-white self-start sm:self-auto">2 hours</Badge>
                 </div>
               </CardContent>
             </Card>

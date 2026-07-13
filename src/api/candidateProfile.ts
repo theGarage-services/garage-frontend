@@ -3,15 +3,22 @@ import type { User } from './auth';
 
 // JobPost interface for filtered jobs API
 export interface FilteredJobPost {
+  has_applied: boolean;
+  application_status: string;
+  date_applied: undefined;
+  application_method: string;
   id: number;
   title: string;
   company: string;
+  company_name?: string;
+  company_size?: string | null;
   location: string;
   salary_min: string | null;
   salary_max: string | null;
   currency: string;
   employment_type: string;
   work_arrangement: string;
+  vacancy_type: string;
   experience_level: string;
   industry: string;
   summary: string;
@@ -21,6 +28,17 @@ export interface FilteredJobPost {
   status: string;
   created_at: string;
   published_at: string | null;
+  // Scoring fields (returned by queue-jobs endpoint)
+  match_percentage?: number;
+  score_breakdown?: Record<string, any>;
+  greenzone_status?: string | null;
+  greenzone_reason?: string | null;
+  is_saved?: boolean;
+  // Consideration request fields (returned by queue-jobs endpoint)
+  has_pending_consideration?: boolean;
+  pending_consideration_id?: number | null;
+  pending_consideration_message?: string | null;
+  company_logo?: string | null;
 }
 
 export interface FilteredJobsResponse {
@@ -37,6 +55,28 @@ export interface FilteredJobsResponse {
     preferred_job_types: string[] | null;
     preferred_work_arrangements: string[] | null;
   };
+}
+
+export interface GreenzoneDecisionItem {
+  job_id: number;
+  job_title: string | null;
+  status: 'confirmed_in' | 'contested' | 'confirmed_out';
+  reason_text: string;
+  industry: string;
+  level: string;
+  decided_at: string;
+}
+
+export interface SystemicRejectionSummary {
+  total_decisions: number;
+  confirmed_in_count: number;
+  contested_count: number;
+  confirmed_out_count: number;
+  observed_rejection_rate: number;
+  expected_rejection_rate: number;
+  systemic_rejection_rate: number;
+  is_flagged: boolean;
+  decisions: GreenzoneDecisionItem[];
 }
 
 // New structured profile response from backend
@@ -70,6 +110,8 @@ export interface ProfileResponse {
     preferred_salary_ranges: string[] | null;
     preferred_job_types: string[] | null;
     preferred_work_arrangements: string[] | null;
+    // Backend-computed profile completeness score (0-100)
+    profile_strength: number;
     // Optional JSON fields
     projects?: any[] | null;
     certifications?: any[] | null;
@@ -445,26 +487,44 @@ class CandidateProfileService {
   }
 
   /**
+   * Parse years from experience text and return level code
+   */
+  private parseYearsToLevel(experience: string): string | null {
+    const digits = new RegExp(/\d+/).exec(experience);
+    if (!digits) return null;
+    
+    const years = Number.parseInt(digits[0]);
+    if (years <= 2) return 'L1';
+    if (years <= 4) return 'L2';
+    if (years <= 7) return 'L3';
+    if (years <= 10) return 'L4';
+    return 'L5';
+  }
+
+  /**
+   * Parse keyword from experience text and return level code
+   */
+  private parseKeywordToLevel(lowerExp: string): string {
+    if (lowerExp.includes('entry')) return 'L1';
+    if (lowerExp.includes('junior')) return 'L2';
+    if (lowerExp.includes('mid')) return 'L3';
+    if (lowerExp.includes('senior')) return 'L4';
+    if (lowerExp.includes('expert')) return 'L5';
+    return '';
+  }
+
+  /**
    * Convert display text or years to experience level code
    */
   textToExpLevel(experience: string): string {
-    // If it contains years, try to parse
-    const match = new RegExp(/(\d+)\+?\s*years?/i).exec(experience);
-    if (match) {
-      const years = Number.parseInt(match[1]);
-      if (years <= 2) return 'L1';
-      if (years <= 4) return 'L2';
-      if (years <= 7) return 'L3';
-      if (years <= 10) return 'L4';
-      return 'L5';
+    const lowerExp = experience.toLowerCase();
+    
+    if (lowerExp.includes('year')) {
+      const level = this.parseYearsToLevel(experience);
+      if (level) return level;
     }
-    // Check for keywords
-    if (experience.toLowerCase().includes('entry')) return 'L1';
-    if (experience.toLowerCase().includes('junior')) return 'L2';
-    if (experience.toLowerCase().includes('mid')) return 'L3';
-    if (experience.toLowerCase().includes('senior')) return 'L4';
-    if (experience.toLowerCase().includes('expert')) return 'L5';
-    return '';
+    
+    return this.parseKeywordToLevel(lowerExp);
   }
 
   /**
@@ -596,6 +656,45 @@ class CandidateProfileService {
   }
 
   /**
+   * Get public candidate profile by user ID (for queue leaderboard profile views)
+   */
+  async getPublicCandidateProfile(userId: number): Promise<{
+    success: boolean;
+    data: {
+      name: string;
+      email: string;
+      avatar: string | null;
+      job_title: string;
+      current_company: string | null;
+      bio: string;
+      phone: string;
+      address: string;
+      skills: string;
+      education: any[];
+      work_history: any[];
+      exp_level: string;
+      industry: string;
+      linkedin: string | null;
+      github: string | null;
+      portfolio: string | null;
+      projects: any[];
+      certifications: any[];
+      experience: string;
+    } | null;
+  }> {
+    const response = await apiClient.request(`/accounts/candidate/${userId}/public-profile/`, {
+      method: 'GET',
+    });
+
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error || 'Failed to fetch candidate profile');
+    }
+
+    return await response.json();
+  }
+
+  /**
    * Get candidate profile analytics and insights
    */
   async getAnalytics(): Promise<{
@@ -622,6 +721,130 @@ class CandidateProfileService {
     }
 
     return await response.json();
+  }
+
+  /**
+   * Get received consideration requests for a specific job (candidate side)
+   */
+  async getReceivedConsiderationRequestsForJob(jobId: number): Promise<{
+    success: boolean;
+    data: Array<{
+      id: number;
+      status: string;
+      recruiter: { id: number; username: string; full_name: string };
+      job: number;
+      message: string;
+      match_score: number | null;
+      created_at: string;
+    }>;
+  }> {
+    try {
+      const response = await apiClient.request(`/chat/consideration-requests/received/?job_id=${jobId}`, {
+        method: 'GET',
+      });
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || 'Failed to fetch consideration requests');
+      }
+      const data = await response.json();
+      return { success: true, data };
+    } catch (error: any) {
+      console.error('Error fetching consideration requests:', error);
+      return { success: false, data: [] };
+    }
+  }
+
+  /**
+   * Get all received consideration requests for the current candidate
+   */
+  async getMyConsiderationRequests(): Promise<{
+    success: boolean;
+    data: Array<{
+      id: number;
+      status: string;
+      recruiter: { id: number; username: string; full_name: string };
+      job: number;
+      message: string;
+      match_score: number | null;
+      created_at: string;
+    }>;
+  }> {
+    try {
+      const response = await apiClient.request('/chat/consideration-requests/received/', {
+        method: 'GET',
+      });
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || 'Failed to fetch consideration requests');
+      }
+      const data = await response.json();
+      return { success: true, data };
+    } catch (error: any) {
+      console.error('Error fetching consideration requests:', error);
+      return { success: false, data: [] };
+    }
+  }
+
+  /**
+   * Accept a consideration request (candidate action)
+   */
+  async acceptConsiderationRequest(requestId: number, responseMessage: string = '', videoResponseIds?: number[]): Promise<{ success: boolean; data?: any; error?: string; requires_video_prompts?: boolean; missing_prompt_ids?: number[] }> {
+    try {
+      const body: Record<string, any> = { response_message: responseMessage };
+      if (videoResponseIds) {
+        body.video_response_ids = videoResponseIds;
+      }
+      const response = await apiClient.request(`/chat/consideration-requests/${requestId}/accept/`, {
+        method: 'POST',
+        body: JSON.stringify(body),
+      });
+      const data = await response.json();
+      if (!response.ok && !data.requires_video_prompts) {
+        throw new Error(data.error || data.detail || data.message || 'Failed to accept consideration request');
+      }
+      return data;
+    } catch (error: any) {
+      console.error('Error accepting consideration request:', error);
+      return { success: false, error: error.message };
+    }
+  }
+
+  /**
+   * Quick apply to a job (candidate action)
+   */
+  async quickApplyToJob(jobId: number, coverLetter: string = ''): Promise<{ success: boolean; data?: any; error?: string }> {
+    try {
+      const response = await apiClient.request(`/jobposts/${jobId}/apply/`, {
+        method: 'POST',
+        body: JSON.stringify({ cover_letter: coverLetter }),
+      });
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || error.detail || error.message || 'Failed to apply');
+      }
+      const data = await response.json();
+      return { success: true, data };
+    } catch (error: any) {
+      console.error('Error applying to job:', error);
+      return { success: false, error: error.message };
+    }
+  }
+
+  /**
+   * Get the candidate's systemic rejection summary (greenzone decision history).
+   */
+  async getSystemicRejectionSummary(): Promise<{ success: boolean; summary: SystemicRejectionSummary | null; message?: string }> {
+    try {
+      const response = await apiClient.request('/candidates/me/systemic-rejection-summary/', { method: 'GET' });
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || error.message || 'Failed to fetch summary');
+      }
+      return await response.json();
+    } catch (error: any) {
+      console.error('Error fetching systemic rejection summary:', error);
+      return { success: false, summary: null, message: error.message };
+    }
   }
 }
 

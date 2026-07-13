@@ -17,15 +17,20 @@ export interface MLSortPredictions {
 }
 
 export interface MLRankCandidate {
-  candidate_id: string;
-  overall_score: number;
-  breakdown: {
-    semantic_score: number;
-    skill_score: number;
-    education_score: number;
-    experience_score: number;
-    industry_alignment: number;
-    level_alignment: number;
+  id?: string;
+  candidate_id?: string;
+  candidate_name?: string;
+  match_score?: number;
+  score_breakdown?: {
+    match_percentage?: number;
+    composite_score?: number;
+    semantic?: number;
+    skill_jaccard?: number;
+    education_score?: number;
+    experience_score?: number;
+    industry_alignment?: number;
+    level_alignment?: number;
+    skill_gaps?: string[];
   };
 }
 

@@ -187,13 +187,13 @@ export function EcosystemOverview({ onBack, onNavigate, user, onLogout }: Readon
           <h1 className="text-3xl font-medium text-gray-900 mb-4">
             <span className="text-black">the</span><span className="text-[#ff6b35]">Garage</span> Complete Ecosystem
           </h1>
-          <p className="text-gray-600 max-w-3xl mx-auto mb-8">
+          <p className="text-gray-600 max-w-[95vw] sm:max-w-3xl mx-auto mb-8">
             A comprehensive view of how theGarage connects job seekers, recruiters, and companies in a seamless hiring ecosystem 
             powered by AI and designed for mutual success.
           </p>
           
           {/* Platform Stats */}
-          <div className="grid grid-cols-2 md:grid-cols-6 gap-4 max-w-4xl mx-auto">
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-6 gap-4 max-w-4xl mx-auto">
             {Object.entries(platformStats).map(([key, value]) => (
               <div key={key} className="text-center p-4 bg-white rounded-lg border border-gray-200">
                 <div className="text-xl font-medium text-gray-900">{value}</div>
@@ -235,10 +235,10 @@ export function EcosystemOverview({ onBack, onNavigate, user, onLogout }: Readon
 
                   <div className="space-y-3 mb-6">
                     <h4 className="font-medium text-gray-900">Key features:</h4>
-                    {component.features.map((feature, index) => {
+                    {component.features.map((feature) => {
                       const IconComponent = feature.icon;
                       return (
-                        <div key={index} className="flex items-center gap-3 p-2 bg-white/50 rounded">
+                        <div key={feature.name} className="flex items-center gap-3 p-2 bg-white/50 rounded">
                           <IconComponent className="w-4 h-4 text-gray-600" />
                           <span className="text-sm text-gray-700">{feature.name}</span>
                           <div className="ml-auto">
@@ -251,8 +251,8 @@ export function EcosystemOverview({ onBack, onNavigate, user, onLogout }: Readon
 
                   <div className="space-y-2">
                     <h4 className="font-medium text-gray-900">Benefits:</h4>
-                    {component.benefits.slice(0, 3).map((benefit, index) => (
-                      <div key={index} className="flex items-start gap-2">
+                    {component.benefits.slice(0, 3).map((benefit) => (
+                      <div key={benefit} className="flex items-start gap-2">
                         <CheckCircle className="w-4 h-4 text-green-500 mt-0.5 flex-shrink-0" />
                         <span className="text-sm text-gray-700">{benefit}</span>
                       </div>
@@ -292,7 +292,7 @@ export function EcosystemOverview({ onBack, onNavigate, user, onLogout }: Readon
               {currentFlow.steps.map((step, index) => {
                 const IconComponent = step.icon;
                 return (
-                  <div key={index} className="flex items-center gap-4">
+                  <div key={step.action} className="flex items-center gap-4">
                     <div className="w-12 h-12 bg-gradient-to-r from-[#ff6b35] to-[#ff8c42] rounded-full flex items-center justify-center text-white font-medium">
                       {index + 1}
                     </div>

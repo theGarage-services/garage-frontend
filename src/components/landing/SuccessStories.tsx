@@ -165,7 +165,7 @@ export function SuccessStories({ onBack, onNavigate, user, onLogout }: Readonly<
         {/* Page Header */}
         <div className="mb-8 text-center">
           <h1 className="text-3xl font-medium text-gray-900 mb-2">Real Success Stories</h1>
-          <p className="text-gray-600 max-w-2xl mx-auto">
+          <p className="text-gray-600 max-w-[95vw] sm:max-w-2xl mx-auto">
             Discover how theGarage has transformed careers and revolutionized hiring for thousands of users across Canada
           </p>
         </div>
@@ -232,7 +232,7 @@ export function SuccessStories({ onBack, onNavigate, user, onLogout }: Readonly<
         )}
 
         {/* Category Filter */}
-        <div className="flex items-center justify-between mb-6">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
           <div className="flex items-center gap-2">
             {categories.map((category) => (
               <Button
@@ -270,8 +270,8 @@ export function SuccessStories({ onBack, onNavigate, user, onLogout }: Readonly<
                       <h3 className="text-xl font-medium text-gray-900 mb-1">{story.name}</h3>
                       <p className="text-gray-600 mb-2">{story.title}</p>
                       <div className="flex items-center gap-2 mb-3">
-                        {story.tags.map((tag, index) => (
-                          <Badge key={index} variant="secondary" className="text-xs">
+                        {story.tags.map((tag) => (
+                          <Badge key={tag} variant="secondary" className="text-xs">
                             {tag}
                           </Badge>
                         ))}
@@ -279,8 +279,8 @@ export function SuccessStories({ onBack, onNavigate, user, onLogout }: Readonly<
                     </div>
                     
                     <div className="flex items-center gap-1">
-                      {[...Array(story.rating)].map((_, i) => (
-                        <Star key={i} className="w-4 h-4 text-yellow-400 fill-current" />
+                      {Array.from({ length: story.rating }).map((_, i) => (
+                        <Star key={`${story.id}-star-${i}`} className="w-4 h-4 text-yellow-400 fill-current" />
                       ))}
                     </div>
                   </div>
@@ -294,7 +294,7 @@ export function SuccessStories({ onBack, onNavigate, user, onLogout }: Readonly<
                     </blockquote>
                   </div>
                   
-                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4 bg-gradient-to-r from-gray-50 to-orange-50 rounded-lg p-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4 bg-gradient-to-r from-gray-50 to-orange-50 rounded-lg p-4">
                     {story.type === 'job-seeker' && (
                       <>
                         <div className="text-center">
@@ -367,7 +367,7 @@ export function SuccessStories({ onBack, onNavigate, user, onLogout }: Readonly<
         {/* Call to Action */}
         <Card className="p-8 mt-8 bg-gradient-to-r from-gray-50 to-orange-50 border-orange-200 text-center">
           <h3 className="text-2xl font-medium text-gray-900 mb-4">Ready to Write Your Success Story?</h3>
-          <p className="text-gray-600 mb-6 max-w-2xl mx-auto">
+          <p className="text-gray-600 mb-6 max-w-[95vw] sm:max-w-2xl mx-auto">
             Join thousands of successful job seekers and recruiters who have transformed their careers with theGarage's dual-perspective platform.
           </p>
           <div className="flex items-center justify-center gap-4">

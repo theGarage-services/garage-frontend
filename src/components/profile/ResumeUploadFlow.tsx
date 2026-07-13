@@ -112,6 +112,7 @@ export function ResumeUploadFlow({ onComplete, onSkip, userName }: Readonly<Resu
       setProfileData(mockExtractedData);
       setStep('review');
     } catch (error) {
+      console.error('Error processing resume:', error);
       setError('Failed to process resume. Please try again.');
     } finally {
       setIsProcessing(false);
@@ -144,7 +145,7 @@ export function ResumeUploadFlow({ onComplete, onSkip, userName }: Readonly<Resu
   if (step === 'upload') {
     return (
       <div className="min-h-screen bg-gradient-to-br from-gray-50 via-orange-50 to-gray-100 flex items-center justify-center p-4">
-        <div className="w-full max-w-2xl">
+        <div className="w-full max-w-[95vw] sm:max-w-2xl">
           {/* Header */}
           <div className="text-center mb-8">
             <div className="flex items-center justify-center gap-2 mb-4">
@@ -222,7 +223,7 @@ export function ResumeUploadFlow({ onComplete, onSkip, userName }: Readonly<Resu
                       </Button>
                     </div>
                   ) : (
-                    <label htmlFor="resume" className="cursor-pointer">
+                    <label htmlFor="resume" className="cursor-pointer" aria-label="Upload resume">
                       <div className="flex flex-col items-center gap-4">
                         <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center">
                           <Upload className="w-8 h-8 text-gray-400" />
@@ -381,8 +382,8 @@ export function ResumeUploadFlow({ onComplete, onSkip, userName }: Readonly<Resu
                 <div className="space-y-2">
                   <Label>Work Experience (Preview)</Label>
                   <div className="bg-gray-50 rounded-lg p-4 max-h-40 overflow-y-auto">
-                    {profileData.workExperience.map((exp, index) => (
-                      <div key={index} className="mb-3 last:mb-0">
+                    {profileData.workExperience.map((exp) => (
+                      <div key={`${exp.title}-${exp.company}`} className="mb-3 last:mb-0">
                         <h4 className="font-medium text-gray-900">{exp.title} at {exp.company}</h4>
                         <p className="text-sm text-gray-600">{exp.duration}</p>
                         <p className="text-sm text-gray-700 mt-1">{exp.description}</p>
@@ -397,8 +398,8 @@ export function ResumeUploadFlow({ onComplete, onSkip, userName }: Readonly<Resu
                 <div className="space-y-2">
                   <Label>Education (Preview)</Label>
                   <div className="bg-gray-50 rounded-lg p-4">
-                    {profileData.education.map((edu, index) => (
-                      <div key={index} className="mb-2 last:mb-0">
+                    {profileData.education.map((edu) => (
+                      <div key={`${edu.degree}-${edu.institution}`} className="mb-2 last:mb-0">
                         <h4 className="font-medium text-gray-900">{edu.degree}</h4>
                         <p className="text-sm text-gray-600">{edu.institution} • {edu.year}</p>
                       </div>
@@ -408,11 +409,11 @@ export function ResumeUploadFlow({ onComplete, onSkip, userName }: Readonly<Resu
               )}
 
               {/* Action Buttons */}
-              <div className="flex justify-between pt-6">
+              <div className="flex flex-col-reverse sm:flex-row sm:justify-between gap-4 pt-6">
                 <Button
                   variant="outline"
                   onClick={() => setStep('upload')}
-                  className="px-6"
+                  className="px-6 w-full sm:w-auto"
                 >
                   <ArrowLeft className="w-4 h-4 mr-2" />
                   Back to Upload
@@ -420,7 +421,7 @@ export function ResumeUploadFlow({ onComplete, onSkip, userName }: Readonly<Resu
 
                 <Button
                   onClick={handleConfirm}
-                  className="px-8 bg-gradient-to-r from-[#ff6b35] to-[#ff8c42] hover:from-[#e55a2b] hover:to-[#d4461f] text-white"
+                  className="px-8 w-full sm:w-auto bg-gradient-to-r from-[#ff6b35] to-[#ff8c42] hover:from-[#e55a2b] hover:to-[#d4461f] text-white"
                 >
                   Confirm & Continue
                   <ArrowRight className="w-4 h-4 ml-2" />

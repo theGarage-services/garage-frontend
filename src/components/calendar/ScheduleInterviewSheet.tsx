@@ -20,6 +20,8 @@ interface ScheduleInterviewSheetProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   candidate: Candidate | null;
+  jobId?: string;
+  availableJobs?: Array<{ id: string | number; title: string }>;
   onScheduled?: (interviewData: any) => void;
   onExpandToFullscreen?: (formData: any) => void;
 }
@@ -28,6 +30,8 @@ export const ScheduleInterviewSheet: React.FC<ScheduleInterviewSheetProps> = ({
   open,
   onOpenChange,
   candidate,
+  jobId,
+  availableJobs,
   onScheduled,
   onExpandToFullscreen
 }) => {
@@ -53,8 +57,15 @@ export const ScheduleInterviewSheet: React.FC<ScheduleInterviewSheetProps> = ({
     try {
       setIsSubmitting(true);
 
+      const selectedJobId = jobId || (availableJobs && availableJobs.length > 0 ? String(availableJobs[0].id) : undefined);
+      if (!selectedJobId) {
+        toast.error('No job selected for this interview');
+        setIsSubmitting(false);
+        return;
+      }
+
       const interviewRequest: CreateInterviewRequest = {
-        job: 1, // This should be passed as a prop or selected in the form
+        job: Number.parseInt(selectedJobId, 10),
         candidate_id: Number.parseInt(candidate.id),
         interview_type: interviewData.type as Interview['interview_type'],
         stage: interviewData.stage as Interview['stage'],
@@ -97,7 +108,7 @@ export const ScheduleInterviewSheet: React.FC<ScheduleInterviewSheetProps> = ({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto p-0">
+      <DialogContent className="max-w-[95vw] sm:max-w-2xl max-h-[90vh] overflow-y-auto p-0">
         {/* Accessibility - Hidden but present for screen readers */}
         <DialogHeader className="sr-only">
           <DialogTitle>Schedule Interview</DialogTitle>
@@ -149,7 +160,7 @@ export const ScheduleInterviewSheet: React.FC<ScheduleInterviewSheetProps> = ({
         {/* Form Content */}
         <div className="p-6 space-y-5">
           {/* Interview Type & Stage */}
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label className="flex items-center gap-2 text-gray-700">
                 <VideoIcon className="w-4 h-4 text-[#ff6b35]" />
@@ -177,7 +188,7 @@ export const ScheduleInterviewSheet: React.FC<ScheduleInterviewSheetProps> = ({
                   <SelectValue placeholder="Select stage" />
                 </SelectTrigger>
                 <SelectContent className="z-[100]">
-                  <SelectItem value="phone-screening">Phone Screening</SelectItem>
+                  <SelectItem value="initial-screening">Initial Screening</SelectItem>
                   <SelectItem value="technical">Technical Interview</SelectItem>
                   <SelectItem value="behavioral">Behavioral Interview</SelectItem>
                   <SelectItem value="panel">Panel Interview</SelectItem>
@@ -188,7 +199,7 @@ export const ScheduleInterviewSheet: React.FC<ScheduleInterviewSheetProps> = ({
           </div>
 
           {/* Date, Time & Duration */}
-          <div className="grid grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             <div className="space-y-2">
               <Label className="flex items-center gap-2 text-gray-700">
                 <Calendar className="w-4 h-4 text-[#ff6b35]" />

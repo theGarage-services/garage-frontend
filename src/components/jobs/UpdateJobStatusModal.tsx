@@ -173,7 +173,7 @@ export function UpdateJobStatusModal({ job, onClose, onUpdate }: Readonly<Update
 
   return (
     <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-      <Card className="max-w-2xl w-full max-h-[90vh] overflow-y-auto relative animate-in fade-in zoom-in duration-200">
+      <Card className="max-w-[95vw] sm:max-w-[95vw] sm:max-w-2xl w-full max-h-[90vh] overflow-y-auto relative animate-in fade-in zoom-in duration-200">
         <div className="sticky top-0 bg-white border-b border-gray-200 p-6 z-10">
           <button
             onClick={onClose}
@@ -204,7 +204,7 @@ export function UpdateJobStatusModal({ job, onClose, onUpdate }: Readonly<Update
           {/* Auto-populated metrics */}
           <div>
             <h3 className="font-medium text-gray-900 mb-3">Current Metrics (Auto-Updated)</h3>
-            <div className="grid grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
               <Card className="p-4">
                 <p className="text-xs text-gray-600 mb-1">Applications</p>
                 <p className="text-2xl font-semibold text-gray-900">{currentStatus.applications_count}</p>
@@ -319,7 +319,7 @@ export function UpdateJobStatusModal({ job, onClose, onUpdate }: Readonly<Update
           </div>
 
           {/* Status Visibility */}
-          <div className="flex items-center justify-between p-4 border border-gray-200 rounded-lg">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-4 border border-gray-200 rounded-lg">
             <div>
               <h4 className="font-medium text-gray-900">Share Hiring Status with Candidates</h4>
               <p className="text-sm text-gray-600">Allow job seekers to see this hiring progress</p>
@@ -341,7 +341,7 @@ export function UpdateJobStatusModal({ job, onClose, onUpdate }: Readonly<Update
         </div>
 
         {/* Footer Actions */}
-        <div className="sticky bottom-0 bg-white border-t border-gray-200 p-6 flex justify-end gap-3">
+        <div className="sticky bottom-0 bg-white border-t border-gray-200 p-6 flex flex-col sm:flex-row sm:justify-end gap-3">
           <Button variant="outline" onClick={onClose}>
             Cancel
           </Button>
